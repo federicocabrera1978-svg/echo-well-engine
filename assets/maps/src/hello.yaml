@@ -1,0 +1,24 @@
+# hello.yaml — mapa mínimo: 1 chunk (40×23 tiles de 8 px = 320×184 px)
+name: hello
+size_chunks: [1, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0,  y: 20, w: 40, h: 3, tile: 1}   # piso
+  - {layer: VIS, x: 0,  y: 20, w: 40, h: 3, tile: 17}
+  - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}  # pared izquierda
+  - {layer: COL, x: 39, y: 0,  w: 1,  h: 23, tile: 1}  # pared derecha
+  - {layer: META, x: 20, y: 17, w: 8, h: 3, tile: 2}   # zona de agua
+
+entities:
+  - {name: spawn,    type: player_spawn, x: 32,  y: 152}
+  - {name: switch_a, type: switch,       x: 96,  y: 152}
+  - {name: door_a,   type: door,         x: 280, y: 136}
+
+links:
+  - {from: switch_a, to: door_a}
+
+water:
+  - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
