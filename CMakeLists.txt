@@ -38,8 +38,11 @@ add_test(NAME ewmap_load_hello
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 
 # --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
-add_library(echo_game engine/game/scene.cpp)
-target_link_libraries(echo_game PUBLIC echo_map)
+add_library(echo_physics engine/physics/verlet.cpp)
+target_include_directories(echo_physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+
+add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp)
+target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 
 # Mapa por defecto compilado en el build (CRC siempre on)
 set(EW_HELLO_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/hello.ewmap)
@@ -53,6 +56,10 @@ add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
 add_dependencies(scene_test ew_maps)
 add_test(NAME scene_hello COMMAND scene_test ${EW_HELLO_MAP})
+add_executable(physics_test tests/physics_test.cpp)
+target_link_libraries(physics_test PRIVATE echo_game)
+add_dependencies(physics_test ew_maps)
+add_test(NAME physics_hello COMMAND physics_test ${EW_HELLO_MAP})
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)
