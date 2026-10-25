@@ -7,12 +7,13 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 - **Agua** con resortes de **Hooke** (superficie dinámica).
 - Mapas en binario propio **`.ewmap`**, cargados por chunks con streaming LRU.
 
-> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara) y `echo_engine` dibujando el mapa en el Deferred 320×180.
+> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara), física Verlet (`echo_physics`) y `echo_engine` jugable sobre el Deferred 320×180.
 
 ## Estructura
 ```
 engine/core/         echo_engine: ventana GLFW + loop de frame
 engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS, entidades, cámara, chunk activo)
+engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles)
 engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
 assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
 tests/               tests sin GL (ctest)
@@ -37,12 +38,18 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --scale 3    # 960×540
 ./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
 ./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
+./build/echo_engine --demo        # input automático (camina y salta)
 ```
-ESC o cerrar la ventana para salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar, **ESC** salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
 
 ### Escena (MapLoader → render)
 - `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.
 - Pipeline: geometry pass → los tiles `COL`/`VIS` del chunk activo se suben como textura `RG8UI` 40×23 (solo cuando cambia el chunk) y el shader los dibuja con bisel por tile; marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
+
+### Física Verlet
+- `ew::physics::World`: puntos con `pos/prev` (Verlet posicional), gravedad 600 px/s², damping, constraints de distancia (`Stick`, con rigidez), pares círculo↔círculo y colisión círculo↔tiles sólidos (empuje por punto más cercano + fricción tangencial, sin rebote). 6 iteraciones por paso.
+- `ew::game::Sim` une `Scene` + `World` a paso fijo 60 Hz: el player es un círculo r=4 que cae, camina (90 px/s) y salta (solo apoyado) contra la capa `COL`; una cuerda de 16 segmentos cuelga del techo y el player la empuja.
+- `physics_test` (ctest) verifica apoyo en el piso, caminar, salto, paredes y largo de la cuerda.
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.

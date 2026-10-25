@@ -1,12 +1,13 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo]
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, ESC salir. --demo = input automático.
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 
-#include "game/scene.hpp"
+#include "game/sim.hpp"
 #include "render/deferred.hpp"
 
 #ifndef EW_SHADER_DIR
@@ -37,6 +38,7 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
+  bool demo = false;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
@@ -45,14 +47,14 @@ int main(int argc, char** argv) {
     else if (a == "--shaders" && i + 1 < argc) shader_dir = argv[++i];
     else if (a == "--map" && i + 1 < argc) map_path = argv[++i];
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
+    else if (a == "--demo") demo = true;
   }
   if (scale < 1) scale = 1;
 
   ew::game::Scene scene;
   std::string err;
   if (!scene.load(map_path, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
-  const auto* spawn = scene.find_type("player_spawn");
-  float px = spawn ? spawn->x : 16.f, py = spawn ? spawn->y : 16.f;
+  ew::game::Sim sim(scene);
   std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
               scene.height_px(), scene.entities().size());
 
@@ -80,16 +82,33 @@ int main(int argc, char** argv) {
   ew::render::DeferredRenderer renderer;
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
-  int frames = 0;
+  int frames = 0, sim_steps = 0;
+  bool jump_was_down = false;
+  double acc = 0, last = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
-    // Movimiento libre del marker (se reemplaza por física Verlet), sin atravesar COL.
-    const float sp = 1.5f;
-    float dx = float(glfwGetKey(win, GLFW_KEY_RIGHT) - glfwGetKey(win, GLFW_KEY_LEFT)) * sp;
-    float dy = float(glfwGetKey(win, GLFW_KEY_DOWN) - glfwGetKey(win, GLFW_KEY_UP)) * sp;
-    if (!scene.solid_px(px + dx, py)) px += dx;
-    if (!scene.solid_px(px, py + dy)) py += dy;
-    scene.follow(px, py);
+    auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
+    ew::game::Input in;
+    in.move_x = float((key(GLFW_KEY_RIGHT) || key(GLFW_KEY_D)) - (key(GLFW_KEY_LEFT) || key(GLFW_KEY_A)));
+    const bool jump_down = key(GLFW_KEY_SPACE) || key(GLFW_KEY_UP) || key(GLFW_KEY_Z);
+    in.jump = jump_down && !jump_was_down;
+    jump_was_down = jump_down;
+    if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
+      in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
+      in.jump = sim_steps % 90 == 45;
+    }
+    // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
+    const double now = glfwGetTime();
+    acc += max_frames ? ew::game::Sim::kDt : now - last;
+    last = now;
+    for (int n = 0; acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
+      sim.step(in);
+      in.jump = false;
+      ++sim_steps;
+    }
+    if (acc > ew::game::Sim::kDt) acc = 0;
+    const auto& pl = sim.player();
+    const float px = pl.pos.x, py = pl.pos.y;
 
     FrameView v;
     v.cam_x = scene.cam_x(); v.cam_y = scene.cam_y();
@@ -98,7 +117,12 @@ int main(int argc, char** argv) {
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
-    push_marker(v, px, py, 4, 0, 0.95f, 0.95f, 0.9f);  // player
+    const auto& pts = sim.world().points();
+    for (int i = 0; i < sim.rope_points(); ++i) {  // cuerda Verlet
+      const auto& rp = pts[sim.rope_first() + uint32_t(i)];
+      push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
+    }
+    push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
     v.light_x = px; v.light_y = py;
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
