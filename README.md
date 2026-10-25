@@ -7,13 +7,13 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 - **Agua** con resortes de **Hooke** (superficie dinámica).
 - Mapas en binario propio **`.ewmap`**, cargados por chunks con streaming LRU.
 
-> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara), física Verlet (`echo_physics`) y `echo_engine` jugable sobre el Deferred 320×180.
+> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara), física Verlet + agua Hooke (`echo_physics`) y `echo_engine` jugable sobre el Deferred 320×180.
 
 ## Estructura
 ```
 engine/core/         echo_engine: ventana GLFW + loop de frame
 engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS, entidades, cámara, chunk activo)
-engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles)
+engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles) + WaterBody (Hooke)
 engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
 assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
 tests/               tests sin GL (ctest)
@@ -40,7 +40,7 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
 ./build/echo_engine --demo        # input automático (camina y salta)
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar, **ESC** salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **ESC** salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
 
 ### Escena (MapLoader → render)
 - `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.
@@ -50,6 +50,12 @@ Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar, **ESC** sali
 - `ew::physics::World`: puntos con `pos/prev` (Verlet posicional), gravedad 600 px/s², damping, constraints de distancia (`Stick`, con rigidez), pares círculo↔círculo y colisión círculo↔tiles sólidos (empuje por punto más cercano + fricción tangencial, sin rebote). 6 iteraciones por paso.
 - `ew::game::Sim` une `Scene` + `World` a paso fijo 60 Hz: el player es un círculo r=4 que cae, camina (90 px/s) y salta (solo apoyado) contra la capa `COL`; una cuerda de 16 segmentos cuelga del techo y el player la empuja.
 - `physics_test` (ctest) verifica apoyo en el piso, caminar, salto, paredes y largo de la cuerda.
+
+### Agua Hooke
+- Cada registro `water:` del mapa (sección `WATER`) crea un `ew::physics::WaterBody`: la superficie se divide en columnas (~2 px, máx. 64) y cada una es un resorte de Hooke `a = -k·x - d·v` con `k = stiffness` y `d = damping` del mapa (defaults 0.025 / 0.03 si vienen en 0). Las columnas se acoplan con sus vecinas (`spread`) para propagar ondas.
+- Interacción con Verlet: empuje proporcional a la fracción sumergida (el player flota en la superficie), arrastre dentro del agua, salpicadura al cruzar la superficie y estela suave al nadar en horizontal.
+- Render: el geometry pass recibe la altura de cada columna como uniform y dibuja el volumen + una línea de superficie clara con normales según la pendiente (el light pass la ilumina). El renderer dibuja un cuerpo de agua por frame (el primero del mapa).
+- `water_test` (ctest) verifica propagación, amortiguación, salpicadura y flotación.
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
