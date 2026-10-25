@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 namespace ew::render {
 using namespace ew::gl;
@@ -65,28 +66,54 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err) {
   BindFramebuffer(GL_FRAMEBUFFER, 0);
 
   GenVertexArrays(1, &vao_);  // triángulo fullscreen vía gl_VertexID, sin VBO
-  if (!(geom_prog_ = program(dir, "fullscreen.vert", "gbuffer_stub.frag", err))) return false;
+  if (!(geom_prog_ = program(dir, "fullscreen.vert", "gbuffer_map.frag", err))) return false;
   if (!(light_prog_ = program(dir, "fullscreen.vert", "light.frag", err))) return false;
+  glGenTextures(1, &tiles_tex_); glBindTexture(GL_TEXTURE_2D, tiles_tex_);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8UI, 40, 23, 0, GL_RG_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  UseProgram(geom_prog_);
+  Uniform1i(GetUniformLocation(geom_prog_, "u_tiles"), 0);
   UseProgram(light_prog_);
   Uniform1i(GetUniformLocation(light_prog_, "u_albedo"), 0);
   Uniform1i(GetUniformLocation(light_prog_, "u_normal"), 1);
   return true;
 }
 
-void DeferredRenderer::render(float t, int fb_w, int fb_h) {
+void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   BindVertexArray(vao_);
-  // 1) Geometry pass (stub procedural) -> G-buffer
+  ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, tiles_tex_);
+  if (v.tiles && v.tiles_version != tiles_version_) {
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 40, 23, GL_RG_INTEGER, GL_UNSIGNED_BYTE, v.tiles);
+    tiles_version_ = v.tiles_version;
+  }
+  // 1) Geometry pass (tiles del chunk activo + marcadores + agua) -> G-buffer
   BindFramebuffer(GL_FRAMEBUFFER, gbuf_fbo_);
   glViewport(0, 0, kInternalW, kInternalH);
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   UseProgram(geom_prog_);
   Uniform1f(GetUniformLocation(geom_prog_, "u_time"), t);
+  Uniform2f(GetUniformLocation(geom_prog_, "u_cam"), v.cam_x, v.cam_y);
+  Uniform2f(GetUniformLocation(geom_prog_, "u_chunk"), v.chunk_x_px, v.chunk_y_px);
+  Uniform1i(GetUniformLocation(geom_prog_, "u_marker_count"), v.marker_count);
+  if (v.marker_count > 0) {
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_markers"), v.marker_count, v.markers.data());
+    Uniform3fv(GetUniformLocation(geom_prog_, "u_marker_colors"), v.marker_count, v.marker_colors.data());
+  }
+  Uniform1i(GetUniformLocation(geom_prog_, "u_water_cols"), v.water_cols);
+  if (v.water_cols > 0) {
+    Uniform4f(GetUniformLocation(geom_prog_, "u_water_rect"), v.water_rect[0], v.water_rect[1], v.water_rect[2], v.water_rect[3]);
+    Uniform1fv(GetUniformLocation(geom_prog_, "u_water"), v.water_cols, v.water_surface.data());
+  }
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // 2) Light pass -> lit target
   BindFramebuffer(GL_FRAMEBUFFER, lit_fbo_);
   UseProgram(light_prog_);
   Uniform1f(GetUniformLocation(light_prog_, "u_time"), t);
+  Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, albedo_);
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, normal_);
   glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -101,14 +128,28 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h) {
   BindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+bool DeferredRenderer::dump_ppm(const std::string& path) const {
+  std::vector<unsigned char> px(std::size_t(kInternalW) * kInternalH * 3);
+  BindFramebuffer(GL_READ_FRAMEBUFFER, lit_fbo_);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glReadPixels(0, 0, kInternalW, kInternalH, GL_RGB, GL_UNSIGNED_BYTE, px.data());
+  BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  std::ofstream f(path, std::ios::binary);
+  if (!f) return false;
+  f << "P6\n" << kInternalW << " " << kInternalH << "\n255\n";
+  for (int y = kInternalH - 1; y >= 0; --y)
+    f.write(reinterpret_cast<const char*>(&px[std::size_t(y) * kInternalW * 3]), kInternalW * 3);
+  return bool(f);
+}
+
 void DeferredRenderer::shutdown() {
   if (geom_prog_) DeleteProgram(geom_prog_);
   if (light_prog_) DeleteProgram(light_prog_);
   if (vao_) DeleteVertexArrays(1, &vao_);
   if (gbuf_fbo_) DeleteFramebuffers(1, &gbuf_fbo_);
   if (lit_fbo_) DeleteFramebuffers(1, &lit_fbo_);
-  GLuint texs[4] = {albedo_, normal_, depth_, lit_tex_};
-  glDeleteTextures(4, texs);
+  GLuint texs[5] = {albedo_, normal_, depth_, lit_tex_, tiles_tex_};
+  glDeleteTextures(5, texs);
   *this = {};
 }
 }  // namespace ew::render

@@ -37,6 +37,23 @@ add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 
+# --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
+add_library(echo_game engine/game/scene.cpp)
+target_link_libraries(echo_game PUBLIC echo_map)
+
+# Mapa por defecto compilado en el build (CRC siempre on)
+set(EW_HELLO_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/hello.ewmap)
+add_custom_command(OUTPUT ${EW_HELLO_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP})
+
+add_executable(scene_test tests/scene_test.cpp)
+target_link_libraries(scene_test PRIVATE echo_game)
+add_dependencies(scene_test ew_maps)
+add_test(NAME scene_hello COMMAND scene_test ${EW_HELLO_MAP})
+
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)
 if(EW_BUILD_ENGINE)
@@ -61,6 +78,8 @@ if(EW_BUILD_ENGINE)
 
   add_executable(echo_engine engine/core/main.cpp)
   target_compile_definitions(echo_engine PRIVATE
-    EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders")
-  target_link_libraries(echo_engine PRIVATE echo_render echo_map glfw)
+    EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
+    EW_DEFAULT_MAP="${EW_HELLO_MAP}")
+  target_link_libraries(echo_engine PRIVATE echo_render echo_game glfw)
+  add_dependencies(echo_engine ew_maps)
 endif()
