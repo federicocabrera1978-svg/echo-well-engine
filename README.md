@@ -7,13 +7,15 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 - **Agua** con resortes de **Hooke** (superficie dinámica).
 - Mapas en binario propio **`.ewmap`**, cargados por chunks con streaming LRU.
 
-> Estado: existen el formato `.ewmap` (`ewmapc` + `echo_map`) y `echo_engine`: ventana + loop + stub Deferred 320×180. Física y agua vienen después.
+> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara) y `echo_engine` dibujando el mapa en el Deferred 320×180.
 
 ## Estructura
 ```
 engine/core/         echo_engine: ventana GLFW + loop de frame
-engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer (G-buffer stub)
-assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_stub.frag, light.frag
+engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS, entidades, cámara, chunk activo)
+engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
+assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
+tests/               tests sin GL (ctest)
 engine/map/          echo_map: formato .ewmap, MapLoader, ChunkCache (LRU), CRC-32
 tools/ewmapc/        compilador YAML -> .ewmap (+ smoke test)
 assets/maps/src/     fuentes de mapas (YAML)
@@ -34,8 +36,13 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine              # ventana 1280×720 (320×180 ×4)
 ./build/echo_engine --scale 3    # 960×540
 ./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
+./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
 ```
-ESC o cerrar la ventana para salir. Pipeline: geometry pass procedural → G-buffer 320×180 (albedo RGBA8 + normal RGBA8 + depth24) → light pass (ambiente + luz puntual animada) → blit NEAREST con escalado entero y letterbox. El geometry pass es un stub hasta enganchar `MapLoader`/`ChunkCache`.
+ESC o cerrar la ventana para salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
+
+### Escena (MapLoader → render)
+- `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.
+- Pipeline: geometry pass → los tiles `COL`/`VIS` del chunk activo se suben como textura `RG8UI` 40×23 (solo cuando cambia el chunk) y el shader los dibuja con bisel por tile; marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
