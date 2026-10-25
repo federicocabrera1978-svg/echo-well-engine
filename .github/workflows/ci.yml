@@ -22,3 +22,14 @@ jobs:
           mkdir -p assets/maps/bin
           ./build/ewmapc --crc assets/maps/src/hello.yaml -o assets/maps/bin/hello.ewmap
           ./build/ewmap_smoke assets/maps/bin/hello.ewmap
+
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deps (OpenGL/X11 + xvfb)
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb mesa-utils
+      - name: Configure + build (Release)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+      - name: Smoke run headless
+        run: LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" ./build/echo_engine --frames 60
