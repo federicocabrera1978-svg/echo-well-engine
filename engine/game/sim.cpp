@@ -14,6 +14,15 @@ Sim::Sim(Scene& scene) : scene_(scene) {
   rope_n_ = 16;
   rope_first_ = world_.add_rope({std::min(128.f, scene_.width_px() * 0.4f), 24}, rope_n_, 6.f, 1.5f);
   for (int i = 1; i <= rope_n_; ++i) world_.add_collision_pair(player_, rope_first_ + uint32_t(i));
+  for (const auto& w : scene_.map().water())
+    water_.emplace_back(float(w.x), float(w.y), float(w.w), float(w.h), w.stiffness, w.damping);
+}
+
+bool Sim::player_in_water() const {
+  const auto& p = player();
+  for (const auto& w : water_)
+    if (w.contains(p.pos.x, p.pos.y + p.radius)) return true;
+  return false;
 }
 
 void Sim::step(const Input& in) {
@@ -22,8 +31,10 @@ void Sim::step(const Input& in) {
   Vec2 v = pl.velocity();
   const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
   v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
-  if (in.jump && pl.grounded) v.y = -kJumpSpeed * kDt;
+  const bool swim = player_in_water();
+  if (in.jump && (pl.grounded || swim)) v.y = -kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
   pl.set_velocity(v);
+  for (auto& w : water_) { w.interact(world_); w.step(); }
   world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y);
 }

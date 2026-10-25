@@ -38,7 +38,7 @@ add_test(NAME ewmap_load_hello
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 
 # --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
-add_library(echo_physics engine/physics/verlet.cpp)
+add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)
 target_include_directories(echo_physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 
 add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp)
@@ -60,6 +60,10 @@ add_executable(physics_test tests/physics_test.cpp)
 target_link_libraries(physics_test PRIVATE echo_game)
 add_dependencies(physics_test ew_maps)
 add_test(NAME physics_hello COMMAND physics_test ${EW_HELLO_MAP})
+add_executable(water_test tests/water_test.cpp)
+target_link_libraries(water_test PRIVATE echo_game)
+add_dependencies(water_test ew_maps)
+add_test(NAME water_hello COMMAND water_test ${EW_HELLO_MAP})
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)

@@ -3,6 +3,7 @@
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, ESC salir. --demo = input automático.
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -123,6 +124,12 @@ int main(int argc, char** argv) {
       push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
     }
     push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
+    if (!sim.water().empty()) {  // primer cuerpo de agua (el renderer soporta uno)
+      const auto& w = sim.water().front();
+      v.water_cols = std::min(w.cols(), ew::render::kMaxWaterCols);
+      v.water_rect = {w.x(), w.rest_y(), w.width(), w.bottom()};
+      for (int i = 0; i < v.water_cols; ++i) v.water_surface[std::size_t(i)] = w.surface_col(i);
+    }
     v.light_x = px; v.light_y = py;
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
