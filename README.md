@@ -7,10 +7,13 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 - **Agua** con resortes de **Hooke** (superficie dinámica).
 - Mapas en binario propio **`.ewmap`**, cargados por chunks con streaming LRU.
 
-> Estado: scaffold inicial. Por ahora existen el formato `.ewmap`, el compilador `ewmapc` y la librería `echo_map` (MapLoader). Render, física y agua vienen después.
+> Estado: existen el formato `.ewmap` (`ewmapc` + `echo_map`) y `echo_engine`: ventana + loop + stub Deferred 320×180. Física y agua vienen después.
 
 ## Estructura
 ```
+engine/core/         echo_engine: ventana GLFW + loop de frame
+engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer (G-buffer stub)
+assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_stub.frag, light.frag
 engine/map/          echo_map: formato .ewmap, MapLoader, ChunkCache (LRU), CRC-32
 tools/ewmapc/        compilador YAML -> .ewmap (+ smoke test)
 assets/maps/src/     fuentes de mapas (YAML)
@@ -19,12 +22,20 @@ docs/ewmap.md        especificación binaria
 ```
 
 ## Build
-Requisitos: CMake ≥ 3.20 y un compilador C++20 (GCC 11+, Clang 14+, MSVC 19.30+). Sin dependencias externas.
+Requisitos: CMake ≥ 3.20 y un compilador C++20 (GCC 11+, Clang 14+, MSVC 19.30+). `echo_map`/`ewmapc` no tienen dependencias externas. `echo_engine` usa **GLFW 3.4** (descargado por CMake `FetchContent`, hash fijado) y OpenGL 3.3 core; sin GLAD (loader propio en `engine/render/gl_loader.*`). En Linux: `sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev`. Para compilar solo herramientas: `-DEW_BUILD_ENGINE=OFF`.
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ```
+
+## Correr el prototipo
+```sh
+./build/echo_engine              # ventana 1280×720 (320×180 ×4)
+./build/echo_engine --scale 3    # 960×540
+./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
+```
+ESC o cerrar la ventana para salir. Pipeline: geometry pass procedural → G-buffer 320×180 (albedo RGBA8 + normal RGBA8 + depth24) → light pass (ambiente + luz puntual animada) → blit NEAREST con escalado entero y letterbox. El geometry pass es un stub hasta enganchar `MapLoader`/`ChunkCache`.
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
