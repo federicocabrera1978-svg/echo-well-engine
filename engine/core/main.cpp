@@ -145,11 +145,16 @@ int main(int argc, char** argv) {
       push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
     }
     push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
-    if (!sim.water().empty()) {  // primer cuerpo de agua (el renderer soporta uno)
-      const auto& w = sim.water().front();
-      v.water_cols = std::min(w.cols(), ew::render::kMaxWaterCols);
-      v.water_rect = {w.x(), w.rest_y(), w.width(), w.bottom()};
-      for (int i = 0; i < v.water_cols; ++i) v.water_surface[std::size_t(i)] = w.surface_col(i);
+    for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
+      if (v.water_count >= ew::render::kMaxWaterBodies) break;
+      if (w.x() + w.width() < v.cam_x || w.x() > v.cam_x + ew::render::kInternalW ||
+          w.bottom() < v.cam_y || w.rest_y() - 32 > v.cam_y + ew::render::kInternalH) continue;
+      const int b = v.water_count++;
+      const int n = std::min(w.cols(), ew::render::kMaxWaterCols);
+      v.water_cols[std::size_t(b)] = n;
+      for (int k = 0; k < 4; ++k)
+        v.water_rect[std::size_t(b * 4 + k)] = std::array<float, 4>{w.x(), w.rest_y(), w.width(), w.bottom()}[std::size_t(k)];
+      for (int i = 0; i < n; ++i) v.water_surface[std::size_t(b * ew::render::kMaxWaterCols + i)] = w.surface_col(i);
     }
     v.light_x = px; v.light_y = py;
 

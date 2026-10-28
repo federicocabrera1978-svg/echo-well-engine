@@ -103,10 +103,11 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_markers"), v.marker_count, v.markers.data());
     Uniform3fv(GetUniformLocation(geom_prog_, "u_marker_colors"), v.marker_count, v.marker_colors.data());
   }
-  Uniform1i(GetUniformLocation(geom_prog_, "u_water_cols"), v.water_cols);
-  if (v.water_cols > 0) {
-    Uniform4f(GetUniformLocation(geom_prog_, "u_water_rect"), v.water_rect[0], v.water_rect[1], v.water_rect[2], v.water_rect[3]);
-    Uniform1fv(GetUniformLocation(geom_prog_, "u_water"), v.water_cols, v.water_surface.data());
+  Uniform1i(GetUniformLocation(geom_prog_, "u_water_count"), v.water_count);
+  if (v.water_count > 0) {
+    Uniform1iv(GetUniformLocation(geom_prog_, "u_water_cols"), v.water_count, v.water_cols.data());
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_water_rect"), v.water_count, v.water_rect.data());
+    Uniform1fv(GetUniformLocation(geom_prog_, "u_water"), v.water_count * kMaxWaterCols, v.water_surface.data());
   }
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // 2) Light pass -> lit target

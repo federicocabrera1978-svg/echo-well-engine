@@ -11,9 +11,10 @@ uniform vec2 u_chunk;  // origen del vecindario 3×3 de chunks (120×69 tiles, p
 uniform int u_marker_count;
 uniform vec4 u_markers[48];        // x, y, radio, forma
 uniform vec3 u_marker_colors[48];
-uniform int u_water_cols;
-uniform vec4 u_water_rect;         // x, y reposo, w, y fondo
-uniform float u_water[64];         // superficie por columna (px mundo)
+uniform int u_water_count;         // cuerpos de agua (máx. 4)
+uniform int u_water_cols[4];
+uniform vec4 u_water_rect[4];      // x, y reposo, w, y fondo
+uniform float u_water[256];        // superficie por columna (px mundo), stride 64 por cuerpo
 
 vec3 tile_color(uint vis) {
   if (vis == 0u) return vec3(0.32, 0.30, 0.38);
@@ -42,18 +43,21 @@ void main() {
     albedo = tile_color(cv.g) * 0.35;  // decorado de fondo (VIS sin COL)
   }
   // Agua: columna por columna, desde la superficie Hooke hasta el fondo.
-  if (u_water_cols > 0) {
-    float cw = u_water_rect.z / float(u_water_cols);
-    float fx = (world.x - u_water_rect.x) / cw;
-    if (fx >= 0.0 && fx < float(u_water_cols) && world.y < u_water_rect.w) {
+  for (int b = 0; b < u_water_count; ++b) {
+    int nc = u_water_cols[b];
+    vec4 wr = u_water_rect[b];
+    int base = b * 64;
+    float cw = wr.z / float(nc);
+    float fx = (world.x - wr.x) / cw;
+    if (fx >= 0.0 && fx < float(nc) && world.y < wr.w) {
       int i = int(fx);
-      float surf = u_water[i];
+      float surf = u_water[base + i];
       if (world.y >= surf - 0.5) {
         float d = world.y - surf;
         vec3 wc = d < 1.0 ? vec3(0.55, 0.85, 1.0) : vec3(0.10, 0.28, 0.48);
         albedo = mix(albedo, wc, d < 1.0 ? 1.0 : 0.75);
         if (d < 2.0) {
-          float sl = u_water[min(i + 1, u_water_cols - 1)] - u_water[max(i - 1, 0)];
+          float sl = u_water[base + min(i + 1, nc - 1)] - u_water[base + max(i - 1, 0)];
           n = normalize(vec3(-sl * 0.5, 1.0, 0.8));
         }
         depth = min(depth, 0.4);
