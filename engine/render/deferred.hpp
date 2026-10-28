@@ -10,6 +10,7 @@ inline constexpr int kInternalH = 180;
 
 inline constexpr int kMaxMarkers = 48;
 inline constexpr int kMaxWaterCols = 64;
+inline constexpr int kMaxWaterBodies = 4;
 inline constexpr int kTilesW = 120, kTilesH = 69;  // 3×3 chunks de 40×23
 
 // Lo que el juego le pasa al renderer cada frame (coords de mundo en px, y hacia abajo).
@@ -22,10 +23,12 @@ struct FrameView {
   int marker_count = 0;
   std::array<float, kMaxMarkers * 4> markers{};
   std::array<float, kMaxMarkers * 3> marker_colors{};
-  // Agua: rect (x, y_reposo, w, fondo) + altura de superficie por columna (px mundo).
-  int water_cols = 0;
-  std::array<float, 4> water_rect{};
-  std::array<float, kMaxWaterCols> water_surface{};
+  // Agua: hasta kMaxWaterBodies cuerpos. Por cuerpo: rect (x, y_reposo, w, fondo),
+  // n° de columnas y altura de superficie por columna (px mundo), stride kMaxWaterCols.
+  int water_count = 0;
+  std::array<int, kMaxWaterBodies> water_cols{};
+  std::array<float, kMaxWaterBodies * 4> water_rect{};
+  std::array<float, kMaxWaterBodies * kMaxWaterCols> water_surface{};
   float light_x = 160, light_y = 90;         // luz principal (px mundo)
 };
 

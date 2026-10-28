@@ -11,7 +11,16 @@ rects:
   - {layer: VIS, x: 0,  y: 20, w: 80, h: 3, tile: 17}
   - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}  # pared izquierda
   - {layer: COL, x: 79, y: 0,  w: 1,  h: 23, tile: 1}  # pared derecha
-  - {layer: META, x: 20, y: 17, w: 8, h: 3, tile: 2}   # zona de agua
+  - {layer: META, x: 20, y: 17, w: 8, h: 3, tile: 2}   # zona de agua (pileta 1)
+  - {layer: COL, x: 19, y: 17, w: 1, h: 3, tile: 1}    # bordes de la pileta 1 (contienen el agua)
+  - {layer: VIS, x: 19, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL, x: 28, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 28, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: META, x: 63, y: 17, w: 8, h: 3, tile: 2}   # pileta 2 (chunk 1)
+  - {layer: COL, x: 62, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 62, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL, x: 71, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 71, y: 17, w: 1, h: 3, tile: 17}
   # chunk 1: plataformas escalonadas + decorado de fondo
   - {layer: COL, x: 48, y: 16, w: 6, h: 1, tile: 3}
   - {layer: VIS, x: 48, y: 16, w: 6, h: 1, tile: 5}
@@ -30,4 +39,5 @@ links:
   - {from: switch_a, to: door_a}
 
 water:
-  - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
+  - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}   # pileta 1: entre tiles x=19 y x=28
+  - {x: 504, y: 136, w: 64, h: 24, stiffness: 0.03, damping: 0.03}   # pileta 2: entre tiles x=62 y x=71

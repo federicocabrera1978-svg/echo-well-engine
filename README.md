@@ -66,7 +66,8 @@ Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nad
 ### Agua Hooke
 - Cada registro `water:` del mapa (sección `WATER`) crea un `ew::physics::WaterBody`: la superficie se divide en columnas (~2 px, máx. 64) y cada una es un resorte de Hooke `a = -k·x - d·v` con `k = stiffness` y `d = damping` del mapa (defaults 0.025 / 0.03 si vienen en 0). Las columnas se acoplan con sus vecinas (`spread`) para propagar ondas.
 - Interacción con Verlet: empuje proporcional a la fracción sumergida (el player flota en la superficie), arrastre dentro del agua, salpicadura al cruzar la superficie y estela suave al nadar en horizontal.
-- Render: el geometry pass recibe la altura de cada columna como uniform y dibuja el volumen + una línea de superficie clara con normales según la pendiente (el light pass la ilumina). El renderer dibuja un cuerpo de agua por frame (el primero del mapa).
+- Render: el geometry pass recibe, por cuerpo, rect + n° de columnas + altura de cada columna (uniform arrays, stride 64) y dibuja el volumen + una línea de superficie clara con normales según la pendiente (el light pass la ilumina). Hasta **4 cuerpos por frame** (`kMaxWaterBodies`); se mandan solo los que tocan la vista.
+- Contención: en `hello` cada pileta tiene piso y bordes `COL` de 3 tiles a ambos lados hasta la superficie (pileta 1 entre tiles x=19/28 en el chunk 0, pileta 2 entre x=62/71 en el chunk 1). La superficie además se clampa a ±90 % de la profundidad. `water_test` verifica que todo cuerpo del mapa esté contenido.
 - `water_test` (ctest) verifica propagación, amortiguación, salpicadura y flotación.
 
 ## Formato `.ewmap` (resumen)

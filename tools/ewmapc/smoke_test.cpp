@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
   CHECK(m.entities().size() == 3);
   CHECK(m.string_at(m.entities()[0].type_str) == "player_spawn");
   CHECK(m.links().size() == 1);
-  CHECK(m.water().size() == 1);
+  CHECK(m.water().size() == 2);
   ChunkCache cache(m, 4);
   CHECK(cache.acquire(0, 0) != nullptr);
   CHECK(cache.acquire(5, 5) == nullptr);

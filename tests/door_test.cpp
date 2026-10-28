@@ -20,18 +20,20 @@ int main(int argc, char** argv) {
   CHECK(!door->active);
 
   game::Sim sim(scene);
+  auto& p = sim.world().points()[sim.player_index()];
+  p.pos = p.prev = {248, 156};  // pasada la pileta 1
   for (int i = 0; i < 400; ++i) sim.step({1, false});
   const float blocked_x = sim.player().pos.x;
   std::printf("bloqueado por la puerta en x=%.1f\n", blocked_x);
   CHECK(blocked_x <= door->x - 4.f + 0.6f);
   // Volver al switch y activarlo (flanco interact).
-  auto& p = sim.world().points()[sim.player_index()];
   p.pos = p.prev = {sw->x, 156};
   for (int i = 0; i < 10; ++i) sim.step({});
   game::Input in; in.interact = true;
   sim.step(in);
   CHECK(sw->active && door->active);
   CHECK(!scene.solid_tile(dtx, dty) && !scene.door_blocks(dtx, dty + 1));
+  p.pos = p.prev = {248, 156};
   for (int i = 0; i < 400; ++i) sim.step({1, false});
   std::printf("puerta abierta: llegó a x=%.1f\n", sim.player().pos.x);
   CHECK(sim.player().pos.x > door->x + 8.f);
