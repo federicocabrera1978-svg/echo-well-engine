@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, ESC salir. --demo = input automático.
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, ESC salir. --demo = input automático.
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -30,8 +30,16 @@ void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, f
 
 void push_entities(FrameView& v, const ew::game::Scene& s) {
   for (const auto& e : s.entities()) {
-    if (e.type == "switch") push_marker(v, e.x, e.y + 4, 3, 1, 0.9f, 0.75f, 0.2f);
-    else if (e.type == "door") push_marker(v, e.x + 4, e.y + 4, 4, 1, 0.55f, 0.35f, 0.75f);
+    if (e.type == "switch") {  // base gris + luz: ámbar = apagado, verde = encendido
+      push_marker(v, e.x, e.y + 5, 3, 1, 0.35f, 0.35f, 0.4f);
+      if (e.active) push_marker(v, e.x, e.y + 2, 2, 0, 0.3f, 1.0f, 0.45f);
+      else push_marker(v, e.x, e.y + 2, 2, 0, 1.0f, 0.6f, 0.15f);
+    } else if (e.type == "door") {  // cerrada: 3 bloques violeta sólidos · abierta: solo marco superior tenue
+      const int h = ew::game::kDoorHTiles;
+      if (!e.active)
+        for (int k = 0; k < h; ++k) push_marker(v, e.x + 4, e.y + 4 + 8.f * float(k), 4, 1, 0.6f, 0.3f, 0.85f);
+      else push_marker(v, e.x + 4, e.y + 1, 1, 1, 0.3f, 0.2f, 0.4f);
+    }
     else if (e.type == "player_spawn") push_marker(v, e.x, e.y + 7, 1, 1, 0.3f, 0.9f, 0.4f);
   }
 }
@@ -84,7 +92,7 @@ int main(int argc, char** argv) {
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false;
+  bool jump_was_down = false, act_was_down = false;
   double acc = 0, last = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -94,9 +102,13 @@ int main(int argc, char** argv) {
     const bool jump_down = key(GLFW_KEY_SPACE) || key(GLFW_KEY_UP) || key(GLFW_KEY_Z);
     in.jump = jump_down && !jump_was_down;
     jump_was_down = jump_down;
+    const bool act_down = key(GLFW_KEY_E) || key(GLFW_KEY_X) || key(GLFW_KEY_DOWN);
+    in.interact = act_down && !act_was_down;
+    act_was_down = act_down;
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
       in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
       in.jump = sim_steps % 90 == 45;
+      in.interact = sim_steps % 300 == 43;  // ~x=96: pasa por el switch y lo alterna
     }
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
     const double now = glfwGetTime();
@@ -105,6 +117,7 @@ int main(int argc, char** argv) {
     for (int n = 0; acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
       sim.step(in);
       in.jump = false;
+      in.interact = false;
       ++sim_steps;
     }
     if (acc > ew::game::Sim::kDt) acc = 0;

@@ -64,6 +64,10 @@ add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)
 add_test(NAME water_hello COMMAND water_test ${EW_HELLO_MAP})
+add_executable(door_test tests/door_test.cpp)
+target_link_libraries(door_test PRIVATE echo_game)
+add_dependencies(door_test ew_maps)
+add_test(NAME door_hello COMMAND door_test ${EW_HELLO_MAP})
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)

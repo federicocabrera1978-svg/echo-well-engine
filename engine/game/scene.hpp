@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ew::game {
@@ -18,7 +19,12 @@ inline constexpr int kViewW = 320, kViewH = 180;  // resolución interna
 struct Entity {
   std::string name, type;
   float x = 0, y = 0;  // px mundo (y hacia abajo, como el YAML)
+  bool active = false;  // switch: encendido · door: abierta
 };
+
+// Puerta: 1×3 tiles (8×24 px) con esquina superior izquierda en (x, y).
+inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;
+inline constexpr float kSwitchReach = 14.f;  // px: distancia máx. player↔switch para activarlo
 
 class Scene {
  public:
@@ -27,6 +33,12 @@ class Scene {
   int width_px() const { return w_px_; }
   int height_px() const { return h_px_; }
   const std::vector<Entity>& entities() const { return entities_; }
+  // Switch → puerta (sección LINK). Toggle del switch más cercano dentro de kSwitchReach
+  // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
+  int interact(float x, float y);
+  void set_switch(std::size_t idx, bool on);
+  // Puerta cerrada en el tile (tx, ty)?
+  bool door_blocks(int tx, int ty) const;
   const Entity* find_type(std::string_view type) const;
   const ew::map::MapLoader& map() const { return map_; }
 
@@ -52,6 +64,7 @@ class Scene {
   ew::map::MapLoader map_;
   std::unique_ptr<ew::map::ChunkCache> cache_;
   std::vector<Entity> entities_;
+  std::vector<std::pair<uint32_t, uint32_t>> links_;
   int w_px_ = 0, h_px_ = 0;
   float cam_x_ = 0, cam_y_ = 0;
   int cx_ = -1, cy_ = -1;
