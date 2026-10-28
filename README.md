@@ -38,13 +38,19 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --scale 3    # 960×540
 ./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
 ./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
-./build/echo_engine --demo        # input automático (camina y salta)
+./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
+./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1 de hello
 ```
 Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **ESC** salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
 
 ### Escena (MapLoader → render)
 - `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.
-- Pipeline: geometry pass → los tiles `COL`/`VIS` del chunk activo se suben como textura `RG8UI` 40×23 (solo cuando cambia el chunk) y el shader los dibuja con bisel por tile; marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
+- Pipeline: geometry pass → los tiles `COL`/`VIS` del vecindario 3×3 se suben como textura `RG8UI` 120×69 (solo cuando cambia el chunk) y el shader los dibuja con bisel por tile; marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
+
+### Chunks vecinos y cámara por pantallas
+- Cada chunk (40×23 tiles = 320×184 px) es **una pantalla**, como en *Animal Well*. El renderer recibe el **vecindario 3×3** del chunk activo (textura `RG8UI` 120×69, re-subida solo al cambiar de chunk), así que se dibujan el activo y sus 8 vecinos (incluye los 4 ortogonales); los que caen fuera del mapa quedan vacíos.
+- **Elección de cámara: slide corto, no snap.** Al cruzar un seam el chunk activo cambia en el acto (colisión/streaming) y la cámara **desliza** hacia la nueva pantalla con un ease exponencial (`kCamSlide = 12/s`, ~0.3 s; termina exacto en el origen del chunk). Dentro de una pantalla la cámara queda fija salvo los 4 px de holgura vertical (184 − 180). Se redondea a px enteros al render (pixel-perfect). `follow(x, y)` sin `dt` hace snap (carga / `--start`).
+- `hello` ahora es 2×1 chunks: el chunk 1 tiene plataformas escalonadas; se llega abriendo la puerta con el switch. Probar: activar el switch, caminar a la derecha y cruzar x=320, o `--start 330 150`.
 
 ### Switch → puerta
 - Los `links:` del mapa (sección `LINK`) conectan `switch` → `door`. Con el player a ≤ 14 px del switch, **E/X/↓** lo alterna y abre/cierra todas sus puertas enlazadas.

@@ -1,16 +1,25 @@
-# hello.yaml — mapa mínimo: 1 chunk (40×23 tiles de 8 px = 320×184 px)
+# hello.yaml — mapa mínimo: 2×1 chunks (cada uno 40×23 tiles de 8 px = 320×184 px = 1 pantalla).
+# Chunk 0: spawn, cuerda, agua, switch; la puerta (x=280) bloquea el paso al chunk 1.
 name: hello
-size_chunks: [1, 1]
+size_chunks: [2, 1]
 
 fill:
   VIS: 0
 
 rects:
-  - {layer: COL, x: 0,  y: 20, w: 40, h: 3, tile: 1}   # piso
-  - {layer: VIS, x: 0,  y: 20, w: 40, h: 3, tile: 17}
+  - {layer: COL, x: 0,  y: 20, w: 80, h: 3, tile: 1}   # piso (ambos chunks)
+  - {layer: VIS, x: 0,  y: 20, w: 80, h: 3, tile: 17}
   - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}  # pared izquierda
-  - {layer: COL, x: 39, y: 0,  w: 1,  h: 23, tile: 1}  # pared derecha
+  - {layer: COL, x: 79, y: 0,  w: 1,  h: 23, tile: 1}  # pared derecha
   - {layer: META, x: 20, y: 17, w: 8, h: 3, tile: 2}   # zona de agua
+  # chunk 1: plataformas escalonadas + decorado de fondo
+  - {layer: COL, x: 48, y: 16, w: 6, h: 1, tile: 3}
+  - {layer: VIS, x: 48, y: 16, w: 6, h: 1, tile: 5}
+  - {layer: COL, x: 58, y: 12, w: 6, h: 1, tile: 3}
+  - {layer: VIS, x: 58, y: 12, w: 6, h: 1, tile: 5}
+  - {layer: COL, x: 68, y: 8,  w: 8, h: 1, tile: 3}
+  - {layer: VIS, x: 68, y: 8,  w: 8, h: 1, tile: 5}
+  - {layer: VIS, x: 44, y: 4,  w: 2, h: 16, tile: 9}   # columna de fondo (sin COL)
 
 entities:
   - {name: spawn,    type: player_spawn, x: 32,  y: 152}

@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
   MapError e = m.load_file(argv[1]);
   if (e != MapError::None) { std::fprintf(stderr, "load: %.*s\n", int(to_string(e).size()), to_string(e).data()); return 1; }
   CHECK(m.header().flags & kFlagCrc);
-  CHECK(m.chunk_count() == 1);
+  CHECK(m.chunk_count() == 2);  // 2×1
   auto col = m.chunk_layer(0, 0, Layer::COL);
   CHECK(col && col->size() == kTilesPerChunk);
   CHECK((*col)[22 * kChunkW + 0] == 1);   // piso

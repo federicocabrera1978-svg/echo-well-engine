@@ -1,9 +1,10 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo] [--start X Y]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, ESC salir. --demo = input automático.
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -47,7 +48,8 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false;
+  bool demo = false, has_start = false;
+  float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
@@ -57,6 +59,7 @@ int main(int argc, char** argv) {
     else if (a == "--map" && i + 1 < argc) map_path = argv[++i];
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
     else if (a == "--demo") demo = true;
+    else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
 
@@ -64,6 +67,11 @@ int main(int argc, char** argv) {
   std::string err;
   if (!scene.load(map_path, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
   ew::game::Sim sim(scene);
+  if (has_start) {  // --start X Y: aparece en otro punto (p. ej. probar el seam/otro chunk)
+    auto& p = sim.world().points()[sim.player_index()];
+    p.pos = p.prev = {start_x, start_y};
+    scene.follow(start_x, start_y);
+  }
   std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
               scene.height_px(), scene.entities().size());
 
@@ -125,9 +133,9 @@ int main(int argc, char** argv) {
     const float px = pl.pos.x, py = pl.pos.y;
 
     FrameView v;
-    v.cam_x = scene.cam_x(); v.cam_y = scene.cam_y();
-    v.chunk_x_px = float(scene.chunk_x() * ew::map::kChunkW * ew::map::kTileSize);
-    v.chunk_y_px = float(scene.chunk_y() * ew::map::kChunkH * ew::map::kTileSize);
+    v.cam_x = std::round(scene.cam_x()); v.cam_y = std::round(scene.cam_y());  // pixel-perfect
+    v.chunk_x_px = scene.nb_origin_x();  // vecindario 3×3 alrededor del chunk activo
+    v.chunk_y_px = scene.nb_origin_y();
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);

@@ -37,7 +37,7 @@ void Sim::step(const Input& in) {
   if (in.interact) scene_.interact(pl.pos.x, pl.pos.y);
   for (auto& w : water_) { w.interact(world_); w.step(); }
   world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
-  scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y);
+  scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
 }
 
 }  // namespace ew::game
