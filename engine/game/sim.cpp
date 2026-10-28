@@ -34,6 +34,7 @@ void Sim::step(const Input& in) {
   const bool swim = player_in_water();
   if (in.jump && (pl.grounded || swim)) v.y = -kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
   pl.set_velocity(v);
+  if (in.interact) scene_.interact(pl.pos.x, pl.pos.y);
   for (auto& w : water_) { w.interact(world_); w.step(); }
   world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y);

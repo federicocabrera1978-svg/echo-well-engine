@@ -13,6 +13,7 @@ namespace ew::game {
 struct Input {
   float move_x = 0;  // -1..1
   bool jump = false;  // flanco: true el frame en que se aprieta
+  bool interact = false;  // flanco: activar switch cercano (E / X / ↓)
 };
 
 class Sim {
