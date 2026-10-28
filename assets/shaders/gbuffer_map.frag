@@ -1,5 +1,5 @@
 #version 330 core
-// Geometry pass: tiles COL/VIS del chunk activo (textura RG8UI 40×23) + marcadores
+// Geometry pass: tiles COL/VIS del vecindario 3×3 (textura RG8UI 120×69) + marcadores
 // (player, entidades, cuerpos Verlet) + superficie de agua. Coordenadas de mundo en px, y hacia abajo.
 in vec2 v_uv;
 layout(location = 0) out vec4 o_albedo;
@@ -7,7 +7,7 @@ layout(location = 1) out vec4 o_normal;
 uniform usampler2D u_tiles;
 uniform float u_time;
 uniform vec2 u_cam;    // esquina superior izquierda de la vista (px mundo)
-uniform vec2 u_chunk;  // origen del chunk activo (px mundo)
+uniform vec2 u_chunk;  // origen del vecindario 3×3 de chunks (120×69 tiles, px mundo)
 uniform int u_marker_count;
 uniform vec4 u_markers[48];        // x, y, radio, forma
 uniform vec3 u_marker_colors[48];
@@ -26,7 +26,7 @@ void main() {
   vec2 local = world - u_chunk;
   ivec2 t = ivec2(floor(local / 8.0));
   uvec2 cv = uvec2(0u);
-  bool inside = t.x >= 0 && t.y >= 0 && t.x < 40 && t.y < 23;
+  bool inside = t.x >= 0 && t.y >= 0 && t.x < 120 && t.y < 69;
   if (inside) cv = texelFetch(u_tiles, ivec2(t.x, t.y), 0).rg;
   bool solid = cv.r != 0u;
   vec3 albedo = vec3(0.05, 0.06, 0.10);

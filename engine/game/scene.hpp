@@ -48,16 +48,25 @@ class Scene {
   bool solid_tile(int tx, int ty);
   bool solid_px(float x, float y);
 
-  // Cámara: centra en (x,y) y clampa al mapa. Actualiza el chunk activo.
-  void follow(float x, float y);
+  // Cámara por pantallas (estilo Animal Well): cada chunk (320×184) es una pantalla.
+  // El objetivo es el origen del chunk del player (+ los 4 px de holgura vertical
+  // siguiendo al player). Con dt > 0 desliza hacia el objetivo (exponencial, ~0.3 s);
+  // con dt <= 0 hace snap. Actualiza el chunk activo y su vecindario 3×3.
+  static constexpr float kCamSlide = 12.f;  // 1/s
+  void follow(float x, float y, float dt = 0.f);
+  bool cam_transitioning() const { return cam_x_ != tgt_x_ || cam_y_ != tgt_y_; }
   float cam_x() const { return cam_x_; }
   float cam_y() const { return cam_y_; }
   int chunk_x() const { return cx_; }
   int chunk_y() const { return cy_; }
   // Incrementa cada vez que cambia el chunk activo (para re-subir texturas).
   uint32_t chunk_version() const { return chunk_ver_; }
-  // Tiles del chunk activo empaquetados (R = COL, G = VIS), 40×23, fila 0 = arriba.
-  const std::array<uint8_t, ew::map::kTilesPerChunk * 2>& active_tiles() const { return packed_; }
+  // Vecindario 3×3 de chunks centrado en el activo, empaquetado (R = COL, G = VIS),
+  // kNbW×kNbH tiles, fila 0 = arriba. Chunks fuera del mapa = 0. Origen en nb_origin_*.
+  static constexpr int kNbW = ew::map::kChunkW * 3, kNbH = ew::map::kChunkH * 3;
+  const std::array<uint8_t, std::size_t(kNbW) * kNbH * 2>& active_tiles() const { return packed_; }
+  float nb_origin_x() const { return float((cx_ - 1) * ew::map::kChunkW * ew::map::kTileSize); }
+  float nb_origin_y() const { return float((cy_ - 1) * ew::map::kChunkH * ew::map::kTileSize); }
 
  private:
   void rebuild_active();
@@ -66,10 +75,10 @@ class Scene {
   std::vector<Entity> entities_;
   std::vector<std::pair<uint32_t, uint32_t>> links_;
   int w_px_ = 0, h_px_ = 0;
-  float cam_x_ = 0, cam_y_ = 0;
+  float cam_x_ = 0, cam_y_ = 0, tgt_x_ = 0, tgt_y_ = 0;
   int cx_ = -1, cy_ = -1;
   uint32_t chunk_ver_ = 0;
-  std::array<uint8_t, ew::map::kTilesPerChunk * 2> packed_{};
+  std::array<uint8_t, std::size_t(kNbW) * kNbH * 2> packed_{};
 };
 
 }  // namespace ew::game

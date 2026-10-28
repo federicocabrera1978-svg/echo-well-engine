@@ -78,22 +78,41 @@ bool Scene::solid_px(float x, float y) {
   return solid_tile(int(std::floor(x / kTileSize)), int(std::floor(y / kTileSize)));
 }
 
-void Scene::follow(float x, float y) {
-  cam_x_ = std::clamp(std::round(x - kViewW / 2.f), 0.f, float(std::max(0, w_px_ - kViewW)));
-  cam_y_ = std::clamp(std::round(y - kViewH / 2.f), 0.f, float(std::max(0, h_px_ - kViewH)));
-  const int cx = std::clamp(int(x) / (kChunkW * kTileSize), 0, std::max(0, map_.header().map_w_chunks - 1));
-  const int cy = std::clamp(int(y) / (kChunkH * kTileSize), 0, std::max(0, map_.header().map_h_chunks - 1));
+void Scene::follow(float x, float y, float dt) {
+  constexpr int cw = kChunkW * kTileSize, ch = kChunkH * kTileSize;
+  const int cx = std::clamp(int(std::floor(x / cw)), 0, std::max(0, map_.header().map_w_chunks - 1));
+  const int cy = std::clamp(int(std::floor(y / ch)), 0, std::max(0, map_.header().map_h_chunks - 1));
   if (cx != cx_ || cy != cy_) { cx_ = cx; cy_ = cy; rebuild_active(); }
+  // Objetivo: la pantalla del chunk; dentro de ella solo hay holgura vertical (184-180 = 4 px).
+  tgt_x_ = float(cx * cw) + std::clamp(std::round(x - cx * cw - kViewW / 2.f), 0.f, float(std::max(0, cw - kViewW)));
+  tgt_y_ = float(cy * ch) + std::clamp(std::round(y - cy * ch - kViewH / 2.f), 0.f, float(std::max(0, ch - kViewH)));
+  if (dt <= 0.f) { cam_x_ = tgt_x_; cam_y_ = tgt_y_; return; }
+  const float a = 1.f - std::exp(-kCamSlide * dt);
+  auto slide = [a](float c, float t) {
+    const float n = c + (t - c) * a;
+    return std::fabs(t - n) < 0.5f ? t : n;
+  };
+  cam_x_ = slide(cam_x_, tgt_x_);
+  cam_y_ = slide(cam_y_, tgt_y_);
 }
 
 void Scene::rebuild_active() {
   packed_.fill(0);
-  if (const ChunkData* c = cache_->acquire(uint16_t(cx_), uint16_t(cy_))) {
-    for (std::size_t i = 0; i < kTilesPerChunk; ++i) {
-      packed_[i * 2 + 0] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::COL)][i], 255));
-      packed_[i * 2 + 1] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::VIS)][i], 255));
+  const auto& h = map_.header();
+  for (int oy = 0; oy < 3; ++oy)
+    for (int ox = 0; ox < 3; ++ox) {
+      const int ncx = cx_ - 1 + ox, ncy = cy_ - 1 + oy;
+      if (ncx < 0 || ncy < 0 || ncx >= h.map_w_chunks || ncy >= h.map_h_chunks) continue;
+      const ChunkData* c = cache_->acquire(uint16_t(ncx), uint16_t(ncy));
+      if (!c) continue;
+      for (int ty = 0; ty < kChunkH; ++ty)
+        for (int tx = 0; tx < kChunkW; ++tx) {
+          const std::size_t i = std::size_t(ty) * kChunkW + std::size_t(tx);
+          const std::size_t o = (std::size_t(oy * kChunkH + ty) * kNbW + std::size_t(ox * kChunkW + tx)) * 2;
+          packed_[o + 0] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::COL)][i], 255));
+          packed_[o + 1] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::VIS)][i], 255));
+        }
     }
-  }
   ++chunk_ver_;
 }
 

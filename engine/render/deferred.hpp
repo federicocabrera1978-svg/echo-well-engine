@@ -10,12 +10,13 @@ inline constexpr int kInternalH = 180;
 
 inline constexpr int kMaxMarkers = 48;
 inline constexpr int kMaxWaterCols = 64;
+inline constexpr int kTilesW = 120, kTilesH = 69;  // 3×3 chunks de 40×23
 
 // Lo que el juego le pasa al renderer cada frame (coords de mundo en px, y hacia abajo).
 struct FrameView {
   float cam_x = 0, cam_y = 0;
-  float chunk_x_px = 0, chunk_y_px = 0;      // origen del chunk activo
-  const uint8_t* tiles = nullptr;            // 40×23 RG8 (R=COL, G=VIS) del chunk activo
+  float chunk_x_px = 0, chunk_y_px = 0;      // origen del vecindario 3×3 (chunk activo - 1)
+  const uint8_t* tiles = nullptr;            // kTilesW×kTilesH RG8 (R=COL, G=VIS), 3×3 chunks
   uint32_t tiles_version = 0;                // re-sube la textura si cambia
   // Marcadores: (x, y, radio, forma 0=círculo 1=cuadrado) + color RGB.
   int marker_count = 0;
