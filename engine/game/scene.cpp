@@ -78,14 +78,29 @@ bool Scene::solid_px(float x, float y) {
   return solid_tile(int(std::floor(x / kTileSize)), int(std::floor(y / kTileSize)));
 }
 
+float Scene::dead_zone_step(float off, float p, float half, float view, float extent) {
+  const float c = off + view / 2.f;
+  if (p < c - half) off = p - (view / 2.f - half);
+  else if (p > c + half) off = p - (view / 2.f + half);
+  return std::clamp(std::round(off), 0.f, std::max(0.f, extent - view));
+}
+
 void Scene::follow(float x, float y, float dt) {
   constexpr int cw = kChunkW * kTileSize, ch = kChunkH * kTileSize;
   const int cx = std::clamp(int(std::floor(x / cw)), 0, std::max(0, map_.header().map_w_chunks - 1));
   const int cy = std::clamp(int(std::floor(y / ch)), 0, std::max(0, map_.header().map_h_chunks - 1));
-  if (cx != cx_ || cy != cy_) { cx_ = cx; cy_ = cy; rebuild_active(); }
-  // Objetivo: la pantalla del chunk; dentro de ella solo hay holgura vertical (184-180 = 4 px).
-  tgt_x_ = float(cx * cw) + std::clamp(std::round(x - cx * cw - kViewW / 2.f), 0.f, float(std::max(0, cw - kViewW)));
-  tgt_y_ = float(cy * ch) + std::clamp(std::round(y - cy * ch - kViewH / 2.f), 0.f, float(std::max(0, ch - kViewH)));
+  const bool changed = cx != cx_ || cy != cy_;
+  if (changed) { cx_ = cx; cy_ = cy; rebuild_active(); }
+  const float lx = x - cx * cw, ly = y - cy * ch;
+  if (changed || dt <= 0.f) {  // pantalla nueva o snap: centrar (clampado)
+    off_x_ = dead_zone_step(0.f, lx, 0.f, kViewW, cw);
+    off_y_ = dead_zone_step(0.f, ly, 0.f, kViewH, ch);
+  } else {                     // misma pantalla: solo mover al salir de la dead-zone
+    off_x_ = dead_zone_step(off_x_, lx, kDeadHalfW, kViewW, cw);
+    off_y_ = dead_zone_step(off_y_, ly, kDeadHalfH, kViewH, ch);
+  }
+  tgt_x_ = float(cx * cw) + off_x_;
+  tgt_y_ = float(cy * ch) + off_y_;
   if (dt <= 0.f) { cam_x_ = tgt_x_; cam_y_ = tgt_y_; return; }
   const float a = 1.f - std::exp(-kCamSlide * dt);
   auto slide = [a](float c, float t) {
