@@ -95,3 +95,10 @@ for (const auto& ent : map.entities()) spawn(map.string_at(ent.type_str), ent.x,
 ew::map::ChunkCache cache(map, /*capacity=*/9);
 if (auto* c = cache.acquire(0, 0)) upload(c->layers[uint32_t(ew::map::Layer::VIS)]);
 ```
+
+## Atlas de tiles
+
+`engine/render/tile_atlas.{hpp,cpp}` genera un atlas procedural 128×128 RGBA8 (16×16 tiles de 8×8, sin GL).
+El id de tile es el valor **VIS** del mapa: `tile_uv(id) = ((id%16)*8, (id/16)*8)`. RGB = albedo, A = altura
+(el shader `gbuffer_map.frag` deriva la normal de la altura + bisel de borde). Estilos por `id % 4`: liso,
+ladrillo, granulado, vetas. Test: `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas).
