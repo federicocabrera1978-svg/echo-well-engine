@@ -53,6 +53,11 @@ class Scene {
   // siguiendo al player). Con dt > 0 desliza hacia el objetivo (exponencial, ~0.3 s);
   // con dt <= 0 hace snap. Actualiza el chunk activo y su vecindario 3×3.
   static constexpr float kCamSlide = 12.f;  // 1/s
+  // Dead-zone: rectángulo centrado en la vista (semi-ancho/alto en px). Mientras el player
+  // esté adentro la cámara no se mueve; al salir la arrastra lo justo (clampado a la pantalla).
+  static constexpr float kDeadHalfW = 48.f, kDeadHalfH = 24.f;
+  // Paso puro de la dead-zone en un eje: offset actual, posición local, semi-zona, vista, extensión.
+  static float dead_zone_step(float off, float p, float half, float view, float extent);
   void follow(float x, float y, float dt = 0.f);
   bool cam_transitioning() const { return cam_x_ != tgt_x_ || cam_y_ != tgt_y_; }
   float cam_x() const { return cam_x_; }
@@ -76,6 +81,7 @@ class Scene {
   std::vector<std::pair<uint32_t, uint32_t>> links_;
   int w_px_ = 0, h_px_ = 0;
   float cam_x_ = 0, cam_y_ = 0, tgt_x_ = 0, tgt_y_ = 0;
+  float off_x_ = 0, off_y_ = 0;  // offset de cámara dentro del chunk (dead-zone)
   int cx_ = -1, cy_ = -1;
   uint32_t chunk_ver_ = 0;
   std::array<uint8_t, std::size_t(kNbW) * kNbH * 2> packed_{};

@@ -32,6 +32,22 @@ int main(int argc, char** argv) {
   CHECK(s.cam_x() == 320 && !s.cam_transitioning());
   CHECK(s.active_tiles()[((23 + 22) * W + 5) * 2] == 1);        // ahora el izquierdo es el chunk 0
   CHECK(!s.solid_px(330, 150) && s.solid_px(636, 100));         // pared derecha del mapa
+  // Dead-zone (función pura): vista 320, extensión 480, semi-zona 48 → zona [112,208] con off=0.
+  using S = ew::game::Scene;
+  CHECK(S::dead_zone_step(0, 200, 48, 320, 480) == 0);    // dentro: no arrastra
+  CHECK(S::dead_zone_step(0, 220, 48, 320, 480) == 12);   // sale por derecha 12 px
+  CHECK(S::dead_zone_step(12, 150, 48, 320, 480) == 12);  // vuelve adentro: queda
+  CHECK(S::dead_zone_step(12, 100, 48, 320, 480) == 0);   // sale por izquierda
+  CHECK(S::dead_zone_step(0, 470, 48, 320, 480) == 160);  // clamp al borde de pantalla
+  // Dead-zone en la escena: vertical (holgura 4 px). Snap centrado y luego moverse.
+  s.follow(400, 90);
+  CHECK(s.cam_y() == 0);
+  s.follow(400, 110, 1.f / 60.f); CHECK(s.cam_y() == 0);           // dentro de ±24
+  for (int i = 0; i < 30; ++i) s.follow(400, 118, 1.f / 60.f);
+  CHECK(s.cam_y() == 4);                                             // salió: arrastra (clamp 4)
+  for (int i = 0; i < 30; ++i) s.follow(400, 100, 1.f / 60.f);
+  CHECK(s.cam_y() == 4);                                             // vuelve a la zona: no re-centra
+  CHECK(s.cam_x() == 320);                                           // x fijo (chunk = vista)
   std::puts("scene_test: OK");
   return 0;
 }
