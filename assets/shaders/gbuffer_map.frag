@@ -5,6 +5,7 @@ in vec2 v_uv;
 layout(location = 0) out vec4 o_albedo;
 layout(location = 1) out vec4 o_normal;
 uniform usampler2D u_tiles;
+uniform sampler2D u_atlas;  // 128×128 RGBA8: 16×16 tiles de 8×8, id = VIS; A = altura
 uniform float u_time;
 uniform vec2 u_cam;    // esquina superior izquierda de la vista (px mundo)
 uniform vec2 u_chunk;  // origen del vecindario 3×3 de chunks (120×69 tiles, px mundo)
@@ -16,11 +17,12 @@ uniform int u_water_cols[4];
 uniform vec4 u_water_rect[4];      // x, y reposo, w, y fondo
 uniform float u_water[256];        // superficie por columna (px mundo), stride 64 por cuerpo
 
-vec3 tile_color(uint vis) {
-  if (vis == 0u) return vec3(0.32, 0.30, 0.38);
-  float h = float(vis % 7u) / 7.0;
-  return mix(vec3(0.24, 0.30, 0.36), vec3(0.42, 0.34, 0.30), h);
+// Texel del atlas para el tile id `vis` en coord local l (0..7).
+vec4 atlas_texel(uint vis, ivec2 l) {
+  ivec2 o = ivec2(int(vis % 16u), int(vis / 16u)) * 8;
+  return texelFetch(u_atlas, o + clamp(l, ivec2(0), ivec2(7)), 0);
 }
+float atlas_h(uint vis, ivec2 l) { return atlas_texel(vis, l).a; }
 
 void main() {
   vec2 world = u_cam + vec2(v_uv.x * 320.0, (1.0 - v_uv.y) * 180.0);
@@ -33,14 +35,18 @@ void main() {
   vec3 albedo = vec3(0.05, 0.06, 0.10);
   vec3 n = vec3(0.0, 0.0, 1.0);
   float depth = 1.0;
+  ivec2 l = ivec2(floor(local)) - t * 8;
   if (solid) {
-    albedo = tile_color(cv.g);
-    ivec2 l = ivec2(floor(local)) - t * 8;  // bisel por tile
+    albedo = atlas_texel(cv.g, l).rgb;
+    // Normal desde la altura del atlas (diferencias centrales) + bisel de borde.
+    float dx = atlas_h(cv.g, l + ivec2(1, 0)) - atlas_h(cv.g, l - ivec2(1, 0));
+    float dy = atlas_h(cv.g, l + ivec2(0, 1)) - atlas_h(cv.g, l - ivec2(0, 1));
+    n = normalize(vec3(-dx, dy, 1.0));
     if (l.x == 0) n = normalize(vec3(-1, 0, 1)); else if (l.x == 7) n = normalize(vec3(1, 0, 1));
     if (l.y == 0) n = normalize(vec3(0, 1, 1)); else if (l.y == 7) n = normalize(vec3(0, -1, 1));
     depth = 0.5;
   } else if (cv.g != 0u) {
-    albedo = tile_color(cv.g) * 0.35;  // decorado de fondo (VIS sin COL)
+    albedo = atlas_texel(cv.g, l).rgb * 0.35;  // decorado de fondo (VIS sin COL)
   }
   // Agua: columna por columna, desde la superficie Hooke hasta el fondo.
   for (int b = 0; b < u_water_count; ++b) {

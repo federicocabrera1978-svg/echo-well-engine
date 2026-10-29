@@ -69,6 +69,13 @@ target_link_libraries(door_test PRIVATE echo_game)
 add_dependencies(door_test ew_maps)
 add_test(NAME door_hello COMMAND door_test ${EW_HELLO_MAP})
 
+# --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
+add_library(echo_atlas engine/render/tile_atlas.cpp)
+target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+add_executable(atlas_test tests/atlas_test.cpp)
+target_link_libraries(atlas_test PRIVATE echo_atlas)
+add_test(NAME tile_atlas COMMAND atlas_test)
+
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)
 if(EW_BUILD_ENGINE)
@@ -89,7 +96,7 @@ if(EW_BUILD_ENGINE)
 
   add_library(echo_render engine/render/gl_loader.cpp engine/render/deferred.cpp)
   target_include_directories(echo_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
-  target_link_libraries(echo_render PUBLIC OpenGL::GL)
+  target_link_libraries(echo_render PUBLIC OpenGL::GL echo_atlas)
 
   add_executable(echo_engine engine/core/main.cpp)
   target_compile_definitions(echo_engine PRIVATE

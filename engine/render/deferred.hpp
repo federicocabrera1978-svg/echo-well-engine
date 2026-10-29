@@ -45,7 +45,7 @@ class DeferredRenderer {
  private:
   GLuint gbuf_fbo_ = 0, albedo_ = 0, normal_ = 0, depth_ = 0;
   GLuint lit_fbo_ = 0, lit_tex_ = 0;
-  GLuint tiles_tex_ = 0; uint32_t tiles_version_ = 0;
+  GLuint tiles_tex_ = 0, atlas_tex_ = 0; uint32_t tiles_version_ = 0;
   GLuint vao_ = 0, geom_prog_ = 0, light_prog_ = 0;
 };
 }  // namespace ew::render

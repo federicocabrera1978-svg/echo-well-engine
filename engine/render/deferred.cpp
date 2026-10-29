@@ -1,6 +1,7 @@
 #include "render/deferred.hpp"
 
 #include <algorithm>
+#include "render/tile_atlas.hpp"
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -73,8 +74,16 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8UI, kTilesW, kTilesH, 0, GL_RG_INTEGER, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  {  // atlas de tiles 128×128 RGBA8 (unidad 1)
+    const auto atlas = build_tile_atlas();
+    glGenTextures(1, &atlas_tex_); glBindTexture(GL_TEXTURE_2D, atlas_tex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kAtlasPx, kAtlasPx, 0, GL_RGBA, GL_UNSIGNED_BYTE, atlas.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
   UseProgram(geom_prog_);
   Uniform1i(GetUniformLocation(geom_prog_, "u_tiles"), 0);
+  Uniform1i(GetUniformLocation(geom_prog_, "u_atlas"), 1);
   UseProgram(light_prog_);
   Uniform1i(GetUniformLocation(light_prog_, "u_albedo"), 0);
   Uniform1i(GetUniformLocation(light_prog_, "u_normal"), 1);
@@ -89,6 +98,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kTilesW, kTilesH, GL_RG_INTEGER, GL_UNSIGNED_BYTE, v.tiles);
     tiles_version_ = v.tiles_version;
   }
+  ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, atlas_tex_);
   // 1) Geometry pass (tiles del chunk activo + marcadores + agua) -> G-buffer
   BindFramebuffer(GL_FRAMEBUFFER, gbuf_fbo_);
   glViewport(0, 0, kInternalW, kInternalH);
@@ -149,8 +159,8 @@ void DeferredRenderer::shutdown() {
   if (vao_) DeleteVertexArrays(1, &vao_);
   if (gbuf_fbo_) DeleteFramebuffers(1, &gbuf_fbo_);
   if (lit_fbo_) DeleteFramebuffers(1, &lit_fbo_);
-  GLuint texs[5] = {albedo_, normal_, depth_, lit_tex_, tiles_tex_};
-  glDeleteTextures(5, texs);
+  GLuint texs[6] = {albedo_, normal_, depth_, lit_tex_, tiles_tex_, atlas_tex_};
+  glDeleteTextures(6, texs);
   *this = {};
 }
 }  // namespace ew::render
