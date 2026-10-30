@@ -14,6 +14,8 @@ struct Input {
   float move_x = 0;  // -1..1
   bool jump = false;  // flanco: true el frame en que se aprieta
   bool interact = false;  // flanco: activar switch cercano (E / X / ↓)
+  bool grab = false;      // flanco: agarrar/soltar la cuerda (C / Shift)
+  float climb = 0;        // -1 sube, +1 baja (solo colgado; ↑/↓ o W/S)
 };
 
 class Sim {
@@ -22,6 +24,11 @@ class Sim {
   static constexpr float kPlayerRadius = 4.f;
   static constexpr float kWalkSpeed = 90.f;   // px/s
   static constexpr float kJumpSpeed = 230.f;  // px/s
+  static constexpr float kRopeSeg = 6.f;     // largo de segmento
+  static constexpr float kGrabRange = 10.f;   // px desde el centro del player a un nodo
+  static constexpr float kSwingForce = 900.f; // px/s² sobre el nodo agarrado
+  static constexpr float kClimbSpeed = 40.f;  // px/s a lo largo de la cuerda
+  static constexpr float kHeldInvMass = 0.25f;  // el player "pesa" 4× un nodo
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
@@ -36,6 +43,8 @@ class Sim {
   const std::vector<ew::physics::WaterBody>& water() const { return water_; }
   std::vector<ew::physics::WaterBody>& water() { return water_; }
   bool player_in_water() const;
+  bool on_rope() const { return held_ > 0; }
+  int rope_node() const { return held_; }  // 1..rope_n_ (0 = no colgado)
 
  private:
   Scene& scene_;
@@ -43,6 +52,11 @@ class Sim {
   std::vector<ew::physics::WaterBody> water_;
   uint32_t player_ = 0, rope_first_ = 0;
   int rope_n_ = 0;
+  int held_ = 0;         // nodo agarrado (0 = suelto)
+  float climb_acc_ = 0;  // px acumulados de trepada
+  int regrab_cd_ = 0;    // pasos sin auto-reagarre tras soltar
+  void grab(int node);
+  void release();
 };
 
 }  // namespace ew::game

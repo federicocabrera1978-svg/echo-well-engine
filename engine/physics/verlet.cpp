@@ -62,8 +62,14 @@ void World::solve_sticks() {
   }
 }
 
+void World::set_pairs_enabled(uint32_t i, bool on) {
+  for (auto& pr : pairs_)
+    if (pr.a == i || pr.b == i) pr.on = on;
+}
+
 void World::solve_pairs() {
   for (const auto& pr : pairs_) {
+    if (!pr.on) continue;
     Point& a = points_[pr.a];
     Point& b = points_[pr.b];
     const float w = a.inv_mass + b.inv_mass;

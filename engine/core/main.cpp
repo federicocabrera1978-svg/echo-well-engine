@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo] [--start X Y]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, ESC salir. --demo = input automático.
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), ESC salir. --demo = input automático.
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -100,19 +100,25 @@ int main(int argc, char** argv) {
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false, act_was_down = false;
+  bool jump_was_down = false, act_was_down = false, grab_was_down = false;
   double acc = 0, last = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
     auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
     ew::game::Input in;
     in.move_x = float((key(GLFW_KEY_RIGHT) || key(GLFW_KEY_D)) - (key(GLFW_KEY_LEFT) || key(GLFW_KEY_A)));
-    const bool jump_down = key(GLFW_KEY_SPACE) || key(GLFW_KEY_UP) || key(GLFW_KEY_Z);
+    const bool hanging = sim.on_rope();
+    // Colgado, ↑/↓ trepan (no saltan ni activan switch).
+    if (hanging) in.climb = float((key(GLFW_KEY_DOWN) || key(GLFW_KEY_S)) - (key(GLFW_KEY_UP) || key(GLFW_KEY_W)));
+    const bool jump_down = key(GLFW_KEY_SPACE) || key(GLFW_KEY_Z) || (!hanging && key(GLFW_KEY_UP));
     in.jump = jump_down && !jump_was_down;
     jump_was_down = jump_down;
-    const bool act_down = key(GLFW_KEY_E) || key(GLFW_KEY_X) || key(GLFW_KEY_DOWN);
+    const bool act_down = key(GLFW_KEY_E) || key(GLFW_KEY_X) || (!hanging && key(GLFW_KEY_DOWN));
     in.interact = act_down && !act_was_down;
     act_was_down = act_down;
+    const bool grab_down = key(GLFW_KEY_C) || key(GLFW_KEY_LEFT_SHIFT) || key(GLFW_KEY_RIGHT_SHIFT);
+    in.grab = grab_down && !grab_was_down;
+    grab_was_down = grab_down;
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
       in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
       in.jump = sim_steps % 90 == 45;
@@ -126,6 +132,7 @@ int main(int argc, char** argv) {
       sim.step(in);
       in.jump = false;
       in.interact = false;
+      in.grab = false;
       ++sim_steps;
     }
     if (acc > ew::game::Sim::kDt) acc = 0;

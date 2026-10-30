@@ -58,7 +58,9 @@ class World {
   const std::vector<Point>& points() const { return points_; }
   const std::vector<Stick>& sticks() const { return sticks_; }
   // Pares de puntos que colisionan entre sí (círculo-círculo), p. ej. player ↔ cuerda.
-  void add_collision_pair(uint32_t a, uint32_t b) { pairs_.push_back({a, b}); }
+  void add_collision_pair(uint32_t a, uint32_t b) { pairs_.push_back({a, b, true}); }
+  // Desactiva/activa las colisiones de pares que involucran al punto `i` (p. ej. player colgado).
+  void set_pairs_enabled(uint32_t i, bool on);
 
  private:
   void solve_sticks();
@@ -66,7 +68,7 @@ class World {
   void collide(Point& p, const SolidFn& solid);
   std::vector<Point> points_;
   std::vector<Stick> sticks_;
-  struct Pair { uint32_t a, b; };
+  struct Pair { uint32_t a, b; bool on = true; };
   std::vector<Pair> pairs_;
 };
 
