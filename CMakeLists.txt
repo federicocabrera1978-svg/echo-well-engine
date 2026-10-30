@@ -68,6 +68,10 @@ add_executable(door_test tests/door_test.cpp)
 target_link_libraries(door_test PRIVATE echo_game)
 add_dependencies(door_test ew_maps)
 add_test(NAME door_hello COMMAND door_test ${EW_HELLO_MAP})
+add_executable(rope_test tests/rope_test.cpp)
+target_link_libraries(rope_test PRIVATE echo_game)
+add_dependencies(rope_test ew_maps)
+add_test(NAME rope_hello COMMAND rope_test ${EW_HELLO_MAP})
 
 # --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
 add_library(echo_atlas engine/render/tile_atlas.cpp)
