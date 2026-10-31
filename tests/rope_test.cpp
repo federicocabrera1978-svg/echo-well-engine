@@ -70,6 +70,22 @@ int main(int argc, char** argv) {
     const float len = physics::length(pts[s.b].pos - pts[s.a].pos);
     CHECK(std::fabs(len - s.rest) < s.rest * 0.15f);
   }
+  // Cuerdas desde el mapa: hello.yaml define 2 (sección ROPE).
+  CHECK(sim.rope_count() == 2);
+  CHECK(pts[sim.rope_first(0)].pos.x == 128.f);
+  CHECK(pts[sim.rope_first(1)].pos.x == 440.f && pts[sim.rope_first(1)].pos.y == 24.f);
+  CHECK(sim.rope_points(1) == 11);
+  // Agarrar la 2ª cuerda: el player queda en esa cuerda y trepa dentro de ella.
+  const auto tip2 = pts[sim.rope_first(1) + uint32_t(sim.rope_points(1) - 1)].pos;
+  pts[pi].pos = pts[pi].prev = tip2 + physics::Vec2{3, 0};
+  sim.step(g);
+  CHECK(sim.on_rope() && sim.held_rope() == 1);
+  CHECK(sim.rope_node() >= 8);
+  const int m0 = sim.rope_node();
+  game::Input up2; up2.climb = -1;
+  for (int i = 0; i < 30; ++i) sim.step(up2);
+  CHECK(sim.held_rope() == 1 && sim.rope_node() < m0);
+  CHECK(std::fabs(sim.player().pos.x - 440.f) < 40.f);
   std::puts("rope_test: OK");
   return 0;
 }

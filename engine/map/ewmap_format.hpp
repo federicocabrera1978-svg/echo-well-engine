@@ -19,7 +19,7 @@ enum class Layer : uint32_t { COL = 0, VIS = 1, FG = 2, META = 3 };
 inline constexpr uint32_t kLayerCount = 4;
 
 enum class SectionType : uint32_t {
-  TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6,
+  TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6, ROPE = 7,
 };
 
 enum HeaderFlags : uint32_t {
@@ -70,6 +70,11 @@ struct WaterRecord {            // 24 bytes: volumen de agua (resortes Hooke)
   int32_t x, y, w, h;           // px
   float   stiffness, damping;
 };
+struct RopeRecord {             // 16 bytes: cuerda Verlet colgando de un ancla fija
+  int32_t  x, y;                // ancla (px)
+  uint32_t segments;            // cantidad de segmentos (>= 1)
+  float    seg_len;             // largo de cada segmento (px)
+};
 #pragma pack(pop)
 
 static_assert(sizeof(EwMapHeader) == 40);
@@ -78,6 +83,7 @@ static_assert(sizeof(ChunkHeader) == 8);
 static_assert(sizeof(EntityRecord) == 16);
 static_assert(sizeof(LinkRecord) == 8);
 static_assert(sizeof(WaterRecord) == 24);
+static_assert(sizeof(RopeRecord) == 16);
 
 inline constexpr std::size_t kChunkBytes =
     sizeof(ChunkHeader) + kLayerCount * kTilesPerChunk * sizeof(uint16_t); // 7368

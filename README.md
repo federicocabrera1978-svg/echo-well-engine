@@ -68,7 +68,8 @@ Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nad
 - Colgado: **←/→** empujan el nodo (balanceo con física Verlet; el player pesa 4× un nodo), **↑/↓** o **W/S** trepan/bajan nodo a nodo (40 px/s), **Espacio/Z** suelta con el impulso del balanceo + salto, **C/Shift** suelta sin impulso.
 - Mientras está colgado, ↑ no salta y ↓ no activa switches.
 - `rope_test` (ctest) verifica agarre por rango, amplitud de balanceo, trepar/bajar, soltar con salto y largo de la cuerda.
-- Límites: una sola cuerda demo (fija en código, no viene del mapa); el player colgado no colisiona con tiles por sí mismo (lo hace el nodo, r=1.5), así que puede rozar paredes; sin animación de agarre.
+- Las cuerdas salen del mapa: `ropes: - {x, y, segments, seg_len}` en el YAML (ancla en px) → sección `ROPE` del `.ewmap`. `hello` trae 2 (x=128 chunk 0, x=440 chunk 1). Se agarra cualquiera; trepar se queda en la misma cuerda.
+- Límites: el player colgado no colisiona con tiles por sí mismo (lo hace el nodo, r=1.5), así que puede rozar paredes; sin animación de agarre.
 
 ### Agua Hooke
 - Cada registro `water:` del mapa (sección `WATER`) crea un `ew::physics::WaterBody`: la superficie se divide en columnas (~2 px, máx. 64) y cada una es un resorte de Hooke `a = -k·x - d·v` con `k = stiffness` y `d = damping` del mapa (defaults 0.025 / 0.03 si vienen en 0). Las columnas se acoplan con sus vecinas (`spread`) para propagar ondas.
