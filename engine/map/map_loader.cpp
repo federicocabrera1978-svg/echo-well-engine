@@ -49,13 +49,16 @@ MapError MapLoader::validate() {
     return MapError::BadGeometry;
   if (h.flags & kFlagCompressedChunks) return MapError::CompressedUnsupported;
   if (h.section_table_offset % kAlignment) return MapError::Misaligned;
-  const uint64_t table_end = h.section_table_offset + uint64_t(h.section_count) * sizeof(SectionDesc);
-  if (h.section_count == 0 || table_end > bytes_.size()) return MapError::BadSectionTable;
+  const uint64_t total = bytes_.size();
+  // Sin overflow: offset <= total && count*desc <= total - offset.
+  if (h.section_count == 0 || h.section_table_offset > total ||
+      uint64_t(h.section_count) > (total - h.section_table_offset) / sizeof(SectionDesc))
+    return MapError::BadSectionTable;
 
   const SectionDesc* crc_sec = nullptr;
   for (const auto& s : sections()) {
     if (s.offset % kAlignment) return MapError::Misaligned;
-    if (s.offset + s.size > bytes_.size()) return MapError::SectionOutOfBounds;
+    if (s.offset > total || s.size > total - s.offset) return MapError::SectionOutOfBounds;
     if (s.type == uint32_t(SectionType::CRC)) crc_sec = &s;
   }
   if (h.flags & kFlagCrc) {
