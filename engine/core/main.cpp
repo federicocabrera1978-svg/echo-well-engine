@@ -147,10 +147,11 @@ int main(int argc, char** argv) {
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
     const auto& pts = sim.world().points();
-    for (int i = 0; i < sim.rope_points(); ++i) {  // cuerda Verlet
-      const auto& rp = pts[sim.rope_first() + uint32_t(i)];
-      push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
-    }
+    for (int r = 0; r < sim.rope_count(); ++r)  // cuerdas Verlet (sección ROPE)
+      for (int i = 0; i < sim.rope_points(r); ++i) {
+        const auto& rp = pts[sim.rope_first(r) + uint32_t(i)];
+        push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
+      }
     push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
     for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;

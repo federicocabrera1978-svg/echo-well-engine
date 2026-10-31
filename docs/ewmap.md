@@ -47,6 +47,7 @@ Binario de mapas de echo-well-engine. Lo genera `ewmapc` a partir de YAML (`asse
 | 3 | `LINK` | `u32 count, u32 pad`, luego `LinkRecord[count]` |
 | 4 | `WATER` | `u32 count, u32 pad`, luego `WaterRecord[count]` |
 | 5 | `STRTAB` | strings UTF-8 terminados en `\0`; offset 0 = `""`, offset 1 = nombre del mapa |
+| 7 | `ROPE` | `u32 count, u32 pad`, luego `RopeRecord[count]` (opcional; mapas viejos sin ROPE = sin cuerdas) |
 | 6 | `CRC` | `u32` CRC-32 IEEE de los bytes `[0, offset de CRC)`; siempre la última sección |
 
 ### Chunk (7368 bytes, múltiplo de 8)
@@ -65,7 +66,8 @@ El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurabl
 - `EntityRecord` (16 B): `u32 name_str, u32 type_str` (offsets en STRTAB), `i32 x, i32 y` (px).
 - `LinkRecord` (8 B): `u32 from_entity, u32 to_entity` (índices en ENT; ej. switch → puerta).
 - `WaterRecord` (24 B): `i32 x, y, w, h` (px), `f32 stiffness, damping` (resortes Hooke).
+- `RopeRecord` (16 B): `i32 x, y` (ancla fija, px), `u32 segments` (1..256), `f32 seg_len` (px).
 
 ## Fuente YAML (v1)
-Ver `assets/maps/src/hello.yaml`. Claves: `name`, `size_chunks: [w, h]`, `fill: {CAPA: tile}`, `rects: - {layer, x, y, w, h, tile}` (en tiles), `entities: - {name, type, x, y}` (px), `links: - {from, to}` (por nombre), `water: - {x, y, w, h, stiffness, damping}`.
+Ver `assets/maps/src/hello.yaml`. Claves: `name`, `size_chunks: [w, h]`, `fill: {CAPA: tile}`, `rects: - {layer, x, y, w, h, tile}` (en tiles), `entities: - {name, type, x, y}` (px), `links: - {from, to}` (por nombre), `water: - {x, y, w, h, stiffness, damping}`, `ropes: - {x, y, segments, seg_len}` (seg_len por defecto 6).
 El parser es un subconjunto mínimo de YAML (listas como flow maps `- {k: v}`). El adapter TMX queda para después.

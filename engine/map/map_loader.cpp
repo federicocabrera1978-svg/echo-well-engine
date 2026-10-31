@@ -97,6 +97,7 @@ template <class T> std::span<const T> MapLoader::records(SectionType t) const {
 std::span<const EntityRecord> MapLoader::entities() const { return records<EntityRecord>(SectionType::ENT); }
 std::span<const LinkRecord>   MapLoader::links()    const { return records<LinkRecord>(SectionType::LINK); }
 std::span<const WaterRecord>  MapLoader::water()    const { return records<WaterRecord>(SectionType::WATER); }
+std::span<const RopeRecord>   MapLoader::ropes()    const { return records<RopeRecord>(SectionType::ROPE); }
 
 std::string_view MapLoader::string_at(uint32_t offset) const {
   auto s = section(SectionType::STRTAB);

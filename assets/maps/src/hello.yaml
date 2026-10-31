@@ -1,5 +1,5 @@
 # hello.yaml — mapa mínimo: 2×1 chunks (cada uno 40×23 tiles de 8 px = 320×184 px = 1 pantalla).
-# Chunk 0: spawn, cuerda, agua, switch; la puerta (x=280) bloquea el paso al chunk 1.
+# Chunk 0: spawn, cuerda, agua, switch (chunk 1: 2ª cuerda); la puerta (x=280) bloquea el paso al chunk 1.
 name: hello
 size_chunks: [2, 1]
 
@@ -37,6 +37,10 @@ entities:
 
 links:
   - {from: switch_a, to: door_a}
+
+ropes:   # ancla (px), segments, seg_len (px); el primer punto queda fijo
+  - {x: 128, y: 24, segments: 16, seg_len: 6}   # chunk 0: sobre el spawn
+  - {x: 440, y: 24, segments: 10, seg_len: 6}   # chunk 1: entre las plataformas
 
 water:
   - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}   # pileta 1: entre tiles x=19 y x=28

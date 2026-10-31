@@ -130,11 +130,21 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
       water.push_back({to_int(v, "x"), to_int(v, "y"), to_int(v, "w"), to_int(v, "h"),
                        to_float(v, "stiffness", 0.02f), to_float(v, "damping", 0.04f)});
 
+  std::vector<RopeRecord> ropes;
+  if (auto it = doc.lists.find("ropes"); it != doc.lists.end())
+    for (auto& v : it->second) {
+      const int n = to_int(v, "segments");
+      const float len = to_float(v, "seg_len", 6.f);
+      if (n < 1 || n > 256 || !(len > 0)) { err = "rope needs segments in [1,256] and seg_len > 0"; return false; }
+      ropes.push_back({to_int(v, "x"), to_int(v, "y"), uint32_t(n), len});
+    }
+
   std::vector<std::pair<SectionType, std::vector<std::byte>>> secs;
   secs.emplace_back(SectionType::TILE, tile.b);
   secs.emplace_back(SectionType::ENT, record_section(ents));
   secs.emplace_back(SectionType::LINK, record_section(links));
   secs.emplace_back(SectionType::WATER, record_section(water));
+  secs.emplace_back(SectionType::ROPE, record_section(ropes));
   {
     std::vector<std::byte> s(st.data.size());
     std::memcpy(s.data(), st.data.data(), s.size());
