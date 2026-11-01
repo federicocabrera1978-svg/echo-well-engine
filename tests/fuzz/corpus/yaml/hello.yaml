@@ -1,0 +1,47 @@
+# hello.yaml — mapa mínimo: 2×1 chunks (cada uno 40×23 tiles de 8 px = 320×184 px = 1 pantalla).
+# Chunk 0: spawn, cuerda, agua, switch (chunk 1: 2ª cuerda); la puerta (x=280) bloquea el paso al chunk 1.
+name: hello
+size_chunks: [2, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0,  y: 20, w: 80, h: 3, tile: 1}   # piso (ambos chunks)
+  - {layer: VIS, x: 0,  y: 20, w: 80, h: 3, tile: 17}
+  - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}  # pared izquierda
+  - {layer: COL, x: 79, y: 0,  w: 1,  h: 23, tile: 1}  # pared derecha
+  - {layer: META, x: 20, y: 17, w: 8, h: 3, tile: 2}   # zona de agua (pileta 1)
+  - {layer: COL, x: 19, y: 17, w: 1, h: 3, tile: 1}    # bordes de la pileta 1 (contienen el agua)
+  - {layer: VIS, x: 19, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL, x: 28, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 28, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: META, x: 63, y: 17, w: 8, h: 3, tile: 2}   # pileta 2 (chunk 1)
+  - {layer: COL, x: 62, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 62, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL, x: 71, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 71, y: 17, w: 1, h: 3, tile: 17}
+  # chunk 1: plataformas escalonadas + decorado de fondo
+  - {layer: COL, x: 48, y: 16, w: 6, h: 1, tile: 3}
+  - {layer: VIS, x: 48, y: 16, w: 6, h: 1, tile: 5}
+  - {layer: COL, x: 58, y: 12, w: 6, h: 1, tile: 3}
+  - {layer: VIS, x: 58, y: 12, w: 6, h: 1, tile: 5}
+  - {layer: COL, x: 68, y: 8,  w: 8, h: 1, tile: 3}
+  - {layer: VIS, x: 68, y: 8,  w: 8, h: 1, tile: 5}
+  - {layer: VIS, x: 44, y: 4,  w: 2, h: 16, tile: 9}   # columna de fondo (sin COL)
+
+entities:
+  - {name: spawn,    type: player_spawn, x: 32,  y: 152}
+  - {name: switch_a, type: switch,       x: 96,  y: 152}
+  - {name: door_a,   type: door,         x: 280, y: 136}
+
+links:
+  - {from: switch_a, to: door_a}
+
+ropes:   # ancla (px), segments, seg_len (px); el primer punto queda fijo
+  - {x: 128, y: 24, segments: 16, seg_len: 6}   # chunk 0: sobre el spawn
+  - {x: 440, y: 24, segments: 10, seg_len: 6}   # chunk 1: entre las plataformas
+
+water:
+  - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}   # pileta 1: entre tiles x=19 y x=28
+  - {x: 504, y: 136, w: 64, h: 24, stiffness: 0.03, damping: 0.03}   # pileta 2: entre tiles x=62 y x=71
