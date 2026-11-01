@@ -23,6 +23,44 @@ jobs:
           ./build/ewmapc --crc assets/maps/src/hello.yaml -o assets/maps/bin/hello.ewmap
           ./build/ewmap_smoke assets/maps/bin/hello.ewmap
 
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Configure (ASan + UBSan)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DEW_BUILD_ENGINE=OFF -DEW_SANITIZE=ON
+      - name: Build
+        run: cmake --build build -j
+      - name: Test (incluye fuzz smoke)
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir build --output-on-failure
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Configure (clang + libFuzzer + ASan/UBSan)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DEW_BUILD_ENGINE=OFF -DEW_SANITIZE=ON -DEW_LIBFUZZER=ON -DCMAKE_CXX_COMPILER=clang++
+      - name: Build fuzz targets
+        run: cmake --build build -j --target fuzz_map_loader fuzz_yaml_lite
+      - name: Fuzz MapLoader (.ewmap) 60s
+        run: |
+          mkdir -p work/ewmap && cp tests/fuzz/corpus/ewmap/* work/ewmap/
+          ./build/fuzz_map_loader -max_total_time=60 -max_len=65536 work/ewmap
+      - name: Fuzz yaml_lite 60s
+        run: |
+          mkdir -p work/yaml && cp tests/fuzz/corpus/yaml/* work/yaml/
+          ./build/fuzz_yaml_lite -max_total_time=60 -max_len=8192 work/yaml
+      - name: Upload crashes
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-crashes
+          path: crash-*
+          if-no-files-found: ignore
+
   engine:
     runs-on: ubuntu-latest
     steps:

@@ -6,6 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Sanitizers (ASan + UBSan) para CI/debug: -DEW_SANITIZE=ON
+option(EW_SANITIZE "Compilar con AddressSanitizer + UndefinedBehaviorSanitizer" OFF)
+# Fuzz targets con libFuzzer (requiere clang): -DEW_LIBFUZZER=ON
+option(EW_LIBFUZZER "Linkear fuzz targets con libFuzzer (clang)" OFF)
+if(EW_SANITIZE AND NOT MSVC)
+  add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=address,undefined -fno-sanitize-recover=all)
+endif()
+
 if(MSVC)
   add_compile_options(/W4 /permissive-)
 else()
@@ -79,6 +88,28 @@ target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 add_executable(atlas_test tests/atlas_test.cpp)
 target_link_libraries(atlas_test PRIVATE echo_atlas)
 add_test(NAME tile_atlas COMMAND atlas_test)
+
+# --- fuzzing: MapLoader (.ewmap) y yaml_lite ---------------------------------
+# Siempre se compilan con un driver standalone (mutaciones deterministas) y
+# corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.
+add_library(ew_yaml_lite tools/ewmapc/yaml_lite.cpp)
+target_include_directories(ew_yaml_lite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tools/ewmapc)
+set(EW_FUZZ_CORPUS ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus)
+foreach(t map_loader yaml_lite)
+  if(EW_LIBFUZZER)
+    add_executable(fuzz_${t} tests/fuzz/fuzz_${t}.cpp)
+    target_compile_options(fuzz_${t} PRIVATE -fsanitize=fuzzer)
+    target_link_options(fuzz_${t} PRIVATE -fsanitize=fuzzer)
+  else()
+    add_executable(fuzz_${t} tests/fuzz/fuzz_${t}.cpp tests/fuzz/fuzz_driver.cpp)
+  endif()
+endforeach()
+target_link_libraries(fuzz_map_loader PRIVATE echo_map)
+target_link_libraries(fuzz_yaml_lite PRIVATE ew_yaml_lite)
+if(NOT EW_LIBFUZZER)
+  add_test(NAME fuzz_map_loader_smoke COMMAND fuzz_map_loader -runs=20000 ${EW_FUZZ_CORPUS}/ewmap)
+  add_test(NAME fuzz_yaml_lite_smoke  COMMAND fuzz_yaml_lite  -runs=20000 ${EW_FUZZ_CORPUS}/yaml)
+endif()
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)
