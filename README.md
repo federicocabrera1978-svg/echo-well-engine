@@ -64,8 +64,8 @@ Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecá
 
 ### Switch → puerta
 - Los `links:` del mapa (sección `LINK`) conectan `switch` → `door`. Con el player a ≤ 14 px del switch, **E/X/↓** lo alterna y abre/cierra todas sus puertas enlazadas.
-- Puerta = 1×3 tiles (8×24 px) desde su `(x, y)`. **Cerrada** es sólida (`Scene::solid_tile` la suma a `COL`); **abierta** no colisiona.
-- Feedback: el switch tiene luz **ámbar** (apagado) / **verde** (encendido); la puerta cerrada son 3 bloques violeta, abierta queda solo un marco tenue arriba.
+- Puerta = 1×3 tiles (8×24 px) desde su `(x, y)`. **Cerrada** es sólida (`Scene::solid_tile` la suma a `COL`); **abierta** no colisiona. La apertura se anima en 0.25 s (`anim` 0→1, `Scene::tick`); colisiona mientras `anim < 0.5`. Al cerrarse, la colisión vuelve al instante y el visual se desliza hacia abajo.
+- Feedback: el switch tiene luz **ámbar** (apagado) / **verde** (encendido); la puerta se **desliza hacia arriba** al abrir (3 bloques violeta) y queda un marco tenue; al agarrar la cuerda el nodo brilla y un anillo se expande (~0.3 s, `grab_flash`). Trepar no reinicia el destello.
 - En `hello`, la puerta (x=280) bloquea el paso hacia el borde derecho hasta activar `switch_a` (x=96). `door_test` (ctest) lo verifica.
 
 ### Física Verlet
@@ -79,7 +79,7 @@ Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecá
 - Mientras está colgado, ↑ no salta y ↓ no activa switches.
 - `rope_test` (ctest) verifica agarre por rango, amplitud de balanceo, trepar/bajar, soltar con salto y largo de la cuerda.
 - Las cuerdas salen del mapa: `ropes: - {x, y, segments, seg_len}` en el YAML (ancla en px) → sección `ROPE` del `.ewmap`. `hello` trae 2 (x=128 chunk 0, x=440 chunk 1). Se agarra cualquiera; trepar se queda en la misma cuerda.
-- Los segmentos de la cuerda **no atraviesan tiles sólidos**: si un stick cruza el interior de un tile, se empuja (mínima traslación en un eje) para envolverse en la esquina o quedar del mismo lado. `rope_wall_test` lo verifica (stick que ya atraviesa, balanceo contra una pared, envolverse en un bloque). El player colgado sigue el nodo (r=1.5), así que puede rozar un poco la pared (radio del player = 4). Sin animación de agarre.
+- Los segmentos de la cuerda **no atraviesan tiles sólidos**: si un stick cruza el interior de un tile, se empuja (mínima traslación en un eje) para envolverse en la esquina o quedar del mismo lado. `rope_wall_test` lo verifica (stick que ya atraviesa, balanceo contra una pared, envolverse en un bloque). El player colgado sigue el nodo (r=1.5), así que puede rozar un poco la pared (radio del player = 4).
 
 ### Agua Hooke
 - Cada registro `water:` del mapa (sección `WATER`) crea un `ew::physics::WaterBody`: la superficie se divide en columnas (~2 px, máx. 64) y cada una es un resorte de Hooke `a = -k·x - d·v` con `k = stiffness` y `d = damping` del mapa (defaults 0.025 / 0.03 si vienen en 0). Las columnas se acoplan con sus vecinas (`spread`) para propagar ondas.

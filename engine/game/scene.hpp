@@ -19,12 +19,15 @@ inline constexpr int kViewW = 320, kViewH = 180;  // resolución interna
 struct Entity {
   std::string name, type;
   float x = 0, y = 0;  // px mundo (y hacia abajo, como el YAML)
-  bool active = false;  // switch: encendido · door: abierta
+  bool active = false;  // switch: encendido · door: abierta (objetivo de anim)
+  float anim = 0;       // door: 0 = cerrada, 1 = abierta (lerp visual + colisión)
 };
 
 // Puerta: 1×3 tiles (8×24 px) con esquina superior izquierda en (x, y).
 inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;
 inline constexpr float kSwitchReach = 14.f;  // px: distancia máx. player↔switch para activarlo
+inline constexpr float kDoorAnimSpeed = 4.f;   // 1/s: 0→1 en 0.25 s
+inline constexpr float kDoorSolidUntil = 0.5f; // colisiona mientras anim < esto
 
 class Scene {
  public:
@@ -37,8 +40,10 @@ class Scene {
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);
   void set_switch(std::size_t idx, bool on);
-  // Puerta cerrada en el tile (tx, ty)?
+  // Puerta cerrada en el tile (tx, ty)? Usa anim (sólida si anim < kDoorSolidUntil).
   bool door_blocks(int tx, int ty) const;
+  // Avanza la animación de las puertas (hacia 1 si active, hacia 0 si no).
+  void tick(float dt);
   const Entity* find_type(std::string_view type) const;
   const ew::map::MapLoader& map() const { return map_; }
 

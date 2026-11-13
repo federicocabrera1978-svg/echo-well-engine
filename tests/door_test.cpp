@@ -32,14 +32,21 @@ int main(int argc, char** argv) {
   game::Input in; in.interact = true;
   sim.step(in);
   CHECK(sw->active && door->active);
+  CHECK(scene.solid_tile(dtx, dty));  // al empezar a abrir, todavía sólida
+  CHECK(door->anim < 0.2f);
+  for (int i = 0; i < 30; ++i) sim.step({});  // 0.5 s: anim 0→1 en 0.25 s
+  CHECK(door->anim == 1.f);
   CHECK(!scene.solid_tile(dtx, dty) && !scene.door_blocks(dtx, dty + 1));
   p.pos = p.prev = {248, 156};
   for (int i = 0; i < 400; ++i) sim.step({1, false});
   std::printf("puerta abierta: llegó a x=%.1f\n", sim.player().pos.x);
   CHECK(sim.player().pos.x > door->x + 8.f);
-  // Toggle de vuelta: se cierra.
+  // Toggle de vuelta: se cierra. La colisión vuelve al instante; el visual anima.
   scene.interact(sw->x, sw->y);
   CHECK(!sw->active && !door->active && scene.solid_tile(dtx, dty));
+  CHECK(door->anim == 1.f);  // el visual todavía no arrancó (hace falta tick)
+  for (int i = 0; i < 30; ++i) sim.step({});
+  CHECK(door->anim == 0.f);
   std::puts("door_test: OK");
   return 0;
 }
