@@ -43,6 +43,7 @@ class Scene {
   void set_switch(std::size_t idx, bool on);
   void set_active(std::size_t idx, bool on);
   // Puerta cerrada en el tile (tx, ty)? Usa anim (sólida si anim < kDoorSolidUntil).
+  // Consulta un cache de AABBs (sin comparar strings en el hot path de colisión).
   bool door_blocks(int tx, int ty) const;
   // Avanza la animación de las puertas (hacia 1 si active, hacia 0 si no).
   void tick(float dt);
@@ -85,6 +86,10 @@ class Scene {
 
  private:
   void rebuild_active();
+  void rebuild_doors() const;
+  struct DoorBox { int x0, y0, x1, y1; };
+  mutable std::vector<DoorBox> door_boxes_;
+  mutable bool doors_dirty_ = true;
   ew::map::MapLoader map_;
   std::unique_ptr<ew::map::ChunkCache> cache_;
   std::vector<Entity> entities_;

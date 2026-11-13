@@ -171,6 +171,7 @@ int main(int argc, char** argv) {
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false, m_ok_was = false, m_b_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
+  const double t_loop = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
     auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
@@ -364,7 +365,10 @@ int main(int argc, char** argv) {
     if (max_frames && ++frames >= max_frames) break;
   }
   if (!dump_path.empty() && !renderer.dump_ppm(dump_path)) std::fprintf(stderr, "echo_engine: no se pudo escribir %s\n", dump_path.c_str());
-  std::printf("echo_engine: %d frames, salida limpia\n", frames);
+  const double elapsed = glfwGetTime() - t_loop;
+  const double ms_frame = frames > 0 ? elapsed * 1000.0 / double(frames) : 0;
+  std::printf("echo_engine: %d frames, %d sim steps, %.2f ms total, %.2f ms/frame (%.1f fps), salida limpia\n",
+              frames, sim_steps, elapsed * 1000.0, ms_frame, elapsed > 0 ? double(frames) / elapsed : 0);
   ew::audio::device_stop();
   renderer.shutdown();
   glfwDestroyWindow(win);
