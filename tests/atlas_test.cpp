@@ -1,7 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
+#include <iterator>
 #include <set>
+#include <string>
+#include <vector>
 #include "render/tile_atlas.hpp"
 using namespace ew::render;
 #define CHECK(c) do { if (!(c)) { std::printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); return 1; } } while (0)
@@ -45,6 +49,45 @@ int main() {
     for (std::size_t i = 0; i < a.size(); i += 4) std::fwrite(&a[i], 1, 3, f);
     std::fclose(f);
   }
+  // --- carga desde PNG (fallback al procedural) ---
+  auto proc = build_tile_atlas();
+  {  // path vacío / nulo / inexistente → procedural, determinístico
+    auto a = load_tile_atlas_file(nullptr);
+    auto b = load_tile_atlas_file("");
+    auto c = load_tile_atlas_file("/no/existe/atlas.png");
+    CHECK(a.source == AtlasSource::Procedural && b.source == AtlasSource::Procedural &&
+          c.source == AtlasSource::Procedural);
+    CHECK(a.px == proc && b.px == proc && c.px == proc);
+  }
+  {  // basura en memoria → fallback, no crash
+    const unsigned char junk[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x89, 'P', 'N', 'G'};
+    auto a = load_tile_atlas_mem(junk, sizeof(junk));
+    auto b = load_tile_atlas_mem(nullptr, 0);
+    CHECK(a.source == AtlasSource::Procedural && a.px == proc);
+    CHECK(b.source == AtlasSource::Procedural && b.px == proc);
+  }
+  const char* dir = std::getenv("EW_TEST_FIXTURES");
+  if (dir && *dir) {
+    const std::string d = dir;
+    auto ok = load_tile_atlas_file((d + "/atlas_128.png").c_str());
+    CHECK(ok.source == AtlasSource::Png);
+    CHECK(ok.px.size() == proc.size());
+    CHECK(ok.px[0] == 255 && ok.px[1] == 0 && ok.px[2] == 64 && ok.px[3] == 255);
+    const std::size_t last = (std::size_t(kAtlasPx) * kAtlasPx - 1) * 4;
+    CHECK(ok.px[last] == 0 && ok.px[last + 1] == 255 && ok.px[last + 2] == 128 && ok.px[last + 3] == 255);
+    CHECK(ok.px != proc);  // no es el procedural
+    // tamaño incorrecto → fallback
+    auto bad = load_tile_atlas_file((d + "/atlas_16.png").c_str());
+    CHECK(bad.source == AtlasSource::Procedural && bad.px == proc);
+    // mem vs file iguales
+    std::ifstream f(d + "/atlas_128.png", std::ios::binary);
+    std::vector<unsigned char> buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    auto mem = load_tile_atlas_mem(buf.data(), buf.size());
+    CHECK(mem.source == AtlasSource::Png && mem.px == ok.px);
+  } else {
+    std::puts("atlas_test: EW_TEST_FIXTURES no seteado, se saltean los PNG");
+  }
+
   std::puts("atlas ok");
   return 0;
 }

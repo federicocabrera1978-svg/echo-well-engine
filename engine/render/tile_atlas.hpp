@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -14,4 +15,15 @@ constexpr TileUV tile_uv(uint8_t id) { return {(id % kAtlasTiles) * kTilePx, (id
 
 // Genera el atlas (kAtlasPx*kAtlasPx*4 bytes, fila 0 arriba). Determinístico.
 std::vector<uint8_t> build_tile_atlas();
+
+// Carga un PNG RGBA (o RGB) de kAtlasPx×kAtlasPx. Si el path es nulo/vacío, el
+// archivo no existe, está corrupto o no tiene ese tamaño, devuelve el atlas
+// procedural. `source` queda en `Png` solo si se usó el archivo.
+enum class AtlasSource { Procedural, Png };
+struct AtlasLoad {
+  std::vector<uint8_t> px;
+  AtlasSource source = AtlasSource::Procedural;
+};
+AtlasLoad load_tile_atlas_mem(const void* data, std::size_t n);
+AtlasLoad load_tile_atlas_file(const char* path);
 }  // namespace ew::render

@@ -48,7 +48,7 @@ GLuint tex(GLint ifmt, GLenum fmt, GLenum type) {
 }
 }  // namespace
 
-bool DeferredRenderer::init(const std::string& dir, std::string& err) {
+bool DeferredRenderer::init(const std::string& dir, std::string& err, const std::string& atlas_path) {
   albedo_ = tex(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
   normal_ = tex(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
   depth_  = tex(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT);
@@ -75,7 +75,8 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   {  // atlas de tiles 128×128 RGBA8 (unidad 1)
-    const auto atlas = build_tile_atlas();
+    const auto loaded = load_tile_atlas_file(atlas_path.empty() ? nullptr : atlas_path.c_str());
+    const auto& atlas = loaded.px;
     glGenTextures(1, &atlas_tex_); glBindTexture(GL_TEXTURE_2D, atlas_tex_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kAtlasPx, kAtlasPx, 0, GL_RGBA, GL_UNSIGNED_BYTE, atlas.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

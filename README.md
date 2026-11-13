@@ -121,13 +121,17 @@ if (auto* c = cache.acquire(0, 0)) upload(c->layers[uint32_t(ew::map::Layer::VIS
 
 ## Atlas de tiles
 
-`engine/render/tile_atlas.{hpp,cpp}` genera un atlas procedural 128×128 RGBA8 (16×16 tiles de 8×8, sin GL).
+`engine/render/tile_atlas.{hpp,cpp}` genera un atlas procedural 128×128 RGBA8 (16×16 tiles de 8×8, sin GL)
+y puede **cargar uno desde un PNG** del mismo tamaño (`load_tile_atlas_file` / `load_tile_atlas_mem`, con
+`stb_image` v2.32 vendorizado, solo PNG). Si el archivo falta, está roto o no mide 128×128, se usa el
+procedural (nunca queda un atlas vacío). `echo_engine --atlas FILE.png` o la env `EW_ATLAS`.
 `ewmapc` aplica **autotiling de 4 vecinos** (bits N=1, E=2, S=4, W=8) sobre `VIS` y `FG`: el tile del YAML
 es la familia (`(tile%15)+1`, 1..15) y el `.ewmap` guarda `familia*16+máscara` (16..255; el 0 queda vacío).
 El atlas pone la familia en la fila y la máscara en la columna; bisel (albedo y altura) solo en lados sin
 vecino. El shader `gbuffer_map.frag` deriva la normal de la altura y aplica el mismo bisel según la máscara.
 Estilos por familia (`id/16 % 4`): liso, ladrillo, granulado, vetas. En el YAML, `autotile: false` lo apaga.
-Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas).
+Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas;
+carga `tests/fixtures/atlas_128.png` y comprueba el fallback). `fuzz_atlas` cubre el loader con libFuzzer.
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 

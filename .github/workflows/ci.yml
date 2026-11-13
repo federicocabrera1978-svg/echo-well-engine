@@ -46,7 +46,7 @@ jobs:
       - name: Configure (clang + libFuzzer + ASan/UBSan)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DEW_BUILD_ENGINE=OFF -DEW_SANITIZE=ON -DEW_LIBFUZZER=ON -DCMAKE_CXX_COMPILER=clang++
       - name: Build fuzz targets
-        run: cmake --build build -j --target fuzz_map_loader fuzz_yaml_lite
+        run: cmake --build build -j --target fuzz_map_loader fuzz_yaml_lite fuzz_atlas
       - name: Fuzz MapLoader (.ewmap) 60s
         run: |
           mkdir -p work/ewmap && cp tests/fuzz/corpus/ewmap/* work/ewmap/
@@ -55,6 +55,10 @@ jobs:
         run: |
           mkdir -p work/yaml && cp tests/fuzz/corpus/yaml/* work/yaml/
           ./build/fuzz_yaml_lite -max_total_time=60 -max_len=8192 work/yaml
+      - name: Fuzz atlas PNG 60s
+        run: |
+          mkdir -p work/png && cp tests/fuzz/corpus/png/* work/png/
+          ./build/fuzz_atlas -max_total_time=60 -max_len=65536 work/png
       - name: Upload crashes
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
