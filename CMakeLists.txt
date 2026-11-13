@@ -51,7 +51,7 @@ add_test(NAME ewmap_load_hello
           --has player_spawn --has switch --has door)
 add_test(NAME ewmap_load_slice
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
-          --name slice --chunks 3 --ents 4 --links 1 --water 1 --ropes 1
+          --name slice --chunks 3 --ents 5 --links 1 --water 1 --ropes 1 --has checkpoint
           --has player_spawn --has switch --has door --has goal)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)

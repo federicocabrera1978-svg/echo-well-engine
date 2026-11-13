@@ -40,6 +40,7 @@ class Scene {
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);
   void set_switch(std::size_t idx, bool on);
+  void set_active(std::size_t idx, bool on);
   // Puerta cerrada en el tile (tx, ty)? Usa anim (sólida si anim < kDoorSolidUntil).
   bool door_blocks(int tx, int ty) const;
   // Avanza la animación de las puertas (hacia 1 si active, hacia 0 si no).

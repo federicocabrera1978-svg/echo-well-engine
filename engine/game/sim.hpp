@@ -16,7 +16,8 @@ struct Input {
   bool interact = false;  // flanco: activar switch cercano (E / X / ↓)
   bool grab = false;      // flanco: agarrar/soltar la cuerda (C / Shift)
   float climb = 0;        // -1 sube, +1 baja (solo colgado; ↑/↓ o W/S)
-  bool restart = false;   // flanco: reiniciar al spawn (R)
+  bool restart = false;      // flanco: R corto → último checkpoint (o spawn)
+  bool restart_full = false; // flanco: R largo → spawn inicial, estado limpio
 };
 
 class Sim {
@@ -34,11 +35,17 @@ class Sim {
   static constexpr float kGoalReach = 16.f;     // px: distancia al entity "goal"
   static constexpr uint16_t kMetaGoal = 3;      // META tile = zona de meta
   static constexpr float kFinishFadeSec = 0.75f;  // fade de la pantalla de meta
+  static constexpr float kCheckpointReach = 20.f; // px: activar checkpoint
+  static constexpr uint16_t kMetaHazard = 4;      // META tile = pinchos / peligro
+  static constexpr int kRespawnInvuln = 30;       // pasos sin daño al reaparecer
+  static constexpr float kRestartFullHold = 0.8f; // s: R largo → reset total
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
-  // Reconstruye física y entidades; cámara al spawn. `finished()` vuelve a false.
+  // Reconstruye física y entidades; cámara al spawn. Limpia checkpoint y `finished()`.
   void reset();
+  // Teleporta al último checkpoint (o al spawn); no toca puertas/switches.
+  void respawn();
 
   Scene& scene() { return scene_; }
   ew::physics::World& world() { return world_; }
@@ -61,6 +68,11 @@ class Sim {
   bool finished() const { return finished_; }
   // 0..1, avanza en kFinishFadeSec segundos después de tocar la meta.
   float finish_t() const { return finish_t_; }
+  // -1 = ninguno (se reaparece en player_spawn). Índice en Scene::entities().
+  int checkpoint_index() const { return ckpt_; }
+  const Entity* checkpoint() const;
+  int deaths() const { return deaths_; }
+  int invuln() const { return invuln_; }
 
  private:
   Scene& scene_;
@@ -77,9 +89,15 @@ class Sim {
   float held_r0_ = kRopeRadius;  // radio original del nodo agarrado
   bool finished_ = false;
   float finish_t_ = 0;  // 0..1, pantalla de fin
+  int ckpt_ = -1;       // último checkpoint, -1 = spawn
+  int deaths_ = 0;
+  int invuln_ = 0;
   void build();
   void grab(int rope, int node, bool flash = true);
   void check_goal();
+  void check_checkpoints();
+  void check_hazards();
+  void kill();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }
   void release();
 };

@@ -74,6 +74,10 @@ void Scene::reset_state() {
   else follow(0, 0);
 }
 
+void Scene::set_active(std::size_t idx, bool on) {
+  if (idx < entities_.size()) entities_[idx].active = on;
+}
+
 void Scene::set_switch(std::size_t idx, bool on) {
   if (idx >= entities_.size() || entities_[idx].type != "switch") return;
   entities_[idx].active = on;

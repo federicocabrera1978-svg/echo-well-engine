@@ -21,6 +21,9 @@ void Sim::build() {
   held_r0_ = kRopeRadius;
   finished_ = false;
   finish_t_ = 0;
+  ckpt_ = -1;
+  deaths_ = 0;
+  invuln_ = 0;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -38,6 +41,37 @@ void Sim::build() {
 void Sim::reset() {
   scene_.reset_state();
   build();
+}
+
+const Entity* Sim::checkpoint() const {
+  if (ckpt_ < 0) return nullptr;
+  const auto& e = scene_.entities();
+  if (std::size_t(ckpt_) >= e.size()) return nullptr;
+  return &e[std::size_t(ckpt_)];
+}
+
+void Sim::respawn() {
+  if (held_) release();
+  const Entity* at = checkpoint();
+  if (!at) at = scene_.find_type("player_spawn");
+  const Vec2 p = at ? Vec2{at->x, at->y} : Vec2{16, 16};
+  auto& pl = world_.points()[player_];
+  pl.pos = pl.prev = p;
+  pl.force = {};
+  pl.grounded = false;
+  finished_ = false;
+  finish_t_ = 0;
+  invuln_ = kRespawnInvuln;
+  grab_flash_ = 0;
+  regrab_cd_ = 0;
+  climb_acc_ = 0;
+  scene_.follow(p.x, p.y, 0.f);
+}
+
+void Sim::kill() {
+  if (invuln_ > 0 || finished_) return;
+  ++deaths_;
+  respawn();
 }
 
 bool Sim::player_in_water() const {
@@ -71,7 +105,9 @@ void Sim::release() {
 }
 
 void Sim::step(const Input& in) {
-  if (in.restart) { reset(); return; }
+  if (in.restart_full) { reset(); return; }
+  if (in.restart) { respawn(); return; }
+  if (invuln_ > 0) --invuln_;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     for (auto& w : water_) { w.interact(world_); w.step(); }
@@ -137,6 +173,8 @@ void Sim::step(const Input& in) {
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
+  check_checkpoints();
+  check_hazards();
   check_goal();
 }
 
@@ -151,6 +189,38 @@ void Sim::check_goal() {
   const int tx = int(std::floor(p.pos.x / float(ew::map::kTileSize)));
   const int ty = int(std::floor(p.pos.y / float(ew::map::kTileSize)));
   if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) finished_ = true;
+}
+
+void Sim::check_checkpoints() {
+  const auto& p = player();
+  const auto& ents = scene_.entities();
+  const float r2 = kCheckpointReach * kCheckpointReach;
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "checkpoint") continue;
+    const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
+    if (dx * dx + dy * dy > r2) continue;
+    if (ckpt_ == int(i)) return;
+    if (ckpt_ >= 0) scene_.set_active(std::size_t(ckpt_), false);
+    ckpt_ = int(i);
+    scene_.set_active(i, true);
+    return;
+  }
+}
+
+void Sim::check_hazards() {
+  if (invuln_ > 0 || finished_) return;
+  const auto& p = player();
+  const float ts = float(ew::map::kTileSize), r = p.radius;
+  const int x0 = int(std::floor((p.pos.x - r) / ts)), x1 = int(std::floor((p.pos.x + r) / ts));
+  const int y0 = int(std::floor((p.pos.y - r) / ts)), y1 = int(std::floor((p.pos.y + r) / ts));
+  for (int ty = y0; ty <= y1; ++ty)
+    for (int tx = x0; tx <= x1; ++tx) {
+      if (scene_.tile(tx, ty, ew::map::Layer::META) != kMetaHazard) continue;
+      const Vec2 c{std::clamp(p.pos.x, tx * ts, (tx + 1) * ts),
+                   std::clamp(p.pos.y, ty * ts, (ty + 1) * ts)};
+      if (ew::physics::length(p.pos - c) < r) { kill(); return; }
+    }
+  if (p.pos.y > float(scene_.height_px()) + r) kill();  // caída fuera del mapa
 }
 
 }  // namespace ew::game
