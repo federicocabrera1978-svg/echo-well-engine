@@ -110,6 +110,9 @@ target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 add_executable(atlas_test tests/atlas_test.cpp)
 target_link_libraries(atlas_test PRIVATE echo_atlas)
 add_test(NAME tile_atlas COMMAND atlas_test)
+add_executable(autotile_test tests/autotile_test.cpp)
+target_link_libraries(autotile_test PRIVATE echo_map)
+add_test(NAME autotile COMMAND autotile_test)
 
 # --- fuzzing: MapLoader (.ewmap) y yaml_lite ---------------------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y

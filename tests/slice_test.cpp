@@ -42,8 +42,8 @@ int main(int argc, char** argv) {
   CHECK(scene.solid_px(200.f + 4.f, 136.f + 4.f));             // puerta cerrada
   CHECK(scene.tile(29, 17, map::Layer::META) == 2);             // zona de agua
   CHECK(scene.tile(105, 6, map::Layer::META) == game::Sim::kMetaGoal);
-  CHECK(scene.tile(104, 0, map::Layer::FG) != 0);               // FG de decorado
-  CHECK(scene.tile(44, 10, map::Layer::VIS) == 9);              // atlas de fondo
+  CHECK(scene.tile(104, 0, map::Layer::FG) == 230);             // autotile FG: fam 14, máscara E|S
+  CHECK(scene.tile(44, 10, map::Layer::VIS) == 167);            // autotile: fam 10, máscara N|E|S
   CHECK(scene.chunk_x() == 0 && scene.chunk_y() == 0);
   // FG de chunk 2 entra al vecindario al ir al chunk 1 (ox=2, local 24,0).
   {
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     CHECK(scene.chunk_x() == 1);
     constexpr int W = game::Scene::kNbW, C = game::Scene::kPackedCh;
     const std::size_t o = (std::size_t(23 + 0) * W + std::size_t(80 + 24)) * C + 2;
-    CHECK(scene.active_tiles()[o] == 13);
+    CHECK(scene.active_tiles()[o] == 230);  // mismo FG, packed canal B
     scene.follow(spawn->x, spawn->y);  // volver al spawn para el camino
     CHECK(scene.chunk_x() == 0);
   }

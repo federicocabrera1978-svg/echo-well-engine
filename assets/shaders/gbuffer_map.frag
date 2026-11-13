@@ -23,6 +23,14 @@ vec4 atlas_texel(uint vis, ivec2 l) {
   return texelFetch(u_atlas, o + clamp(l, ivec2(0), ivec2(7)), 0);
 }
 float atlas_h(uint vis, ivec2 l) { return atlas_texel(vis, l).a; }
+// Bisel de borde solo en lados sin vecino (máscara 4-bit: N=1 E=2 S=4 W=8).
+void autotile_bevel(inout vec3 n, uint vis, ivec2 l) {
+  uint m = vis & 15u;
+  if (l.x == 0 && (m & 8u) == 0u) n = normalize(vec3(-1.0, 0.0, 1.0));
+  else if (l.x == 7 && (m & 2u) == 0u) n = normalize(vec3(1.0, 0.0, 1.0));
+  if (l.y == 0 && (m & 1u) == 0u) n = normalize(vec3(0.0, 1.0, 1.0));
+  else if (l.y == 7 && (m & 4u) == 0u) n = normalize(vec3(0.0, -1.0, 1.0));
+}
 
 void main() {
   vec2 world = u_cam + vec2(v_uv.x * 320.0, (1.0 - v_uv.y) * 180.0);
@@ -42,8 +50,7 @@ void main() {
     float dx = atlas_h(cv.g, l + ivec2(1, 0)) - atlas_h(cv.g, l - ivec2(1, 0));
     float dy = atlas_h(cv.g, l + ivec2(0, 1)) - atlas_h(cv.g, l - ivec2(0, 1));
     n = normalize(vec3(-dx, dy, 1.0));
-    if (l.x == 0) n = normalize(vec3(-1, 0, 1)); else if (l.x == 7) n = normalize(vec3(1, 0, 1));
-    if (l.y == 0) n = normalize(vec3(0, 1, 1)); else if (l.y == 7) n = normalize(vec3(0, -1, 1));
+    autotile_bevel(n, cv.g, l);
     depth = 0.5;
   } else if (cv.g != 0u) {
     albedo = atlas_texel(cv.g, l).rgb * 0.35;  // decorado de fondo (VIS sin COL)
@@ -87,6 +94,7 @@ void main() {
     float dx = atlas_h(cv.b, l + ivec2(1, 0)) - atlas_h(cv.b, l - ivec2(1, 0));
     float dy = atlas_h(cv.b, l + ivec2(0, 1)) - atlas_h(cv.b, l - ivec2(0, 1));
     n = normalize(vec3(-dx, dy, 1.0));
+    autotile_bevel(n, cv.b, l);
     depth = 0.2;
   }
   o_albedo = vec4(albedo, 1.0);
