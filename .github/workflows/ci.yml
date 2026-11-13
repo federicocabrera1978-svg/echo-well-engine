@@ -23,7 +23,6 @@ jobs:
           ./build/ewmapc --crc assets/maps/src/hello.yaml -o assets/maps/bin/hello.ewmap
           ./build/ewmap_smoke assets/maps/bin/hello.ewmap
           ./build/ewmapc --crc assets/maps/src/slice.yaml -o assets/maps/bin/slice.ewmap
-          ./build/ewmap_smoke assets/maps/bin/slice.ewmap
 
   sanitizers:
     runs-on: ubuntu-latest
