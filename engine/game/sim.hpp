@@ -75,6 +75,8 @@ class Sim {
   const Entity* checkpoint() const;
   int deaths() const { return deaths_; }
   int invuln() const { return invuln_; }
+  // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
+  uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
 
  private:
   Scene& scene_;
@@ -94,6 +96,8 @@ class Sim {
   int ckpt_ = -1;       // último checkpoint, -1 = spawn
   int deaths_ = 0;
   int invuln_ = 0;
+  uint32_t sfx_ = 0;
+  bool was_in_water_ = false;
   void build();
   void grab(int rope, int node, bool flash = true);
   void check_goal();

@@ -116,6 +116,12 @@ set_tests_properties(tile_atlas PROPERTIES
 add_executable(autotile_test tests/autotile_test.cpp)
 target_link_libraries(autotile_test PRIVATE echo_map)
 add_test(NAME autotile COMMAND autotile_test)
+# --- echo_audio: SFX procedural, sin dispositivo (testeable en CI) ----------
+add_library(echo_audio engine/audio/sfx.cpp)
+target_include_directories(echo_audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+add_executable(sfx_test tests/sfx_test.cpp)
+target_link_libraries(sfx_test PRIVATE echo_audio)
+add_test(NAME sfx COMMAND sfx_test)
 
 # --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
@@ -143,6 +149,7 @@ endif()
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --
 option(EW_BUILD_ENGINE "Compilar echo_engine (requiere OpenGL + headers X11/Wayland)" ON)
+option(EW_AUDIO "SFX con miniaudio en echo_engine (fail-soft si no hay dispositivo)" ON)
 if(EW_BUILD_ENGINE)
   include(FetchContent)
   set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -167,6 +174,38 @@ if(EW_BUILD_ENGINE)
   target_compile_definitions(echo_engine PRIVATE
     EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
     EW_DEFAULT_MAP="${EW_SLICE_MAP}")
-  target_link_libraries(echo_engine PRIVATE echo_render echo_game glfw)
+  target_link_libraries(echo_engine PRIVATE echo_render echo_game echo_audio glfw)
   add_dependencies(echo_engine ew_maps)
+  # device.cpp siempre (stubs si EW_AUDIO=OFF). miniaudio no se vendoriza (~4 MiB);
+  # se descarga al build y, si falla el dispositivo, el motor sigue en silencio.
+  target_sources(echo_engine PRIVATE engine/audio/device.cpp)
+  if(EW_AUDIO)
+    set(_MA_H ${CMAKE_BINARY_DIR}/miniaudio.h)
+    if(NOT EXISTS "${_MA_H}")
+      if(DEFINED ENV{EW_MINIAUDIO} AND EXISTS "$ENV{EW_MINIAUDIO}")
+        file(COPY "$ENV{EW_MINIAUDIO}" DESTINATION ${CMAKE_BINARY_DIR})
+      elseif(EXISTS "${CMAKE_SOURCE_DIR}/third_party/miniaudio/miniaudio.h")
+        file(COPY "${CMAKE_SOURCE_DIR}/third_party/miniaudio/miniaudio.h" DESTINATION ${CMAKE_BINARY_DIR})
+      else()
+        file(DOWNLOAD
+          https://raw.githubusercontent.com/mackron/miniaudio/0.11.22/miniaudio.h
+          ${_MA_H} STATUS _MA_ST TIMEOUT 60
+          EXPECTED_HASH SHA256=9019743287e443c55e5737a7297f38e5e358561701d6db2d905afb114390c410)
+        list(GET _MA_ST 0 _MA_CODE)
+        if(NOT _MA_CODE EQUAL 0)
+          message(WARNING "no se pudo descargar miniaudio.h: ${_MA_ST} — SFX solo stubs")
+          set(EW_AUDIO OFF)
+        endif()
+      endif()
+    endif()
+  endif()
+  if(EW_AUDIO AND EXISTS "${CMAKE_BINARY_DIR}/miniaudio.h")
+    target_compile_definitions(echo_engine PRIVATE EW_AUDIO=1)
+    target_include_directories(echo_engine PRIVATE ${CMAKE_BINARY_DIR})
+    set_source_files_properties(engine/audio/device.cpp PROPERTIES COMPILE_OPTIONS -w)
+    if(UNIX)
+      find_package(Threads REQUIRED)
+      target_link_libraries(echo_engine PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+    endif()
+  endif()
 endif()

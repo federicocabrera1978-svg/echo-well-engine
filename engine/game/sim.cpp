@@ -24,6 +24,8 @@ void Sim::build() {
   ckpt_ = -1;
   deaths_ = 0;
   invuln_ = 0;
+  sfx_ = 0;
+  was_in_water_ = false;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -71,6 +73,7 @@ void Sim::respawn() {
 void Sim::kill() {
   if (invuln_ > 0 || finished_) return;
   ++deaths_;
+  sfx_ |= 2u;  // kSfxDie
   respawn();
 }
 
@@ -149,6 +152,7 @@ void Sim::step(const Input& in) {
       const Vec2 v = pts[held_index()].velocity();
       release();
       pts[player_].set_velocity({v.x * 1.2f, std::min(v.y, 0.f) - kJumpSpeed * 0.8f * kDt});
+      sfx_ |= 1u;  // kSfxJump
     }
   }
 
@@ -159,9 +163,12 @@ void Sim::step(const Input& in) {
     const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
     v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
     const bool swim = player_in_water();
-    if (in.jump && (pl.grounded || swim)) v.y = -kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+    if (in.jump && (pl.grounded || swim)) {
+      v.y = -kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+      sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
+    }
     pl.set_velocity(v);
-    if (in.interact) scene_.interact(pl.pos.x, pl.pos.y);
+    if (in.interact && scene_.interact(pl.pos.x, pl.pos.y) >= 0) sfx_ |= 16u;  // kSfxSwitch
   }
   apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
@@ -175,6 +182,9 @@ void Sim::step(const Input& in) {
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
+  const bool in_w = player_in_water();
+  if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
+  was_in_water_ = in_w;
   check_checkpoints();
   check_hazards();
   check_goal();
@@ -186,11 +196,11 @@ void Sim::check_goal() {
   for (const auto& e : scene_.entities()) {
     if (e.type != "goal") continue;
     const float dx = e.x - p.pos.x, dy = e.y - p.pos.y;
-    if (dx * dx + dy * dy <= kGoalReach * kGoalReach) { finished_ = true; return; }
+    if (dx * dx + dy * dy <= kGoalReach * kGoalReach) { finished_ = true; sfx_ |= 8u; return; }
   }
   const int tx = int(std::floor(p.pos.x / float(ew::map::kTileSize)));
   const int ty = int(std::floor(p.pos.y / float(ew::map::kTileSize)));
-  if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) finished_ = true;
+  if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) { finished_ = true; sfx_ |= 8u; }
 }
 
 void Sim::check_checkpoints() {
@@ -205,6 +215,7 @@ void Sim::check_checkpoints() {
     if (ckpt_ >= 0) scene_.set_active(std::size_t(ckpt_), false);
     ckpt_ = int(i);
     scene_.set_active(i, true);
+    sfx_ |= 4u;  // kSfxCheckpoint
     return;
   }
 }
