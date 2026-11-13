@@ -45,11 +45,13 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
 
 ### Vertical slice (`slice`)
-Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecánicas existentes:
+Camino corto **start → goal** en 4×1 chunks (1280×184 px) que junta las mecánicas existentes:
 
 1. **Chunk 0:** spawn, **switch → puerta**, pileta de **agua** (hay que nadar). Seam en x=320.
 2. **Chunk 1:** **cuerda** (sección ROPE) para subir una pared que no se salta, cornisa con **atlas** de tiles. Seam en x=640. La cámara usa dead-zone + slide en los seams.
-3. **Chunk 2:** hay un **checkpoint** en la cornisa (tras la cuerda), un **hueco con pinchos** (META id 4: al caer se muere y reaparece en el checkpoint, la puerta sigue abierta) y la **meta** (entidad `goal` + META id 3). Al tocarla, `Sim::finished()` queda en true, el motor imprime `¡meta!` y hay un fade (~0.75 s) con **META**. **R** corto (`Input::restart` / `Sim::respawn()`) vuelve al último checkpoint; **R** largo (`Input::restart_full` / `Sim::reset()`) al spawn con el estado limpio. `slice_test` cubre caída, invulnerabilidad, ambos reinicios y el salto del hueco (sin GL).
+3. **Chunk 2:** **checkpoint** en la cornisa, **hueco con pinchos** (META 4) y un **`flood_switch`**.
+4. **Chunk 3:** pileta cuyo nivel **sube** al activar el switch (de y=136 a y=72, `Sim::kFloodRestY`) para nadar hasta la cornisa de salida y la **meta** (goal + META 3, x=1184). Otro checkpoint en la salida.
+Al tocar la meta, fade (~0.75 s) con **META**. **R** corto vuelve al último checkpoint; **R** largo (~0.8 s) al spawn limpio. `slice_test` recorre todo el camino (incluye inundación) sin GL.
 
 `slice_test` (ctest, sin GL) carga el mapa, verifica el loader (entidades, capas COL/VIS/FG/META, cuerda, agua) y recorre el camino con input scriptado hasta la meta. `hello` sigue como mapa de los demás tests.
 

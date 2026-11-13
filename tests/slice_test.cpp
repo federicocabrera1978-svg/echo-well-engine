@@ -31,22 +31,26 @@ int main(int argc, char** argv) {
   if (!scene.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
 
   // --- loader: geometría, entidades, capas, cuerda, agua ---
-  CHECK(scene.width_px() == 960 && scene.height_px() == 184);  // 3×1 chunks
+  CHECK(scene.width_px() == 1280 && scene.height_px() == 184);  // 4×1 chunks
   const auto* spawn = scene.find_type("player_spawn");
   const auto* sw = scene.find_type("switch");
   const auto* door = scene.find_type("door");
   const auto* goal = scene.find_type("goal");
   CHECK(spawn && spawn->x == 32.f && spawn->y == 152.f);
   CHECK(sw && door && goal && !sw->active && !door->active);
-  CHECK(goal->x == 840.f && goal->y == 56.f);
+  CHECK(goal->x == 1184.f && goal->y == 56.f);
   const auto* ck = scene.find_type("checkpoint");
   CHECK(ck && ck->x == 536.f && ck->y == 56.f && !ck->active);
   CHECK(scene.tile(78, 19, map::Layer::META) == game::Sim::kMetaHazard);
   CHECK(scene.tile(80, 19, map::Layer::META) == game::Sim::kMetaHazard);
   CHECK(!scene.solid_tile(78, 8) && !scene.solid_tile(81, 8));  // hueco en la cornisa
+  const auto* flood = scene.find_type("flood_switch");
+  CHECK(flood && flood->x == 776.f && !flood->active);
+  CHECK(scene.solid_tile(100, 15) && scene.solid_tile(141, 15));  // paredes de la pileta
+  CHECK(scene.solid_tile(142, 8) && !scene.solid_tile(120, 8));   // cornisa de salida; el hueco es agua
   CHECK(scene.solid_px(200.f + 4.f, 136.f + 4.f));             // puerta cerrada
   CHECK(scene.tile(29, 17, map::Layer::META) == 2);             // zona de agua
-  CHECK(scene.tile(105, 6, map::Layer::META) == game::Sim::kMetaGoal);
+  CHECK(scene.tile(145, 6, map::Layer::META) == game::Sim::kMetaGoal);
   CHECK(scene.tile(104, 0, map::Layer::FG) == 230);             // autotile FG: fam 14, máscara E|S
   CHECK(scene.tile(44, 10, map::Layer::VIS) == 167);            // autotile: fam 10, máscara N|E|S
   CHECK(scene.chunk_x() == 0 && scene.chunk_y() == 0);
@@ -62,7 +66,8 @@ int main(int argc, char** argv) {
   }
 
   game::Sim sim(scene);
-  CHECK(sim.rope_count() == 1 && sim.water().size() == 1);
+  CHECK(sim.rope_count() == 1 && sim.water().size() == 2);
+  CHECK(sim.water()[1].x() == 808.f && sim.water()[1].rest_y() == 136.f);
   CHECK(sim.rope_points() == 17);
   CHECK(!sim.finished());
   auto& pts = sim.world().points();
@@ -74,17 +79,17 @@ int main(int argc, char** argv) {
     if (!s2.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
     game::Sim sim2(s2);
     auto& p2 = sim2.world().points()[sim2.player_index()];
-    p2.pos = p2.prev = {840.f, 56.f};
+    p2.pos = p2.prev = {1184.f, 56.f};
     sim2.step({});
     CHECK(sim2.finished());
-    // META sin entidad cerca: tile META 3 en (102*8+4, 5*8+4) = (820, 44)
+    // META sin entidad cerca: tile META 3 en (145*8+4, 5*8+4) = (1164, 44)
     game::Scene s3;
     if (!s3.load(argv[1], err)) return 1;
     // quitar el alcance al entity alejándolo: pisamos un tile META 3 que no esté
-    // a ≤16 px del entity (840,56). Tile (102,5) centro = (820, 44); dist a goal ≈ 23.
+    // a ≤16 px del entity (1184,56). Tile (145,5) centro = (1164, 44); dist a goal ≈ 23.
     game::Sim sim3(s3);
     auto& p3 = sim3.world().points()[sim3.player_index()];
-    p3.pos = p3.prev = {820.f, 44.f};
+    p3.pos = p3.prev = {1164.f, 44.f};
     sim3.step({});
     CHECK(sim3.finished());
   }
@@ -122,6 +127,36 @@ int main(int argc, char** argv) {
     CHECK(std::fabs(sim4.player().pos.x - 32.f) < 2.f);
     CHECK(!sim4.checkpoint() && sim4.deaths() == 0);
     CHECK(!s4.find_type("checkpoint")->active);
+  }
+
+  // Inundación (unitario): el flood_switch sube el agua; sin él no se alcanza la cornisa.
+  {
+    game::Scene s5;
+    if (!s5.load(argv[1], err)) return 1;
+    game::Sim sim5(s5);
+    auto& w = sim5.water()[1];
+    CHECK(w.rest_y() == 136.f && w.initial_rest_y() == 136.f && w.bottom() == 160.f);
+    auto& p5 = sim5.world().points()[sim5.player_index()];
+    p5.pos = p5.prev = {776.f, 56.f};  // sobre el flood_switch
+    { Input a; a.interact = true; sim5.step(a); }
+    CHECK(s5.find_type("flood_switch")->active);
+    const float bot0 = w.bottom();
+    for (int i = 0; i < 150; ++i) sim5.step({});
+    CHECK(std::fabs(w.rest_y() - game::Sim::kFloodRestY) < 1.f);
+    CHECK(std::fabs(w.bottom() - bot0) < 0.1f);  // el fondo no se mueve
+    // Sin inundar: desde el agua no se llega a y≈60.
+    game::Scene s6;
+    if (!s6.load(argv[1], err)) return 1;
+    game::Sim sim6(s6);
+    auto& p6 = sim6.world().points()[sim6.player_index()];
+    p6.pos = p6.prev = {960.f, 140.f};  // en la pileta, agua baja
+    float min_y = 999.f;
+    for (int i = 0; i < 180; ++i) {
+      Input j; j.jump = (i % 12 == 0); j.move_x = 0;
+      sim6.step(j);
+      min_y = std::fmin(min_y, sim6.player().pos.y);
+    }
+    CHECK(min_y > 90.f);  // no alcanza la cornisa (y≈60)
   }
 
   // --- camino jugable ---
@@ -226,19 +261,39 @@ int main(int argc, char** argv) {
     CHECK(scene.find_type("door")->active);  // progreso conservado
   }
 
-  // 6) Saltar el hueco (x=624–656), cruzar el seam y tocar el goal.
+  // 6) Saltar el hueco (x=624–656), activar el flood_switch, nadar con el agua alta.
   for (int i = 0; i < 50 && sim.player().pos.x < 600.f; ++i) sim.step({1.f});
   { Input j; j.jump = true; j.move_x = 1; sim.step(j); }
-  for (int i = 0; i < 800 && !sim.finished(); ++i) sim.step({1.f});
+  for (int i = 0; i < 200 && sim.player().pos.x < flood->x - 6.f; ++i) sim.step({1.f});
+  std::printf("flood_switch: x=%.1f y=%.1f\n", sim.player().pos.x, sim.player().pos.y);
+  CHECK(std::fabs(sim.player().pos.x - flood->x) < 16.f);
+  CHECK(sim.player().pos.y < 80.f);
+  { Input a; a.interact = true; sim.step(a); }
+  CHECK(scene.find_type("flood_switch")->active);
+  for (int i = 0; i < 150; ++i) sim.step({});  // el agua sube
+  CHECK(std::fabs(sim.water()[1].rest_y() - game::Sim::kFloodRestY) < 1.f);
+
+  // Entrar a la pileta y nadar a la cornisa de salida (x=1136).
+  for (int i = 0; i < 40; ++i) sim.step({1.f});
+  for (int i = 0; i < 500 && !(sim.player().pos.x > 1136.f && sim.player().pos.y < 80.f); ++i) {
+    Input sw; sw.move_x = 1.f; sw.jump = (i % 10 == 0);
+    sim.step(sw);
+  }
+  std::printf("salida inundación: x=%.1f y=%.1f agua=%.1f\n",
+              sim.player().pos.x, sim.player().pos.y, sim.water()[1].rest_y());
+  CHECK(sim.player().pos.x > 1136.f && sim.player().pos.y < 80.f);
+  CHECK(scene.chunk_x() == 3);
+
+  // 7) Caminar a la meta (chunk 3).
+  for (int i = 0; i < 400 && !sim.finished(); ++i) sim.step({1.f});
   std::printf("meta: x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n",
               sim.player().pos.x, sim.player().pos.y, scene.chunk_x(), int(sim.finished()),
               scene.cam_x());
-  CHECK(scene.chunk_x() == 2);
-  CHECK(sim.player().pos.x > 640.f);
+  CHECK(scene.chunk_x() == 3);
+  CHECK(sim.player().pos.x > 960.f);
   CHECK(sim.finished());
-  // La cámara llegó a la pantalla del chunk 2 (origen 640) tras el slide.
   for (int i = 0; i < 60; ++i) sim.step({});
-  CHECK(scene.cam_x() >= 620.f);
+  CHECK(scene.cam_x() >= 940.f);
   CHECK(sim.finished());  // se mantiene
   CHECK(sim.finish_t() >= 0.999f);  // 60 pasos ≥ 0.75 s de fade
 
@@ -252,13 +307,14 @@ int main(int argc, char** argv) {
     (void)py;
   }
 
-  // R corto: vuelve al checkpoint (puerta sigue abierta). R largo: spawn limpio.
+  // R corto: vuelve al último checkpoint (ck_exit, puerta sigue abierta). R largo: spawn limpio.
+  CHECK(sim.checkpoint() && sim.checkpoint()->x == 1152.f);  // el de la cornisa de salida
   { Input rst; rst.restart = true; sim.step(rst); }
   CHECK(!sim.finished());
   CHECK(sim.finish_t() == 0.f);
   CHECK(!sim.on_rope());
-  CHECK(std::fabs(sim.player().pos.x - ck->x) < 4.f);
-  CHECK(std::fabs(sim.player().pos.y - ck->y) < 10.f);
+  CHECK(std::fabs(sim.player().pos.x - 1152.f) < 4.f);
+  CHECK(std::fabs(sim.player().pos.y - 56.f) < 10.f);
   CHECK(scene.find_type("door")->active);
   CHECK(sim.checkpoint_index() >= 0);
   { Input full; full.restart_full = true; sim.step(full); }

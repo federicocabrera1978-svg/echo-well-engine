@@ -32,7 +32,7 @@ void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, f
 
 void push_entities(FrameView& v, const ew::game::Scene& s) {
   for (const auto& e : s.entities()) {
-    if (e.type == "switch") {  // base gris + luz: ámbar = apagado, verde = encendido
+    if (e.type == "switch" || e.type == "flood_switch") {  // base gris + luz: ámbar = apagado, verde = encendido
       push_marker(v, e.x, e.y + 5, 3, 1, 0.35f, 0.35f, 0.4f);
       if (e.active) push_marker(v, e.x, e.y + 2, 2, 0, 0.3f, 1.0f, 0.45f);
       else push_marker(v, e.x, e.y + 2, 2, 0, 1.0f, 0.6f, 0.15f);

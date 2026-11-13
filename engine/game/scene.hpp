@@ -22,6 +22,7 @@ struct Entity {
   bool active = false;  // switch: encendido · door: abierta (objetivo de anim)
   float anim = 0;       // door: 0 = cerrada, 1 = abierta (lerp visual + colisión)
 };
+inline bool is_switch_type(const std::string& t) { return t == "switch" || t == "flood_switch"; }
 
 // Puerta: 1×3 tiles (8×24 px) con esquina superior izquierda en (x, y).
 inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;

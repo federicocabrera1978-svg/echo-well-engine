@@ -79,7 +79,7 @@ void Scene::set_active(std::size_t idx, bool on) {
 }
 
 void Scene::set_switch(std::size_t idx, bool on) {
-  if (idx >= entities_.size() || entities_[idx].type != "switch") return;
+  if (idx >= entities_.size() || !is_switch_type(entities_[idx].type)) return;
   entities_[idx].active = on;
   for (const auto& [from, to] : links_)
     if (from == idx && entities_[to].type == "door") entities_[to].active = on;
@@ -89,7 +89,7 @@ int Scene::interact(float x, float y) {
   int best = -1;
   float best_d2 = kSwitchReach * kSwitchReach;
   for (std::size_t i = 0; i < entities_.size(); ++i) {
-    if (entities_[i].type != "switch") continue;
+    if (!is_switch_type(entities_[i].type)) continue;
     const float dx = entities_[i].x - x, dy = entities_[i].y - y, d2 = dx * dx + dy * dy;
     if (d2 <= best_d2) { best_d2 = d2; best = int(i); }
   }

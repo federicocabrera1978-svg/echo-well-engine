@@ -6,11 +6,17 @@
 namespace ew::physics {
 
 WaterBody::WaterBody(float x, float y, float w, float h, float stiffness, float damping, int max_cols)
-    : x_(x), y_(y), w_(w), h_px_(h),
+    : x_(x), y_(y), y0_(y), w_(w), h_px_(h),
       k_(stiffness > 0 ? stiffness : 0.025f), d_(damping > 0 ? damping : 0.03f) {
   const int n = std::clamp(int(w / 2.f), 2, std::max(2, max_cols));  // ~2 px por columna
   h_.assign(std::size_t(n), 0.f);
   v_ = ldelta_ = rdelta_ = h_;
+}
+
+void WaterBody::set_rest_y(float y) {
+  const float bot = y_ + h_px_;
+  y_ = y;
+  h_px_ = std::max(1.f, bot - y_);
 }
 
 int WaterBody::col_of(float x) const {

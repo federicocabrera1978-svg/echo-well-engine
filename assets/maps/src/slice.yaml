@@ -1,25 +1,26 @@
-# slice.yaml — vertical slice: camino corto start → goal (3×1 chunks).
+# slice.yaml — vertical slice: camino corto start → goal (4×1 chunks).
 # Cada chunk = 1 pantalla (40×23 tiles de 8 px = 320×184 px).
 #
 # Chunk 0 (x 0–319): spawn, switch → puerta, pileta (nadar). Seam en x=320.
 # Chunk 1 (x 320–639): cuerda para subir una pared alta, cornisa. Seam en x=640.
-# Chunk 2 (x 640–959): cornisa, hueco con pinchos (META 4), goal (entidad + META 3).
+# Chunk 2 (x 640–959): cornisa, hueco con pinchos (META 4), flood_switch.
+# Chunk 3 (x 960–1279): pileta que sube con el switch, cornisa de salida, goal.
 # Checkpoint en la cornisa (tras la cuerda): muerte / R corto vuelve ahí; R largo al spawn.
 name: slice
-size_chunks: [3, 1]
+size_chunks: [4, 1]
 
 # autotile: true  (default) — VIS/FG pasan a familia*16+máscara de 4 vecinos
 fill:
   VIS: 0
 
 rects:
-  # piso continuo (los 3 chunks) y paredes laterales
-  - {layer: COL, x: 0,   y: 20, w: 120, h: 3, tile: 1}
-  - {layer: VIS, x: 0,   y: 20, w: 120, h: 3, tile: 17}
+  # piso continuo (los 4 chunks) y paredes laterales
+  - {layer: COL, x: 0,   y: 20, w: 160, h: 3, tile: 1}
+  - {layer: VIS, x: 0,   y: 20, w: 160, h: 3, tile: 17}
   - {layer: COL, x: 0,   y: 0,  w: 1,   h: 23, tile: 1}
   - {layer: VIS, x: 0,   y: 0,  w: 1,   h: 23, tile: 17}
-  - {layer: COL, x: 119, y: 0,  w: 1,   h: 23, tile: 1}
-  - {layer: VIS, x: 119, y: 0,  w: 1,   h: 23, tile: 17}
+  - {layer: COL, x: 159, y: 0,  w: 1,   h: 23, tile: 1}
+  - {layer: VIS, x: 159, y: 0,  w: 1,   h: 23, tile: 17}
 
   # chunk 0: pileta (META 2 = agua) entre tiles 28 y 37, después de la puerta (x=200)
   - {layer: META, x: 29, y: 17, w: 8, h: 3, tile: 2}
@@ -31,9 +32,9 @@ rects:
   # chunk 1: pared alta que no se salta (tiles 50–51, y=8..19 = 96 px de alto)
   - {layer: COL, x: 50, y: 8,  w: 2,  h: 12, tile: 1}
   - {layer: VIS, x: 50, y: 8,  w: 2,  h: 12, tile: 17}
-  # cornisa a la derecha de la pared: y=8 (tope = 64 px), desde tile 52 hasta el final
-  - {layer: COL, x: 52, y: 8,  w: 67, h: 1,  tile: 3}
-  - {layer: VIS, x: 52, y: 8,  w: 67, h: 1,  tile: 5}
+  # cornisa a la derecha de la pared: y=8 (tope = 64 px), desde tile 52 hasta 100 (luego la pileta)
+  - {layer: COL, x: 52, y: 8,  w: 49, h: 1,  tile: 3}
+  - {layer: VIS, x: 52, y: 8,  w: 49, h: 1,  tile: 5}
   # atlas: columnas de fondo (sin COL)
   - {layer: VIS, x: 44, y: 4,  w: 2,  h: 16, tile: 9}
   - {layer: VIS, x: 108, y: 0, w: 2,  h: 8,  tile: 21}
@@ -51,15 +52,27 @@ rects:
   - {layer: META, x: 76, y: 19, w: 17, h: 2,  tile: 4}    # peligro: al caer, muerte
   - {layer: VIS,  x: 77, y: 20, w: 15, h: 1,  tile: 11}   # piso con look de pinchos
 
-  # chunk 2: zona goal (META id 3), alrededor de la entidad goal
-  - {layer: META, x: 102, y: 5, w: 8, h: 3, tile: 3}
+  # Pileta de inundación (chunk 2–3): cornisa termina en tile 100, sale en 142.
+  # Superficie inicial y=136 (no se alcanza la cornisa); el flood_switch la sube a y=72.
+  - {layer: COL,  x: 100, y: 9,  w: 1,  h: 11, tile: 1}
+  - {layer: VIS,  x: 100, y: 9,  w: 1,  h: 11, tile: 17}
+  - {layer: COL,  x: 141, y: 9,  w: 1,  h: 11, tile: 1}
+  - {layer: VIS,  x: 141, y: 9,  w: 1,  h: 11, tile: 17}
+  - {layer: META, x: 101, y: 17, w: 40, h: 3,  tile: 2}   # agua (documentación)
+  - {layer: COL,  x: 142, y: 8,  w: 17, h: 1,  tile: 3}   # cornisa de salida
+  - {layer: VIS,  x: 142, y: 8,  w: 17, h: 1,  tile: 5}
+
+  # chunk 3: zona goal
+  - {layer: META, x: 145, y: 5, w: 8, h: 3, tile: 3}
 
 entities:
-  - {name: spawn,        type: player_spawn, x: 32,  y: 152}
-  - {name: switch_start, type: switch,       x: 96,  y: 152}
-  - {name: door_start,   type: door,         x: 200, y: 136}
-  - {name: ck_ledge,     type: checkpoint,   x: 536, y: 56}
-  - {name: goal,         type: goal,         x: 840, y: 56}
+  - {name: spawn,        type: player_spawn, x: 32,   y: 152}
+  - {name: switch_start, type: switch,       x: 96,   y: 152}
+  - {name: door_start,   type: door,         x: 200,  y: 136}
+  - {name: ck_ledge,     type: checkpoint,   x: 536,  y: 56}
+  - {name: flood,        type: flood_switch, x: 776,  y: 56}
+  - {name: ck_exit,      type: checkpoint,   x: 1152, y: 56}
+  - {name: goal,         type: goal,         x: 1184, y: 56}
 
 links:
   - {from: switch_start, to: door_start}
@@ -71,3 +84,5 @@ ropes:
 water:
   # entre tiles 29 y 36 (paredes 28 y 37): 232–296 px, superficie y=136, fondo y=160
   - {x: 232, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
+  # pileta de inundación (tiles 101–140, x=808–1128)
+  - {x: 808, y: 136, w: 320, h: 24, stiffness: 0.02, damping: 0.04}
