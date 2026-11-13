@@ -123,6 +123,10 @@ add_executable(sfx_test tests/sfx_test.cpp)
 target_link_libraries(sfx_test PRIVATE echo_audio)
 add_test(NAME sfx COMMAND sfx_test)
 
+add_executable(gamepad_test tests/gamepad_test.cpp)
+target_link_libraries(gamepad_test PRIVATE echo_game)
+add_test(NAME gamepad COMMAND gamepad_test)
+
 # --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
 # corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.
