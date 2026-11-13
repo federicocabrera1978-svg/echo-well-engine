@@ -77,7 +77,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
       - name: Smoke run headless + dump PPM
         run: |
-          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24"             ./build/echo_engine --frames 90 --demo --dump frame.ppm
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24"             ./build/echo_engine --frames 90 --demo --dump frame.ppm --nosound
           python3 - <<'PY'
           from pathlib import Path
           b = Path("frame.ppm").read_bytes()

@@ -1,5 +1,5 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC salir. --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
@@ -11,6 +11,8 @@
 #include <string>
 
 #include "game/sim.hpp"
+#include "audio/device.hpp"
+#include "audio/sfx.hpp"
 #include "render/deferred.hpp"
 
 #ifndef EW_SHADER_DIR
@@ -82,10 +84,11 @@ void push_hazards(FrameView& v, ew::game::Scene& s) {
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false, has_start = false;
+  bool demo = false, has_start = false, nosound = false;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path;
   if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
+  if (const char* e = std::getenv("EW_NOSOUND"); e && e[0] && e[0] != '0') nosound = true;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--scale" && i + 1 < argc) scale = std::atoi(argv[++i]);
@@ -95,6 +98,7 @@ int main(int argc, char** argv) {
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
     else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
     else if (a == "--demo") demo = true;
+    else if (a == "--nosound") nosound = true;
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
@@ -137,6 +141,13 @@ int main(int argc, char** argv) {
 
   ew::render::DeferredRenderer renderer;
   if (!renderer.init(shader_dir, err, atlas_path)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
+  ew::audio::Mixer mixer;
+  if (!nosound) {
+    if (ew::audio::device_start(mixer))
+      std::printf("echo_engine: SFX on\n");
+  } else {
+    std::printf("echo_engine: SFX off (--nosound)\n");
+  }
 
   int frames = 0, sim_steps = 0;
   bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;
@@ -190,6 +201,16 @@ int main(int argc, char** argv) {
       in.restart = false;
       in.restart_full = false;
       ++sim_steps;
+    }
+    if (!nosound) {
+      const uint32_t bits = sim.take_sfx();
+      using namespace ew::audio;
+      if (bits & kSfxJump) device_play(SfxId::Jump);
+      if (bits & kSfxDie) device_play(SfxId::Die);
+      if (bits & kSfxCheckpoint) device_play(SfxId::Checkpoint);
+      if (bits & kSfxGoal) device_play(SfxId::Goal);
+      if (bits & kSfxSwitch) device_play(SfxId::Switch);
+      if (bits & kSfxSplash) device_play(SfxId::Splash);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim.finished() && !announced_goal) {
@@ -252,6 +273,7 @@ int main(int argc, char** argv) {
   }
   if (!dump_path.empty() && !renderer.dump_ppm(dump_path)) std::fprintf(stderr, "echo_engine: no se pudo escribir %s\n", dump_path.c_str());
   std::printf("echo_engine: %d frames, salida limpia\n", frames);
+  ew::audio::device_stop();
   renderer.shutdown();
   glfwDestroyWindow(win);
   glfwTerminate();

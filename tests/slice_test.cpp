@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
     p4.pos = p4.prev = {640.f, 156.f};
     sim4.step({});
     CHECK(sim4.deaths() == 1);
+    CHECK(sim4.take_sfx() & 2u);  // kSfxDie
     CHECK(std::fabs(sim4.player().pos.x - 536.f) < 2.f);
     CHECK(std::fabs(sim4.player().pos.y - 56.f) < 8.f);
     CHECK(sim4.invuln() > 0);
