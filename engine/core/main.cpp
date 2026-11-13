@@ -11,6 +11,7 @@
 #include <string>
 
 #include "game/sim.hpp"
+#include "core/paths.hpp"
 #include "game/gamepad.hpp"
 #include "game/menu.hpp"
 #include "audio/device.hpp"
@@ -109,7 +110,17 @@ int main(int argc, char** argv) {
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
-  if (atlas_path.empty()) atlas_path = EW_DEFAULT_ATLAS;
+  // Assets portables: junto al ejecutable, cwd, o rutas de compile-time (dev).
+  const std::string root = ew::core::exe_dir(argv[0]);
+  if (shader_dir == EW_SHADER_DIR) {
+    const auto vert = ew::core::pick_asset(root, "assets/shaders/fullscreen.vert",
+                                           std::string(EW_SHADER_DIR) + "/fullscreen.vert");
+    shader_dir = ew::core::parent_path(vert);
+  }
+  if (map_path == EW_DEFAULT_MAP)
+    map_path = ew::core::pick_asset(root, "assets/maps/bin/slice.ewmap", EW_DEFAULT_MAP);
+  if (atlas_path.empty())
+    atlas_path = ew::core::pick_asset(root, "assets/atlas/tiles.png", EW_DEFAULT_ATLAS);
 
   ew::game::Scene scene;
   std::string err;

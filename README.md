@@ -144,6 +144,12 @@ carga `tests/fixtures/atlas_128.png` y el default del repo, comprueba el fallbac
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm --nosound`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 
+Los jobs `package-linux` y `package-windows` (push a `main`, tags y PRs) publican **artifacts de CI**
+(`echo-well-linux-x86_64`, `echo-well-windows-x86_64`): `echo_engine`, `ewmapc`, shaders, atlas y mapas
+compilados, listos para bajar desde la pestaña Actions. **No** son un release público ni una publicación
+en itch.io. El binario resuelve assets junto a sí mismo (`assets/…`); ver `assets/DIST.txt`. Instalación
+local: `cmake --install build --prefix dist/echo-well`.
+
 Menú de pausa: `PauseMenu` en `engine/game/menu.hpp` (sin GL, testeable: `menu_test`). Esc/Start abre y cierra; ↑/↓ navega, Enter/Espacio/A confirma, ←/→ ajusta el volumen (pasos de 0.1), confirmar en Volumen mutea. El mixer aplica ganancia/mute (thread-safe). La simulación se congela mientras el menú está abierto; `--demo` no lo abre.
 
 SFX: `engine/audio` genera beeps de seno (salto, muerte, checkpoint, meta, switch, splash). Test `sfx_test` (sin dispositivo). `echo_engine` los reproduce con miniaudio (se descarga al compilar, no está vendorizado) y si no hay hardware o se pasa `--nosound`/`EW_NOSOUND` sigue en silencio. Se desactiva con `-DEW_AUDIO=OFF`.
