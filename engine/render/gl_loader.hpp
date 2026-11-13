@@ -11,7 +11,7 @@
 #include <windows.h>
 #endif
 #include <GL/gl.h>
-#include <GL/glext.h>
+#include "render/gl_api.hpp"
 
 namespace ew::gl {
 #define EW_GL_FUNCS(X) \
