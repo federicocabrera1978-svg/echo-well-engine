@@ -24,6 +24,7 @@ bool Scene::load(const std::filesystem::path& path, std::string& err) {
     if (l.from_entity < entities_.size() && l.to_entity < entities_.size()) links_.emplace_back(l.from_entity, l.to_entity);
   cx_ = cy_ = -1;
   if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y); else follow(0, 0);
+  doors_dirty_ = true;
   return true;
 }
 
@@ -46,17 +47,26 @@ bool Scene::solid_tile(int tx, int ty) {
   return tile(tx, ty, Layer::COL) != 0 || door_blocks(tx, ty);
 }
 
-bool Scene::door_blocks(int tx, int ty) const {
+void Scene::rebuild_doors() const {
+  door_boxes_.clear();
   for (const auto& e : entities_) {
     if (e.type != "door" || (e.active && e.anim >= kDoorSolidUntil)) continue;
     const int dx = int(std::floor(e.x / kTileSize)), dy = int(std::floor(e.y / kTileSize));
-    if (tx >= dx && tx < dx + kDoorWTiles && ty >= dy && ty < dy + kDoorHTiles) return true;
+    door_boxes_.push_back({dx, dy, dx + kDoorWTiles, dy + kDoorHTiles});
   }
+  doors_dirty_ = false;
+}
+
+bool Scene::door_blocks(int tx, int ty) const {
+  if (doors_dirty_) rebuild_doors();
+  for (const auto& d : door_boxes_)
+    if (tx >= d.x0 && tx < d.x1 && ty >= d.y0 && ty < d.y1) return true;
   return false;
 }
 
 void Scene::tick(float dt) {
   if (dt <= 0.f) return;
+  doors_dirty_ = true;
   const float step = kDoorAnimSpeed * dt;
   for (auto& e : entities_) {
     if (e.type != "door") continue;
@@ -68,6 +78,7 @@ void Scene::tick(float dt) {
 
 void Scene::reset_state() {
   for (auto& e : entities_) { e.active = false; e.anim = 0; }
+  doors_dirty_ = true;
   off_x_ = off_y_ = 0;
   cx_ = cy_ = -1;
   if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y);
@@ -75,7 +86,7 @@ void Scene::reset_state() {
 }
 
 void Scene::set_active(std::size_t idx, bool on) {
-  if (idx < entities_.size()) entities_[idx].active = on;
+  if (idx < entities_.size()) { entities_[idx].active = on; doors_dirty_ = true; }
 }
 
 void Scene::set_switch(std::size_t idx, bool on) {
@@ -83,6 +94,7 @@ void Scene::set_switch(std::size_t idx, bool on) {
   entities_[idx].active = on;
   for (const auto& [from, to] : links_)
     if (from == idx && entities_[to].type == "door") entities_[to].active = on;
+  doors_dirty_ = true;
 }
 
 int Scene::interact(float x, float y) {

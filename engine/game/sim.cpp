@@ -9,6 +9,7 @@ using ew::physics::Vec2;
 Sim::Sim(Scene& scene) : scene_(scene) { build(); }
 
 void Sim::build() {
+  solid_fn_ = [this](int tx, int ty) { return scene_.solid_tile(tx, ty); };
   world_.clear();
   world_.tile_size = float(ew::map::kTileSize);
   water_.clear();
@@ -115,7 +116,7 @@ void Sim::step(const Input& in) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     apply_flood();
     for (auto& w : water_) { w.interact(world_); w.step(); }
-    world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
+    world_.step(kDt, solid_fn_);
     const auto& p = world_.points()[player_];
     scene_.follow(p.pos.x, p.pos.y, kDt);
     scene_.tick(kDt);
@@ -172,7 +173,7 @@ void Sim::step(const Input& in) {
   }
   apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
-  world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
+  world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
     const auto& node = world_.points()[held_index()];
     auto& p = world_.points()[player_];

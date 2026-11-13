@@ -150,6 +150,8 @@ compilados, listos para bajar desde la pestaña Actions. **No** son un release p
 en itch.io. El binario resuelve assets junto a sí mismo (`assets/…`); ver `assets/DIST.txt`. Instalación
 local: `cmake --install build --prefix dist/echo-well`.
 
+Perf: el timestep es fijo (`Sim::kDt` = 1/60, sin reloj de pared). `bench_test` verifica determinismo y reporta us/paso (umbral holgado 2 ms, CI). `echo_engine --frames N` imprime ms/frame al salir. Colisión de puertas usa un cache de AABBs (sin `strcmp` por tile).
+
 Menú de pausa: `PauseMenu` en `engine/game/menu.hpp` (sin GL, testeable: `menu_test`). Esc/Start abre y cierra; ↑/↓ navega, Enter/Espacio/A confirma, ←/→ ajusta el volumen (pasos de 0.1), confirmar en Volumen mutea. El mixer aplica ganancia/mute (thread-safe). La simulación se congela mientras el menú está abierto; `--demo` no lo abre.
 
 SFX: `engine/audio` genera beeps de seno (salto, muerte, checkpoint, meta, switch, splash). Test `sfx_test` (sin dispositivo). `echo_engine` los reproduce con miniaudio (se descarga al compilar, no está vendorizado) y si no hay hardware o se pasa `--nosound`/`EW_NOSOUND` sigue en silencio. Se desactiva con `-DEW_AUDIO=OFF`.

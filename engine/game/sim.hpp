@@ -98,6 +98,7 @@ class Sim {
   int invuln_ = 0;
   uint32_t sfx_ = 0;
   bool was_in_water_ = false;
+  ew::physics::SolidFn solid_fn_;  // cache: evita alocar std::function en cada step
   void build();
   void grab(int rope, int node, bool flash = true);
   void check_goal();
