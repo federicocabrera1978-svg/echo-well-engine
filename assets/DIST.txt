@@ -1,0 +1,24 @@
+Echo Well — paquete de CI (no es un release público ni una build de itch.io).
+
+Contenido:
+  echo_engine[.exe]   prototipo jugable (mapa slice por defecto)
+  ewmapc[.exe]        compilador YAML → .ewmap
+  ewmap_smoke[.exe]   verificación estructural de un .ewmap
+  assets/shaders/     GLSL 330
+  assets/atlas/tiles.png
+  assets/maps/bin/{slice,hello}.ewmap
+  README.md
+
+Linux (x86_64, glibc reciente, libGL + X11):
+  ./echo_engine
+  ./echo_engine --map assets/maps/bin/hello.ewmap --nosound
+
+Windows:
+  echo_engine.exe
+
+El ejecutable busca shaders, atlas y mapa primero junto a sí mismo
+(assets/...), después en el directorio de trabajo, y por último las
+rutas con las que se compiló (útil en desarrollo). --shaders, --map,
+--atlas y EW_ATLAS pisan el default.
+
+Origen: artifact del workflow de GitHub Actions (push a main o a un tag).

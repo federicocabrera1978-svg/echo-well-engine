@@ -16,9 +16,13 @@ if(EW_SANITIZE AND NOT MSVC)
 endif()
 
 if(MSVC)
-  add_compile_options(/W4 /permissive-)
+  add_compile_options(/W4 /permissive- /utf-8)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+if(WIN32)
+  # windows.h define min/max como macros y rompe std::min/std::max.
+  add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
 
 # --- echo_map: formato .ewmap + MapLoader -----------------------------------
@@ -137,6 +141,10 @@ add_executable(menu_test tests/menu_test.cpp)
 target_link_libraries(menu_test PRIVATE echo_game)
 add_test(NAME pause_menu COMMAND menu_test)
 
+add_executable(paths_test tests/paths_test.cpp)
+target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+add_test(NAME asset_paths COMMAND paths_test)
+
 # --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
 # corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.
@@ -217,10 +225,27 @@ if(EW_BUILD_ENGINE)
   if(EW_AUDIO AND EXISTS "${CMAKE_BINARY_DIR}/miniaudio.h")
     target_compile_definitions(echo_engine PRIVATE EW_AUDIO=1)
     target_include_directories(echo_engine PRIVATE ${CMAKE_BINARY_DIR})
-    set_source_files_properties(engine/audio/device.cpp PROPERTIES COMPILE_OPTIONS -w)
+    if(MSVC)
+      set_source_files_properties(engine/audio/device.cpp PROPERTIES COMPILE_OPTIONS /W0)
+    else()
+      set_source_files_properties(engine/audio/device.cpp PROPERTIES COMPILE_OPTIONS -w)
+    endif()
     if(UNIX)
       find_package(Threads REQUIRED)
       target_link_libraries(echo_engine PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
     endif()
   endif()
 endif()
+
+# --- instalación portable (artifacts de CI, no un release público) ----------
+# Prefijo típico: cmake --install build --prefix dist/echo-well
+# Layout: echo_engine, ewmapc, README, assets/{shaders,atlas,maps/bin}.
+install(TARGETS ewmapc ewmap_smoke RUNTIME DESTINATION .)
+if(EW_BUILD_ENGINE)
+  install(TARGETS echo_engine RUNTIME DESTINATION .)
+endif()
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png DESTINATION assets/atlas)
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} DESTINATION assets/maps/bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/DIST.txt DESTINATION .)

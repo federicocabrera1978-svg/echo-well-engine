@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['*']
   pull_request:
     branches: [main]
 permissions:
@@ -92,3 +93,73 @@ jobs:
           name: engine-frame
           path: frame.ppm
           if-no-files-found: error
+
+  # Builds descargables (solo artifacts de Actions; NO se publican releases ni itch).
+  package-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Deps (OpenGL/X11 + xvfb)
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb mesa-utils
+      - name: Configure + build (Release)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+      - name: Install portable prefix
+        run: cmake --install build --prefix dist/echo-well
+      - name: Smoke desde el prefix (sin el árbol de fuentes)
+        run: |
+          mkdir -p /tmp/ew-pack
+          cp -a dist/echo-well /tmp/ew-pack/
+          ls -la /tmp/ew-pack/echo-well /tmp/ew-pack/echo-well/assets/atlas /tmp/ew-pack/echo-well/assets/maps/bin /tmp/ew-pack/echo-well/assets/shaders
+          test -f /tmp/ew-pack/echo-well/echo_engine
+          test -f /tmp/ew-pack/echo-well/assets/atlas/tiles.png
+          test -f /tmp/ew-pack/echo-well/assets/maps/bin/slice.ewmap
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" \
+            /tmp/ew-pack/echo-well/echo_engine --frames 30 --demo --dump /tmp/ew-pack/frame.ppm --nosound --nogamepad \
+            > /tmp/ew-pack/run.log 2>&1
+          cat /tmp/ew-pack/run.log
+          grep -F "atlas PNG /tmp/ew-pack/echo-well/assets/atlas/tiles.png" /tmp/ew-pack/run.log
+          python3 - <<'PY'
+          from pathlib import Path
+          b = Path("/tmp/ew-pack/frame.ppm").read_bytes()
+          hdr = b"P6\n320 180\n255\n"
+          assert b.startswith(hdr), b[:40]
+          print("pack smoke OK", len(b))
+          PY
+      - name: Zip
+        run: python3 -c "import shutil; shutil.make_archive('echo-well-linux-x86_64', 'zip', 'dist', 'echo-well')"
+      - name: Upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: echo-well-linux-x86_64
+          path: echo-well-linux-x86_64.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  package-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Configure + build (Release, MSVC)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release -j
+      - name: Install portable prefix
+        run: cmake --install build --config Release --prefix dist/echo-well
+      - name: Verify layout
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse dist/echo-well | Select-Object FullName
+          if (-not (Test-Path dist/echo-well/echo_engine.exe)) { throw "falta echo_engine.exe" }
+          if (-not (Test-Path dist/echo-well/assets/atlas/tiles.png)) { throw "falta tiles.png" }
+          if (-not (Test-Path dist/echo-well/assets/maps/bin/slice.ewmap)) { throw "falta slice.ewmap" }
+          if (-not (Test-Path dist/echo-well/assets/shaders/light.frag)) { throw "falta shaders" }
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/echo-well -DestinationPath echo-well-windows-x86_64.zip
+      - name: Upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: echo-well-windows-x86_64
+          path: echo-well-windows-x86_64.zip
+          if-no-files-found: error
+          retention-days: 30
