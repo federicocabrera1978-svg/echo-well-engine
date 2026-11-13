@@ -66,6 +66,9 @@ class World {
   void solve_sticks();
   void solve_pairs();
   void collide(Point& p, const SolidFn& solid);
+  // Impide que un stick atraviese el interior de un tile sólido (la cuerda se
+  // envuelve en la esquina / ambos extremos quedan del mismo lado).
+  void collide_sticks(const SolidFn& solid);
   std::vector<Point> points_;
   std::vector<Stick> sticks_;
   struct Pair { uint32_t a, b; bool on = true; };
