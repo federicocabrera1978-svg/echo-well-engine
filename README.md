@@ -121,4 +121,6 @@ El id de tile es el valor **VIS** del mapa: `tile_uv(id) = ((id%16)*8, (id/16)*8
 (el shader `gbuffer_map.frag` deriva la normal de la altura + bisel de borde). Estilos por `id % 4`: liso,
 ladrillo, granulado, vetas. Test: `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas).
 
+El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
+
 Seguridad (fuzzing, sanitizers, branch protection): ver [docs/security.md](docs/security.md).
