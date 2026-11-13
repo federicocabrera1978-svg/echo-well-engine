@@ -16,6 +16,8 @@ engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS,
 engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles) + WaterBody (Hooke)
 engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
 assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
+assets/atlas/         tiles.png default (generado por tools/gen_atlas.py)
+tools/gen_atlas.py    script reproducible del atlas PNG
 tests/               tests sin GL (ctest)
 engine/map/          echo_map: formato .ewmap, MapLoader, ChunkCache (LRU), CRC-32
 tools/ewmapc/        compilador YAML -> .ewmap (+ smoke test)
@@ -123,17 +125,22 @@ if (auto* c = cache.acquire(0, 0)) upload(c->layers[uint32_t(ew::map::Layer::VIS
 
 ## Atlas de tiles
 
-`engine/render/tile_atlas.{hpp,cpp}` genera un atlas procedural 128×128 RGBA8 (16×16 tiles de 8×8, sin GL)
-y puede **cargar uno desde un PNG** del mismo tamaño (`load_tile_atlas_file` / `load_tile_atlas_mem`, con
+`echo_engine` carga por defecto **`assets/atlas/tiles.png`**: arte pixel de 128×128 (16 familias × 16
+máscaras de 4 vecinos, tiles 8×8) generado por el script reproducible
+[`tools/gen_atlas.py`](tools/gen_atlas.py) (`python3 tools/gen_atlas.py -o assets/atlas/tiles.png` y
+`--check` para auditar que el PNG commiteado no se desfasó). RGB = albedo, A = altura.
+
+`engine/render/tile_atlas.{hpp,cpp}` también genera un atlas procedural 128×128 RGBA8 (sin GL)
+y puede **cargar cualquier PNG** del mismo tamaño (`load_tile_atlas_file` / `load_tile_atlas_mem`, con
 `stb_image` v2.32 vendorizado, solo PNG). Si el archivo falta, está roto o no mide 128×128, se usa el
-procedural (nunca queda un atlas vacío). `echo_engine --atlas FILE.png` o la env `EW_ATLAS`.
+procedural (nunca queda un atlas vacío). `echo_engine --atlas FILE.png` o la env `EW_ATLAS` pisan el default.
 `ewmapc` aplica **autotiling de 4 vecinos** (bits N=1, E=2, S=4, W=8) sobre `VIS` y `FG`: el tile del YAML
 es la familia (`(tile%15)+1`, 1..15) y el `.ewmap` guarda `familia*16+máscara` (16..255; el 0 queda vacío).
 El atlas pone la familia en la fila y la máscara en la columna; bisel (albedo y altura) solo en lados sin
 vecino. El shader `gbuffer_map.frag` deriva la normal de la altura y aplica el mismo bisel según la máscara.
 Estilos por familia (`id/16 % 4`): liso, ladrillo, granulado, vetas. En el YAML, `autotile: false` lo apaga.
 Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas;
-carga `tests/fixtures/atlas_128.png` y comprueba el fallback). `fuzz_atlas` cubre el loader con libFuzzer.
+carga `tests/fixtures/atlas_128.png` y el default del repo, comprueba el fallback). `atlas_gen_check` corre `gen_atlas.py --check`. `fuzz_atlas` cubre el loader con libFuzzer.
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm --nosound`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 

@@ -22,6 +22,9 @@
 #ifndef EW_DEFAULT_MAP
 #define EW_DEFAULT_MAP "assets/maps/bin/hello.ewmap"
 #endif
+#ifndef EW_DEFAULT_ATLAS
+#define EW_DEFAULT_ATLAS "assets/atlas/tiles.png"
+#endif
 
 namespace {
 using ew::render::FrameView;
@@ -105,6 +108,7 @@ int main(int argc, char** argv) {
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
+  if (atlas_path.empty()) atlas_path = EW_DEFAULT_ATLAS;
 
   ew::game::Scene scene;
   std::string err;

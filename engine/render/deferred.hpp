@@ -37,7 +37,7 @@ struct FrameView {
 // Pase de luz -> target "lit" 320x180 -> blit escalado entero (NEAREST) a pantalla.
 class DeferredRenderer {
  public:
-  // atlas_path vacío: atlas procedural. Si apunta a un PNG 128×128 válido, lo usa.
+  // atlas_path vacío o inválido: atlas procedural. PNG 128×128 válido: lo usa (el engine pasa el default del repo).
   bool init(const std::string& shader_dir, std::string& err, const std::string& atlas_path = {});
   void shutdown();
   // Vuelca el target "lit" 320×180 a un PPM (debug / verificación headless).

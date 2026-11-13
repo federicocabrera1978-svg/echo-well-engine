@@ -111,8 +111,14 @@ target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine
 add_executable(atlas_test tests/atlas_test.cpp)
 target_link_libraries(atlas_test PRIVATE echo_atlas)
 add_test(NAME tile_atlas COMMAND atlas_test)
+set(EW_DEFAULT_ATLAS "${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png")
 set_tests_properties(tile_atlas PROPERTIES
-  ENVIRONMENT "EW_TEST_FIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+  ENVIRONMENT "EW_TEST_FIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures;EW_DEFAULT_ATLAS=${EW_DEFAULT_ATLAS}")
+find_program(EW_PYTHON python3)
+if(EW_PYTHON)
+  add_test(NAME atlas_gen_check
+    COMMAND ${EW_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_atlas.py --check ${EW_DEFAULT_ATLAS})
+endif()
 add_executable(autotile_test tests/autotile_test.cpp)
 target_link_libraries(autotile_test PRIVATE echo_map)
 add_test(NAME autotile COMMAND autotile_test)
@@ -177,7 +183,8 @@ if(EW_BUILD_ENGINE)
   add_executable(echo_engine engine/core/main.cpp)
   target_compile_definitions(echo_engine PRIVATE
     EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
-    EW_DEFAULT_MAP="${EW_SLICE_MAP}")
+    EW_DEFAULT_MAP="${EW_SLICE_MAP}"
+    EW_DEFAULT_ATLAS="${EW_DEFAULT_ATLAS}")
   target_link_libraries(echo_engine PRIVATE echo_render echo_game echo_audio glfw)
   add_dependencies(echo_engine ew_maps)
   # device.cpp siempre (stubs si EW_AUDIO=OFF). miniaudio no se vendoriza (~4 MiB);
