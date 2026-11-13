@@ -27,6 +27,9 @@ class WaterBody {
   int cols() const { return int(h_.size()); }
   float x() const { return x_; }
   float rest_y() const { return y_; }
+  float initial_rest_y() const { return y0_; }
+  // Mueve la superficie; el fondo se queda fijo (la profundidad se ajusta).
+  void set_rest_y(float y);
   float width() const { return w_; }
   float bottom() const { return y_ + h_px_; }
   float surface_at(float x) const;  // y de la superficie en x (px mundo)
@@ -36,7 +39,7 @@ class WaterBody {
 
  private:
   int col_of(float x) const;
-  float x_, y_, w_, h_px_, k_, d_;
+  float x_, y_, y0_, w_, h_px_, k_, d_;
   std::vector<float> h_, v_, ldelta_, rdelta_;
 };
 

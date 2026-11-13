@@ -110,6 +110,7 @@ void Sim::step(const Input& in) {
   if (invuln_ > 0) --invuln_;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
+    apply_flood();
     for (auto& w : water_) { w.interact(world_); w.step(); }
     world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
     const auto& p = world_.points()[player_];
@@ -162,6 +163,7 @@ void Sim::step(const Input& in) {
     pl.set_velocity(v);
     if (in.interact) scene_.interact(pl.pos.x, pl.pos.y);
   }
+  apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
   world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
@@ -221,6 +223,21 @@ void Sim::check_hazards() {
       if (ew::physics::length(p.pos - c) < r) { kill(); return; }
     }
   if (p.pos.y > float(scene_.height_px()) + r) kill();  // caída fuera del mapa
+}
+
+void Sim::apply_flood() {
+  bool on = false;
+  for (const auto& e : scene_.entities())
+    if (e.type == "flood_switch" && e.active) { on = true; break; }
+  for (auto& w : water_) {
+    if (w.x() < 400.f) continue;  // la pileta del inicio no se inunda
+    const float tgt = on ? kFloodRestY : w.initial_rest_y();
+    const float y = w.rest_y();
+    const float dy = tgt - y;
+    if (std::fabs(dy) < 0.05f) { w.set_rest_y(tgt); continue; }
+    const float step = kFloodSpeed * kDt;
+    w.set_rest_y(y + std::copysign(std::min(step, std::fabs(dy)), dy));
+  }
 }
 
 }  // namespace ew::game

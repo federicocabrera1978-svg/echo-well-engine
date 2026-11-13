@@ -39,6 +39,8 @@ class Sim {
   static constexpr uint16_t kMetaHazard = 4;      // META tile = pinchos / peligro
   static constexpr int kRespawnInvuln = 30;       // pasos sin daño al reaparecer
   static constexpr float kRestartFullHold = 0.8f; // s: R largo → reset total
+  static constexpr float kFloodRestY = 72.f;      // superficie objetivo (justo bajo la cornisa)
+  static constexpr float kFloodSpeed = 48.f;      // px/s que sube/baja el agua del flood_switch
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
@@ -98,6 +100,7 @@ class Sim {
   void check_checkpoints();
   void check_hazards();
   void kill();
+  void apply_flood();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }
   void release();
 };
