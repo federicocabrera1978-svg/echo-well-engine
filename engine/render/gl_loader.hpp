@@ -1,6 +1,15 @@
 #pragma once
 // Loader GL 3.3 core mínimo (sin GLAD): solo las funciones que usa el motor.
 // Se resuelven con glfwGetProcAddress tras crear el contexto.
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #include <GL/gl.h>
 #include <GL/glext.h>
 

@@ -115,7 +115,8 @@ jobs:
           test -f /tmp/ew-pack/echo-well/assets/maps/bin/slice.ewmap
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" \
             /tmp/ew-pack/echo-well/echo_engine --frames 30 --demo --dump /tmp/ew-pack/frame.ppm --nosound --nogamepad \
-            | tee /tmp/ew-pack/run.log
+            > /tmp/ew-pack/run.log 2>&1
+          cat /tmp/ew-pack/run.log
           grep -F "atlas PNG /tmp/ew-pack/echo-well/assets/atlas/tiles.png" /tmp/ew-pack/run.log
           python3 - <<'PY'
           from pathlib import Path
