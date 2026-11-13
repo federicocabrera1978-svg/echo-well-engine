@@ -42,9 +42,19 @@ target_link_libraries(ewmap_smoke PRIVATE echo_map)
 add_test(NAME ewmapc_hello
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap)
+add_test(NAME ewmapc_slice
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap)
 add_test(NAME ewmap_load_hello
-  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap)
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
+          --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2
+          --has player_spawn --has switch --has door)
+add_test(NAME ewmap_load_slice
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
+          --name slice --chunks 3 --ents 4 --links 1 --water 1 --ropes 1
+          --has player_spawn --has switch --has door --has goal)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
+set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)
 
 # --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
 add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)

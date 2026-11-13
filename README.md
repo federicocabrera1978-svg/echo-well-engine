@@ -106,6 +106,7 @@ Detalle completo en [docs/ewmap.md](docs/ewmap.md).
 # ewmapc: assets/maps/src/hello.yaml -> assets/maps/bin/hello.ewmap (7728 bytes, 1 chunks, 3 entities, crc)
 ```
 `ewmapc` valida su propia salida con `MapLoader` antes de escribirla.
+`ewmap_smoke FILE` carga cualquier `.ewmap` y verifica estructura (geometría, chunks, entidades, links, agua, cuerdas, CRC, cache). Flags opcionales: `--name`, `--chunks`, `--ents`, `--links`, `--water`, `--ropes`, `--has TYPE` (se puede repetir). CI y ctest lo corren sobre `hello` y `slice`.
 
 ## Cargar un mapa (C++)
 ```cpp

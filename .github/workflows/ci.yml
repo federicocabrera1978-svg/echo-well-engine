@@ -21,8 +21,9 @@ jobs:
         run: |
           mkdir -p assets/maps/bin
           ./build/ewmapc --crc assets/maps/src/hello.yaml -o assets/maps/bin/hello.ewmap
-          ./build/ewmap_smoke assets/maps/bin/hello.ewmap
+          ./build/ewmap_smoke assets/maps/bin/hello.ewmap --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --has player_spawn --has switch --has door
           ./build/ewmapc --crc assets/maps/src/slice.yaml -o assets/maps/bin/slice.ewmap
+          ./build/ewmap_smoke assets/maps/bin/slice.ewmap --name slice --chunks 3 --ents 4 --links 1 --water 1 --ropes 1 --has player_spawn --has switch --has door --has goal
 
   sanitizers:
     runs-on: ubuntu-latest
