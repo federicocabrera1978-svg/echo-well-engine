@@ -36,11 +36,17 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
       push_marker(v, e.x, e.y + 5, 3, 1, 0.35f, 0.35f, 0.4f);
       if (e.active) push_marker(v, e.x, e.y + 2, 2, 0, 0.3f, 1.0f, 0.45f);
       else push_marker(v, e.x, e.y + 2, 2, 0, 1.0f, 0.6f, 0.15f);
-    } else if (e.type == "door") {  // cerrada: 3 bloques violeta sólidos · abierta: solo marco superior tenue
+    } else if (e.type == "door") {  // se desliza hacia arriba al abrir (anim 0..1)
       const int h = ew::game::kDoorHTiles;
-      if (!e.active)
-        for (int k = 0; k < h; ++k) push_marker(v, e.x + 4, e.y + 4 + 8.f * float(k), 4, 1, 0.6f, 0.3f, 0.85f);
-      else push_marker(v, e.x + 4, e.y + 1, 1, 1, 0.3f, 0.2f, 0.4f);
+      const float rise = e.anim * float(h) * 8.f;
+      if (e.anim < 0.99f) {
+        const float vis = float(h) * (1.f - e.anim);
+        const int n = std::max(1, int(std::ceil(vis / 8.f)));
+        const float fade = 1.f - e.anim * 0.35f;
+        for (int k = 0; k < n; ++k)
+          push_marker(v, e.x + 4, e.y + 4 + 8.f * float(k) - rise, 4, 1, 0.6f * fade, 0.3f * fade, 0.85f * fade);
+      }
+      if (e.anim > 0.05f) push_marker(v, e.x + 4, e.y + 1, 1, 1, 0.3f, 0.2f, 0.4f);
     }
     else if (e.type == "player_spawn") push_marker(v, e.x, e.y + 7, 1, 1, 0.3f, 0.9f, 0.4f);
     else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
@@ -163,8 +169,16 @@ int main(int argc, char** argv) {
     for (int r = 0; r < sim.rope_count(); ++r)  // cuerdas Verlet (sección ROPE)
       for (int i = 0; i < sim.rope_points(r); ++i) {
         const auto& rp = pts[sim.rope_first(r) + uint32_t(i)];
-        push_marker(v, rp.pos.x, rp.pos.y, i == 0 ? 2.f : rp.radius, i == 0 ? 1 : 0, 0.75f, 0.6f, 0.4f);
+        const bool held = sim.on_rope() && sim.held_rope() == r && i == sim.rope_node();
+        const float rad = i == 0 ? 2.f : (held ? 2.5f : rp.radius);
+        const float cr = held ? 1.0f : 0.75f, cg = held ? 0.85f : 0.6f, cb = held ? 0.4f : 0.4f;
+        push_marker(v, rp.pos.x, rp.pos.y, rad, i == 0 ? 1 : 0, cr, cg, cb);
       }
+    if (sim.grab_flash() > 0 && sim.on_rope()) {  // anillo que se expande al agarrar
+      const auto& node = pts[sim.rope_first(sim.held_rope()) + uint32_t(sim.rope_node())];
+      const float f = float(sim.grab_flash()) / float(ew::game::Sim::kGrabFlashFrames);
+      push_marker(v, node.pos.x, node.pos.y, 3.f + (1.f - f) * 10.f, 0, 1.0f, 0.9f * f, 0.35f * f);
+    }
     push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
     for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;

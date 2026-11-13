@@ -70,6 +70,8 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 10; ++i) sim.step({});
   { Input in; in.interact = true; sim.step(in); }
   CHECK(sw->active && door->active);
+  for (int i = 0; i < 30; ++i) sim.step({});  // esperar la animación de apertura
+  CHECK(door->anim == 1.f);
   CHECK(!scene.door_blocks(int(door->x) / 8, int(door->y) / 8));
 
   // 3) Caminar, saltar el borde de la pileta, nadar y cruzar el seam (x=320).

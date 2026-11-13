@@ -24,9 +24,13 @@ int main(int argc, char** argv) {
   pts[pi].pos = pts[pi].prev = tip + physics::Vec2{3, 0};
   sim.step(g);
   CHECK(sim.on_rope());
+  CHECK(sim.grab_flash() == game::Sim::kGrabFlashFrames);
   const int n0 = sim.rope_node();
-  std::printf("agarrado en nodo %d\n", n0);
+  std::printf("agarrado en nodo %d (flash %d)\n", n0, sim.grab_flash());
   CHECK(n0 >= 14);
+  // El destello dura kGrabFlashFrames y no se reinicia al trepar.
+  for (int i = 0; i < game::Sim::kGrabFlashFrames; ++i) sim.step({});
+  CHECK(sim.grab_flash() == 0);
   // Colgado no cae al piso (y < 156) y sigue al nodo.
   for (int i = 0; i < 60; ++i) sim.step({});
   CHECK(sim.on_rope());
@@ -49,6 +53,7 @@ int main(int argc, char** argv) {
   std::printf("trepó a nodo %d (y %.1f -> %.1f)\n", sim.rope_node(), y0, sim.player().pos.y);
   CHECK(sim.rope_node() <= n0 - 10);
   CHECK(sim.player().pos.y < y0 - 40.f);
+  CHECK(sim.grab_flash() == 0);  // trepar no reinicia el destello
   // Bajar de nuevo un poco.
   game::Input down; down.climb = 1;
   const int n1 = sim.rope_node();

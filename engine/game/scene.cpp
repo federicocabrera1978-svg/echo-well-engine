@@ -48,11 +48,22 @@ bool Scene::solid_tile(int tx, int ty) {
 
 bool Scene::door_blocks(int tx, int ty) const {
   for (const auto& e : entities_) {
-    if (e.type != "door" || e.active) continue;
+    if (e.type != "door" || (e.active && e.anim >= kDoorSolidUntil)) continue;
     const int dx = int(std::floor(e.x / kTileSize)), dy = int(std::floor(e.y / kTileSize));
     if (tx >= dx && tx < dx + kDoorWTiles && ty >= dy && ty < dy + kDoorHTiles) return true;
   }
   return false;
+}
+
+void Scene::tick(float dt) {
+  if (dt <= 0.f) return;
+  const float step = kDoorAnimSpeed * dt;
+  for (auto& e : entities_) {
+    if (e.type != "door") continue;
+    const float tgt = e.active ? 1.f : 0.f;
+    if (e.anim < tgt) e.anim = std::min(tgt, e.anim + step);
+    else if (e.anim > tgt) e.anim = std::max(tgt, e.anim - step);
+  }
 }
 
 void Scene::set_switch(std::size_t idx, bool on) {

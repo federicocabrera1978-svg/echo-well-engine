@@ -29,10 +29,11 @@ bool Sim::player_in_water() const {
   return false;
 }
 
-void Sim::grab(int rope, int node) {
+void Sim::grab(int rope, int node, bool flash) {
   held_rope_ = rope;
   held_ = node;
   climb_acc_ = 0;
+  if (flash) grab_flash_ = kGrabFlashFrames;
   auto& pts = world_.points();
   pts[held_index()].inv_mass = kHeldInvMass;
   world_.set_pairs_enabled(player_, false);
@@ -49,6 +50,7 @@ void Sim::release() {
 void Sim::step(const Input& in) {
   auto& pts = world_.points();
   if (regrab_cd_ > 0) --regrab_cd_;
+  if (grab_flash_ > 0) --grab_flash_;
   // Agarrar: nodo más cercano dentro de kGrabRange.
   if (in.grab && !held_ && regrab_cd_ == 0) {
     int best = 0, best_r = 0;
@@ -70,8 +72,8 @@ void Sim::step(const Input& in) {
     const float seg = ropes_[std::size_t(held_rope_)].seg;
     const int rn = ropes_[std::size_t(held_rope_)].n, hr = held_rope_;
     climb_acc_ += std::clamp(in.climb, -1.f, 1.f) * kClimbSpeed * kDt;
-    if (climb_acc_ <= -seg && held_ > 1) { climb_acc_ = 0; int n = held_ - 1; release(); regrab_cd_ = 0; grab(hr, n); }
-    else if (climb_acc_ >= seg && held_ < rn) { climb_acc_ = 0; int n = held_ + 1; release(); regrab_cd_ = 0; grab(hr, n); }
+    if (climb_acc_ <= -seg && held_ > 1) { climb_acc_ = 0; int n = held_ - 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
+    else if (climb_acc_ >= seg && held_ < rn) { climb_acc_ = 0; int n = held_ + 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
     else climb_acc_ = std::clamp(climb_acc_, -seg, seg);
     if (in.jump) {
       const Vec2 v = pts[held_index()].velocity();
@@ -101,6 +103,7 @@ void Sim::step(const Input& in) {
     p.grounded = false;
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
+  scene_.tick(kDt);
   check_goal();
 }
 
