@@ -17,11 +17,13 @@ jobs:
         run: cmake --build build -j
       - name: Test
         run: ctest --test-dir build --output-on-failure
-      - name: Compile example map (CRC always on)
+      - name: Compile example maps (CRC always on)
         run: |
           mkdir -p assets/maps/bin
           ./build/ewmapc --crc assets/maps/src/hello.yaml -o assets/maps/bin/hello.ewmap
           ./build/ewmap_smoke assets/maps/bin/hello.ewmap
+          ./build/ewmapc --crc assets/maps/src/slice.yaml -o assets/maps/bin/slice.ewmap
+          ./build/ewmap_smoke assets/maps/bin/slice.ewmap
 
   sanitizers:
     runs-on: ubuntu-latest
@@ -69,5 +71,20 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb mesa-utils
       - name: Configure + build (Release)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
-      - name: Smoke run headless
-        run: LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" ./build/echo_engine --frames 60
+      - name: Smoke run headless + dump PPM
+        run: |
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24"             ./build/echo_engine --frames 90 --demo --dump frame.ppm
+          python3 - <<'PY'
+          from pathlib import Path
+          b = Path("frame.ppm").read_bytes()
+          hdr = b"P6\n320 180\n255\n"
+          assert b.startswith(hdr), b[:40]
+          assert len(b) == len(hdr) + 320 * 180 * 3, len(b)
+          print("frame.ppm OK", len(b), "bytes")
+          PY
+      - name: Upload screenshot
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: engine-frame
+          path: frame.ppm
+          if-no-files-found: error
