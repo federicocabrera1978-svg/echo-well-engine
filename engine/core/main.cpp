@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo] [--start X Y]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), ESC salir. --demo = input automático.
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC salir. --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
@@ -52,8 +52,31 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
     else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
       push_marker(v, e.x, e.y + 6, 4, 1, 0.45f, 0.35f, 0.15f);
       push_marker(v, e.x, e.y, 5, 0, 1.0f, 0.85f, 0.25f);
+    } else if (e.type == "checkpoint") {  // totem: cian inactivo, verde si es el actual
+      if (e.active) {
+        push_marker(v, e.x, e.y, 5, 1, 0.3f, 1.0f, 0.55f);
+        push_marker(v, e.x, e.y - 6, 3, 0, 0.6f, 1.0f, 0.7f);
+      } else {
+        push_marker(v, e.x, e.y, 4, 1, 0.25f, 0.55f, 0.7f);
+        push_marker(v, e.x, e.y - 5, 2, 0, 0.4f, 0.7f, 0.85f);
+      }
     }
   }
+}
+
+// Pinchos (META 4) visibles alrededor de la cámara.
+void push_hazards(FrameView& v, ew::game::Scene& s) {
+  const float ts = float(ew::map::kTileSize);
+  const int x0 = int(std::floor(s.cam_x() / ts)), y0 = int(std::floor(s.cam_y() / ts));
+  const int x1 = x0 + ew::game::kViewW / ew::map::kTileSize + 2;
+  const int y1 = y0 + ew::game::kViewH / ew::map::kTileSize + 2;
+  for (int ty = y0; ty <= y1; ++ty)
+    for (int tx = x0; tx <= x1; ++tx) {
+      if (s.tile(tx, ty, ew::map::Layer::META) != ew::game::Sim::kMetaHazard) continue;
+      const float x = float(tx) * ts + 4.f, y = float(ty) * ts + 6.f;
+      push_marker(v, x, y, 3, 1, 0.95f, 0.2f, 0.15f);
+      push_marker(v, x, y - 3, 2, 0, 0.95f, 0.45f, 0.2f);
+    }
 }
 }  // namespace
 
@@ -86,6 +109,8 @@ int main(int argc, char** argv) {
   std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
               scene.height_px(), scene.entities().size());
   if (scene.find_type("goal")) std::printf("echo_engine: hay una meta — llegá para completar el camino\n");
+  if (scene.find_type("checkpoint"))
+    std::printf("echo_engine: R corto vuelve al checkpoint, R largo (~0.8 s) al inicio\n");
 
   glfwSetErrorCallback([](int c, const char* d) { std::fprintf(stderr, "glfw %d: %s\n", c, d); });
   if (!glfwInit()) return 1;
@@ -112,8 +137,8 @@ int main(int argc, char** argv) {
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, announced_goal = false;
-  double acc = 0, last = glfwGetTime();
+  bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;
+  double acc = 0, last = glfwGetTime(), r_down_since = -1;
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
     auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
@@ -132,7 +157,18 @@ int main(int argc, char** argv) {
     in.grab = grab_down && !grab_was_down;
     grab_was_down = grab_down;
     const bool r_down = key(GLFW_KEY_R);
-    in.restart = r_down && !r_was_down;
+    const double now_in = glfwGetTime();
+    if (r_down) {
+      if (r_down_since < 0) r_down_since = now_in;
+      if (!r_full_sent && (now_in - r_down_since) >= ew::game::Sim::kRestartFullHold) {
+        in.restart_full = true;
+        r_full_sent = true;
+      }
+    } else {
+      if (r_was_down && !r_full_sent) in.restart = true;  // R corto: al soltar
+      r_down_since = -1;
+      r_full_sent = false;
+    }
     r_was_down = r_down;
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
       in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
@@ -143,20 +179,21 @@ int main(int argc, char** argv) {
     const double now = glfwGetTime();
     acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
-    const bool did_restart = in.restart;
+    const bool did_restart = in.restart || in.restart_full;
     for (int n = 0; acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
       sim.step(in);
       in.jump = false;
       in.interact = false;
       in.grab = false;
       in.restart = false;
+      in.restart_full = false;
       ++sim_steps;
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim.finished() && !announced_goal) {
-      std::printf("echo_engine: ¡meta! camino completado  (R reinicia)\n");
+      std::printf("echo_engine: ¡meta! camino completado  (R corto: checkpoint, R largo: inicio)\n");
       announced_goal = true;
-      glfwSetWindowTitle(win, "Echo Well — ¡meta!  [R] reiniciar");
+      glfwSetWindowTitle(win, "Echo Well — ¡meta!  [R] checkpoint, hold inicio");
     }
     if (did_restart && announced_goal && !sim.finished()) {
       announced_goal = false;
@@ -173,6 +210,7 @@ int main(int argc, char** argv) {
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
+    push_hazards(v, scene);
     if (sim.finished())
       if (const auto* g = scene.find_type("goal"))
         push_marker(v, g->x, g->y, 8, 0, 1.0f, 1.0f, 0.55f);

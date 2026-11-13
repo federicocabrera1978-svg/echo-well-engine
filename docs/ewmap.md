@@ -58,7 +58,7 @@ Binario de mapas de echo-well-engine. Lo genera `ewmapc` a partir de YAML (`asse
 | 0 | `COL` | colisión (0 = vacío) |
 | 1 | `VIS` | tile visual (G-buffer, pasada deferred). Tras el autotiling 4 vecinos: `familia*16+máscara` (N=1,E=2,S=4,W=8). |
 | 2 | `FG` | primer plano, sobre los actores. El runtime lo sube en el canal B (`RGB8UI`) y el geometry pass lo dibuja encima (depth 0.2, atlas de `VIS`). Mismo autotiling que `VIS`. |
-| 3 | `META` | marcadores de zona. Runtime: id **2** = agua (documentación; simula la sección `WATER`), id **3** = meta (`Sim::kMetaGoal`). |
+| 3 | `META` | marcadores de zona. Runtime: id **2** = agua (documentación; simula la sección `WATER`), id **3** = meta (`Sim::kMetaGoal`), id **4** = peligro / pinchos (`Sim::kMetaHazard`: al pisarlo, muerte y reaparición en el checkpoint). |
 
 El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurable) sobre `MapLoader::chunk_layer()`.
 
@@ -71,5 +71,5 @@ El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurabl
 ## Fuente YAML (v1)
 Ver `assets/maps/src/hello.yaml` y `assets/maps/src/slice.yaml`. Claves: `name`, `size_chunks: [w, h]`, `fill: {CAPA: tile}`, `rects: - {layer, x, y, w, h, tile}` (en tiles), `autotile` (`true` por defecto: aplica bitmask de 4 vecinos a `VIS`/`FG`; `false` deja los ids del YAML), `entities: - {name, type, x, y}` (px), `links: - {from, to}` (por nombre), `water: - {x, y, w, h, stiffness, damping}`, `ropes: - {x, y, segments, seg_len}` (seg_len por defecto 6).
 El id fuente de `VIS`/`FG` es la familia (`(tile%15)+1`, 1..15); el compilador escribe `familia*16+máscara` (bits N=1, E=2, S=4, W=8). Dos tiles conectan si tienen el mismo id fuente; el borde del mapa se considera expuesto. `COL` y `META` no se tocan.
-Tipos de entidad usados: `player_spawn`, `switch`, `door`, `goal` (meta; `Sim` la considera alcanzada a ≤ 16 px, o al pisar un tile `META` con id **3**). Ids de `META` reservados: **2** = zona de agua (documentación / edición; el runtime usa la sección `WATER`), **3** = zona de meta.
+Tipos de entidad usados: `player_spawn`, `switch`, `door`, `checkpoint` (al acercarse a ≤ 20 px queda como punto de reaparición; **R** corto o morir vuelve ahí), `goal` (meta; `Sim` la considera alcanzada a ≤ 16 px, o al pisar un tile `META` con id **3**). Ids de `META` reservados: **2** = zona de agua (documentación / edición; el runtime usa la sección `WATER`), **3** = zona de meta, **4** = peligro / pinchos (`Sim::kMetaHazard`).
 El parser es un subconjunto mínimo de YAML (listas como flow maps `- {k: v}`). El adapter TMX queda para después.

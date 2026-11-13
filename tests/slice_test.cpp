@@ -1,5 +1,5 @@
 // Test sin GL: vertical slice sobre slice.ewmap (loader + camino start→goal).
-// Recorre el camino con input scriptado: switch→puerta, agua, seam, cuerda, meta.
+// Recorre el camino: switch→puerta, agua, seam, cuerda, checkpoint, salta el hueco, meta.
 #include "game/sim.hpp"
 #include <algorithm>
 #include <cmath>
@@ -39,6 +39,11 @@ int main(int argc, char** argv) {
   CHECK(spawn && spawn->x == 32.f && spawn->y == 152.f);
   CHECK(sw && door && goal && !sw->active && !door->active);
   CHECK(goal->x == 840.f && goal->y == 56.f);
+  const auto* ck = scene.find_type("checkpoint");
+  CHECK(ck && ck->x == 536.f && ck->y == 56.f && !ck->active);
+  CHECK(scene.tile(78, 19, map::Layer::META) == game::Sim::kMetaHazard);
+  CHECK(scene.tile(80, 19, map::Layer::META) == game::Sim::kMetaHazard);
+  CHECK(!scene.solid_tile(78, 8) && !scene.solid_tile(81, 8));  // hueco en la cornisa
   CHECK(scene.solid_px(200.f + 4.f, 136.f + 4.f));             // puerta cerrada
   CHECK(scene.tile(29, 17, map::Layer::META) == 2);             // zona de agua
   CHECK(scene.tile(105, 6, map::Layer::META) == game::Sim::kMetaGoal);
@@ -82,6 +87,41 @@ int main(int argc, char** argv) {
     p3.pos = p3.prev = {820.f, 44.f};
     sim3.step({});
     CHECK(sim3.finished());
+  }
+
+  // Checkpoint + pinchos (unitario, independiente del camino).
+  {
+    game::Scene s4;
+    if (!s4.load(argv[1], err)) return 1;
+    game::Sim sim4(s4);
+    CHECK(sim4.checkpoint_index() < 0 && sim4.deaths() == 0);
+    auto& p4 = sim4.world().points()[sim4.player_index()];
+    p4.pos = p4.prev = {536.f, 56.f};  // sobre el checkpoint
+    sim4.step({});
+    CHECK(sim4.checkpoint() && sim4.checkpoint()->x == 536.f);
+    CHECK(s4.find_type("checkpoint")->active);
+    // Caer a los pinchos: muere y reaparece en el checkpoint, puerta intacta.
+    p4 = sim4.world().points()[sim4.player_index()];
+    p4.pos = p4.prev = {640.f, 156.f};
+    sim4.step({});
+    CHECK(sim4.deaths() == 1);
+    CHECK(std::fabs(sim4.player().pos.x - 536.f) < 2.f);
+    CHECK(std::fabs(sim4.player().pos.y - 56.f) < 8.f);
+    CHECK(sim4.invuln() > 0);
+    CHECK(sim4.checkpoint_index() >= 0);
+    // Durante invulnerabilidad no re-muere si lo volvemos a poner sobre pinchos.
+    auto& p4b = sim4.world().points()[sim4.player_index()];
+    p4b.pos = p4b.prev = {640.f, 156.f};
+    sim4.step({});
+    CHECK(sim4.deaths() == 1);
+    // R corto: al checkpoint (no al spawn). R largo: spawn.
+    { Input rst; rst.restart = true; sim4.step(rst); }
+    CHECK(std::fabs(sim4.player().pos.x - 536.f) < 2.f);
+    CHECK(sim4.deaths() == 1);  // respawn no incrementa muertes
+    { Input full; full.restart_full = true; sim4.step(full); }
+    CHECK(std::fabs(sim4.player().pos.x - 32.f) < 2.f);
+    CHECK(!sim4.checkpoint() && sim4.deaths() == 0);
+    CHECK(!s4.find_type("checkpoint")->active);
   }
 
   // --- camino jugable ---
@@ -173,8 +213,22 @@ int main(int argc, char** argv) {
     CHECK(pts[sim.rope_first() + uint32_t(i)].radius == game::Sim::kRopeRadius);  // al soltar, radio original
   CHECK(sim.player().pos.y < 80.f);          // sobre la cornisa (stand ≈ 60)
   CHECK(sim.player().pos.x > 400.f);         // a la derecha de la cuerda / sobre la pared
+  CHECK(sim.checkpoint() && scene.find_type("checkpoint")->active);
 
-  // 5) Caminar por la cornisa, cruzar el seam x=640 (chunk 2) y tocar el goal.
+  // 5) Caer al hueco (pinchos): reaparece en el checkpoint; la puerta sigue abierta.
+  {
+    const int d0 = sim.deaths();
+    for (int i = 0; i < 250 && sim.deaths() == d0; ++i) sim.step({1.f});
+    std::printf("caída pinchos: deaths=%d x=%.1f y=%.1f (checkpoint)\n",
+                sim.deaths(), sim.player().pos.x, sim.player().pos.y);
+    CHECK(sim.deaths() == d0 + 1);
+    CHECK(std::fabs(sim.player().pos.x - ck->x) < 4.f);
+    CHECK(scene.find_type("door")->active);  // progreso conservado
+  }
+
+  // 6) Saltar el hueco (x=624–656), cruzar el seam y tocar el goal.
+  for (int i = 0; i < 50 && sim.player().pos.x < 600.f; ++i) sim.step({1.f});
+  { Input j; j.jump = true; j.move_x = 1; sim.step(j); }
   for (int i = 0; i < 800 && !sim.finished(); ++i) sim.step({1.f});
   std::printf("meta: x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n",
               sim.player().pos.x, sim.player().pos.y, scene.chunk_x(), int(sim.finished()),
@@ -198,14 +252,20 @@ int main(int argc, char** argv) {
     (void)py;
   }
 
-  // R / Input::restart: spawn, puerta cerrada, fade a 0, se puede volver a jugar.
+  // R corto: vuelve al checkpoint (puerta sigue abierta). R largo: spawn limpio.
   { Input rst; rst.restart = true; sim.step(rst); }
   CHECK(!sim.finished());
   CHECK(sim.finish_t() == 0.f);
   CHECK(!sim.on_rope());
+  CHECK(std::fabs(sim.player().pos.x - ck->x) < 4.f);
+  CHECK(std::fabs(sim.player().pos.y - ck->y) < 10.f);
+  CHECK(scene.find_type("door")->active);
+  CHECK(sim.checkpoint_index() >= 0);
+  { Input full; full.restart_full = true; sim.step(full); }
   CHECK(std::fabs(sim.player().pos.x - spawn->x) < 2.f);
   CHECK(std::fabs(sim.player().pos.y - spawn->y) < 8.f);
   CHECK(scene.chunk_x() == 0);
+  CHECK(!sim.checkpoint() && sim.deaths() == 0);
   CHECK(!scene.find_type("switch")->active && !scene.find_type("door")->active);
   CHECK(scene.find_type("door")->anim == 0.f);
   CHECK(scene.solid_px(door->x + 4.f, door->y + 4.f));  // puerta sólida otra vez

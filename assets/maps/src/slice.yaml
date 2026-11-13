@@ -3,7 +3,8 @@
 #
 # Chunk 0 (x 0–319): spawn, switch → puerta, pileta (nadar). Seam en x=320.
 # Chunk 1 (x 320–639): cuerda para subir una pared alta, cornisa. Seam en x=640.
-# Chunk 2 (x 640–959): cornisa hasta el goal (entidad + zona META id 3).
+# Chunk 2 (x 640–959): cornisa, hueco con pinchos (META 4), goal (entidad + META 3).
+# Checkpoint en la cornisa (tras la cuerda): muerte / R corto vuelve ahí; R largo al spawn.
 name: slice
 size_chunks: [3, 1]
 
@@ -39,6 +40,17 @@ rects:
   # FG de decorado (se dibuja cuando haya soporte de capa FG en el renderer)
   - {layer: FG,  x: 104, y: 0, w: 4,  h: 6,  tile: 13}
 
+  # Hueco en la cornisa (tiles 78–81, x=624–656): hay que saltarlo.
+  # Debajo, un pozo con pinchos (META 4) ancho (la caída aterriza ~50 px más a la derecha).
+  - {layer: COL,  x: 78, y: 8,  w: 4,  h: 1,  tile: 0}
+  - {layer: VIS,  x: 78, y: 8,  w: 4,  h: 1,  tile: 0}
+  - {layer: COL,  x: 76, y: 9,  w: 1,  h: 11, tile: 1}   # paredes del pozo
+  - {layer: VIS,  x: 76, y: 9,  w: 1,  h: 11, tile: 17}
+  - {layer: COL,  x: 92, y: 9,  w: 1,  h: 11, tile: 1}
+  - {layer: VIS,  x: 92, y: 9,  w: 1,  h: 11, tile: 17}
+  - {layer: META, x: 76, y: 19, w: 17, h: 2,  tile: 4}    # peligro: al caer, muerte
+  - {layer: VIS,  x: 77, y: 20, w: 15, h: 1,  tile: 11}   # piso con look de pinchos
+
   # chunk 2: zona goal (META id 3), alrededor de la entidad goal
   - {layer: META, x: 102, y: 5, w: 8, h: 3, tile: 3}
 
@@ -46,6 +58,7 @@ entities:
   - {name: spawn,        type: player_spawn, x: 32,  y: 152}
   - {name: switch_start, type: switch,       x: 96,  y: 152}
   - {name: door_start,   type: door,         x: 200, y: 136}
+  - {name: ck_ledge,     type: checkpoint,   x: 536, y: 56}
   - {name: goal,         type: goal,         x: 840, y: 56}
 
 links:

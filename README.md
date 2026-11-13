@@ -42,14 +42,14 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
 ./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** reiniciar al spawn, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
 
 ### Vertical slice (`slice`)
 Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecánicas existentes:
 
 1. **Chunk 0:** spawn, **switch → puerta**, pileta de **agua** (hay que nadar). Seam en x=320.
 2. **Chunk 1:** **cuerda** (sección ROPE) para subir una pared que no se salta, cornisa con **atlas** de tiles. Seam en x=640. La cámara usa dead-zone + slide en los seams.
-3. **Chunk 2:** la cornisa llega a la **meta** (entidad `goal` + zona `META` id 3). Al tocarla, `Sim::finished()` queda en true, el motor imprime `¡meta!`, la escena hace un fade (~0.75 s) con la palabra **META** y la pista **R**, y **R** reinicia al spawn (puerta cerrada, cuerdas y agua de nuevo). `Input::restart` / `Sim::reset()` / `Sim::finish_t()` lo testean en `slice_test` (sin GL).
+3. **Chunk 2:** hay un **checkpoint** en la cornisa (tras la cuerda), un **hueco con pinchos** (META id 4: al caer se muere y reaparece en el checkpoint, la puerta sigue abierta) y la **meta** (entidad `goal` + META id 3). Al tocarla, `Sim::finished()` queda en true, el motor imprime `¡meta!` y hay un fade (~0.75 s) con **META**. **R** corto (`Input::restart` / `Sim::respawn()`) vuelve al último checkpoint; **R** largo (`Input::restart_full` / `Sim::reset()`) al spawn con el estado limpio. `slice_test` cubre caída, invulnerabilidad, ambos reinicios y el salto del hueco (sin GL).
 
 `slice_test` (ctest, sin GL) carga el mapa, verifica el loader (entidades, capas COL/VIS/FG/META, cuerda, agua) y recorre el camino con input scriptado hasta la meta. `hello` sigue como mapa de los demás tests.
 
@@ -90,7 +90,7 @@ Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecá
 
 ### Capas `FG` y `META`
 - **`FG`** (primer plano): se empaqueta en el canal B de la textura del vecindario (`RGB8UI`) y el geometry pass la dibuja **sobre los actores** (depth 0.2, mismo atlas que `VIS`). `slice` trae una franja de decorado FG en el chunk 2; `slice_test` verifica el tile y el packed.
-- **`META`**: marcadores de zona. El runtime usa **id 3** como zona de meta (`Sim::kMetaGoal`); **id 2** documenta agua (el runtime usa la sección `WATER`). Ver [docs/ewmap.md](docs/ewmap.md).
+- **`META`**: marcadores de zona. El runtime usa **id 3** como zona de meta (`Sim::kMetaGoal`), **id 4** como peligro / pinchos (`Sim::kMetaHazard`) y **id 2** documenta agua (el runtime usa la sección `WATER`). Ver [docs/ewmap.md](docs/ewmap.md).
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
