@@ -186,6 +186,31 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 60; ++i) sim.step({});
   CHECK(scene.cam_x() >= 620.f);
   CHECK(sim.finished());  // se mantiene
+  CHECK(sim.finish_t() >= 0.999f);  // 60 pasos ≥ 0.75 s de fade
+
+  // Congelado: el input de movimiento no saca al player de la meta.
+  {
+    const auto px = sim.player().pos.x, py = sim.player().pos.y;
+    Input go; go.move_x = -1; go.jump = true;
+    for (int i = 0; i < 10; ++i) sim.step(go);
+    CHECK(sim.finished());
+    CHECK(std::fabs(sim.player().pos.x - px) < 8.f);
+    (void)py;
+  }
+
+  // R / Input::restart: spawn, puerta cerrada, fade a 0, se puede volver a jugar.
+  { Input rst; rst.restart = true; sim.step(rst); }
+  CHECK(!sim.finished());
+  CHECK(sim.finish_t() == 0.f);
+  CHECK(!sim.on_rope());
+  CHECK(std::fabs(sim.player().pos.x - spawn->x) < 2.f);
+  CHECK(std::fabs(sim.player().pos.y - spawn->y) < 8.f);
+  CHECK(scene.chunk_x() == 0);
+  CHECK(!scene.find_type("switch")->active && !scene.find_type("door")->active);
+  CHECK(scene.find_type("door")->anim == 0.f);
+  CHECK(scene.solid_px(door->x + 4.f, door->y + 4.f));  // puerta sólida otra vez
+  for (int i = 0; i < 400; ++i) sim.step({1, false});
+  CHECK(sim.player().pos.x <= door->x - 4.f + 1.f);     // bloqueado de nuevo
   std::puts("slice_test: OK");
   return 0;
 }

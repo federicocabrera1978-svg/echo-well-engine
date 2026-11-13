@@ -66,6 +66,14 @@ void Scene::tick(float dt) {
   }
 }
 
+void Scene::reset_state() {
+  for (auto& e : entities_) { e.active = false; e.anim = 0; }
+  off_x_ = off_y_ = 0;
+  cx_ = cy_ = -1;
+  if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y);
+  else follow(0, 0);
+}
+
 void Scene::set_switch(std::size_t idx, bool on) {
   if (idx >= entities_.size() || entities_[idx].type != "switch") return;
   entities_[idx].active = on;

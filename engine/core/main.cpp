@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false, act_was_down = false, grab_was_down = false, announced_goal = false;
+  bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, announced_goal = false;
   double acc = 0, last = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -131,6 +131,9 @@ int main(int argc, char** argv) {
     const bool grab_down = key(GLFW_KEY_C) || key(GLFW_KEY_LEFT_SHIFT) || key(GLFW_KEY_RIGHT_SHIFT);
     in.grab = grab_down && !grab_was_down;
     grab_was_down = grab_down;
+    const bool r_down = key(GLFW_KEY_R);
+    in.restart = r_down && !r_was_down;
+    r_was_down = r_down;
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
       in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
       in.jump = sim_steps % 90 == 45;
@@ -140,17 +143,25 @@ int main(int argc, char** argv) {
     const double now = glfwGetTime();
     acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
+    const bool did_restart = in.restart;
     for (int n = 0; acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
       sim.step(in);
       in.jump = false;
       in.interact = false;
       in.grab = false;
+      in.restart = false;
       ++sim_steps;
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim.finished() && !announced_goal) {
-      std::printf("echo_engine: ¡meta! camino completado\n");
+      std::printf("echo_engine: ¡meta! camino completado  (R reinicia)\n");
       announced_goal = true;
+      glfwSetWindowTitle(win, "Echo Well — ¡meta!  [R] reiniciar");
+    }
+    if (did_restart && announced_goal && !sim.finished()) {
+      announced_goal = false;
+      glfwSetWindowTitle(win, "Echo Well");
+      std::printf("echo_engine: reinicio\n");
     }
     const auto& pl = sim.player();
     const float px = pl.pos.x, py = pl.pos.y;
@@ -192,6 +203,7 @@ int main(int argc, char** argv) {
       for (int i = 0; i < n; ++i) v.water_surface[std::size_t(b * ew::render::kMaxWaterCols + i)] = w.surface_col(i);
     }
     v.light_x = px; v.light_y = py;
+    v.fade = sim.finish_t();
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);
