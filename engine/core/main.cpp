@@ -1,5 +1,5 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo] [--start X Y]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC salir. --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
@@ -84,7 +84,8 @@ int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
   bool demo = false, has_start = false;
   float start_x = 0, start_y = 0;
-  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path;
+  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path;
+  if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--scale" && i + 1 < argc) scale = std::atoi(argv[++i]);
@@ -92,6 +93,7 @@ int main(int argc, char** argv) {
     else if (a == "--shaders" && i + 1 < argc) shader_dir = argv[++i];
     else if (a == "--map" && i + 1 < argc) map_path = argv[++i];
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
+    else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
     else if (a == "--demo") demo = true;
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
@@ -134,7 +136,7 @@ int main(int argc, char** argv) {
   std::printf("echo_engine: GL %s | %s\n", glGetString(GL_VERSION), glGetString(GL_RENDERER));
 
   ew::render::DeferredRenderer renderer;
-  if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
+  if (!renderer.init(shader_dir, err, atlas_path)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
   bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;

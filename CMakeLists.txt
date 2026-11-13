@@ -106,21 +106,24 @@ add_test(NAME rope_wall COMMAND rope_wall_test)
 
 # --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
 add_library(echo_atlas engine/render/tile_atlas.cpp)
-target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine
+                                      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb)
 add_executable(atlas_test tests/atlas_test.cpp)
 target_link_libraries(atlas_test PRIVATE echo_atlas)
 add_test(NAME tile_atlas COMMAND atlas_test)
+set_tests_properties(tile_atlas PROPERTIES
+  ENVIRONMENT "EW_TEST_FIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
 add_executable(autotile_test tests/autotile_test.cpp)
 target_link_libraries(autotile_test PRIVATE echo_map)
 add_test(NAME autotile COMMAND autotile_test)
 
-# --- fuzzing: MapLoader (.ewmap) y yaml_lite ---------------------------------
+# --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
 # corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.
 add_library(ew_yaml_lite tools/ewmapc/yaml_lite.cpp)
 target_include_directories(ew_yaml_lite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tools/ewmapc)
 set(EW_FUZZ_CORPUS ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus)
-foreach(t map_loader yaml_lite)
+foreach(t map_loader yaml_lite atlas)
   if(EW_LIBFUZZER)
     add_executable(fuzz_${t} tests/fuzz/fuzz_${t}.cpp)
     target_compile_options(fuzz_${t} PRIVATE -fsanitize=fuzzer)
@@ -131,9 +134,11 @@ foreach(t map_loader yaml_lite)
 endforeach()
 target_link_libraries(fuzz_map_loader PRIVATE echo_map)
 target_link_libraries(fuzz_yaml_lite PRIVATE ew_yaml_lite)
+target_link_libraries(fuzz_atlas PRIVATE echo_atlas)
 if(NOT EW_LIBFUZZER)
   add_test(NAME fuzz_map_loader_smoke COMMAND fuzz_map_loader -runs=20000 ${EW_FUZZ_CORPUS}/ewmap)
   add_test(NAME fuzz_yaml_lite_smoke  COMMAND fuzz_yaml_lite  -runs=20000 ${EW_FUZZ_CORPUS}/yaml)
+  add_test(NAME fuzz_atlas_smoke      COMMAND fuzz_atlas      -runs=20000 ${EW_FUZZ_CORPUS}/png)
 endif()
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --

@@ -47,3 +47,48 @@ std::vector<uint8_t> build_tile_atlas() {
   return px;
 }
 }  // namespace ew::render
+
+#define STBI_ONLY_PNG
+#define STBI_MAX_DIMENSIONS 256
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include <fstream>
+
+namespace ew::render {
+namespace {
+AtlasLoad procedural() { return {build_tile_atlas(), AtlasSource::Procedural}; }
+
+// Convierte el buffer de stbi (req_comp = 4) al layout del atlas.
+AtlasLoad from_rgba(const uint8_t* img, int w, int h) {
+  if (!img || w != kAtlasPx || h != kAtlasPx) return procedural();
+  AtlasLoad a;
+  a.px.assign(img, img + std::size_t(kAtlasPx) * kAtlasPx * 4);
+  a.source = AtlasSource::Png;
+  return a;
+}
+}  // namespace
+
+AtlasLoad load_tile_atlas_mem(const void* data, std::size_t n) {
+  if (!data || n < 8) return procedural();  // un PNG válido es más largo
+  int w = 0, h = 0, comp = 0;
+  unsigned char* img = stbi_load_from_memory(static_cast<const stbi_uc*>(data), int(n > 0x7fffffff ? 0x7fffffff : n),
+                                             &w, &h, &comp, 4);
+  AtlasLoad a = from_rgba(img, w, h);
+  if (img) stbi_image_free(img);
+  return a;
+}
+
+AtlasLoad load_tile_atlas_file(const char* path) {
+  if (!path || !*path) return procedural();
+  std::ifstream f(path, std::ios::binary);
+  if (!f) return procedural();
+  f.seekg(0, std::ios::end);
+  const auto sz = f.tellg();
+  if (sz <= 0 || sz > 4 * 1024 * 1024) return procedural();  // tope 4 MiB
+  f.seekg(0);
+  std::vector<unsigned char> buf(static_cast<std::size_t>(sz));
+  if (!f.read(reinterpret_cast<char*>(buf.data()), sz)) return procedural();
+  return load_tile_atlas_mem(buf.data(), buf.size());
+}
+}  // namespace ew::render
