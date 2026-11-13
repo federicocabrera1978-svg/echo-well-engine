@@ -7,6 +7,7 @@
 name: slice
 size_chunks: [3, 1]
 
+# autotile: true  (default) — VIS/FG pasan a familia*16+máscara de 4 vecinos
 fill:
   VIS: 0
 

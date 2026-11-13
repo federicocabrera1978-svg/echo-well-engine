@@ -1,6 +1,7 @@
 #include "writer.hpp"
 #include "map/crc32.hpp"
 #include "map/ewmap_format.hpp"
+#include "map/autotile.hpp"
 #include <cstring>
 #include <map>
 #include <stdexcept>
@@ -94,6 +95,17 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
         for (int x = std::max(0, x0); x < std::min(tw, x0 + rw); ++x)
           grid[l][std::size_t(y) * tw + x] = tile;
     }
+
+  // Autotiling 4 vecinos en VIS y FG (el YAML puede desactivarlo con autotile: false).
+  bool do_at = true;
+  if (auto it = doc.scalars.find("autotile"); it != doc.scalars.end()) {
+    const auto& v = it->second;
+    do_at = !(v == "false" || v == "0" || v == "no" || v == "off");
+  }
+  if (do_at) {
+    apply_autotile4(grid[uint32_t(Layer::VIS)].data(), tw, th);
+    apply_autotile4(grid[uint32_t(Layer::FG)].data(), tw, th);
+  }
 
   Buf tile;
   tile.put(uint32_t(w * h));

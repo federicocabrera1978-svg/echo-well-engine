@@ -122,9 +122,12 @@ if (auto* c = cache.acquire(0, 0)) upload(c->layers[uint32_t(ew::map::Layer::VIS
 ## Atlas de tiles
 
 `engine/render/tile_atlas.{hpp,cpp}` genera un atlas procedural 128×128 RGBA8 (16×16 tiles de 8×8, sin GL).
-El id de tile es el valor **VIS** del mapa: `tile_uv(id) = ((id%16)*8, (id/16)*8)`. RGB = albedo, A = altura
-(el shader `gbuffer_map.frag` deriva la normal de la altura + bisel de borde). Estilos por `id % 4`: liso,
-ladrillo, granulado, vetas. Test: `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas).
+`ewmapc` aplica **autotiling de 4 vecinos** (bits N=1, E=2, S=4, W=8) sobre `VIS` y `FG`: el tile del YAML
+es la familia (`(tile%15)+1`, 1..15) y el `.ewmap` guarda `familia*16+máscara` (16..255; el 0 queda vacío).
+El atlas pone la familia en la fila y la máscara en la columna; bisel (albedo y altura) solo en lados sin
+vecino. El shader `gbuffer_map.frag` deriva la normal de la altura y aplica el mismo bisel según la máscara.
+Estilos por familia (`id/16 % 4`): liso, ladrillo, granulado, vetas. En el YAML, `autotile: false` lo apaga.
+Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas).
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 
