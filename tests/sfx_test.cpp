@@ -35,6 +35,27 @@ int main() {
   float p2 = 0;
   for (float s : b2) p2 = std::fmax(p2, std::fabs(s));
   CHECK(p2 > 0.05f && p2 <= 1.f);
+  // Ganancia / mute.
+  Mixer mv;
+  mv.play(SfxId::Jump);
+  std::vector<float> bv(2048);
+  mv.render(bv.data(), 2048);
+  float full = 0;
+  for (float s : bv) full = std::fmax(full, std::fabs(s));
+  CHECK(full > 0.05f);
+  mv.set_gain(0.5f);
+  mv.play(SfxId::Jump);
+  std::fill(bv.begin(), bv.end(), 0.f);
+  mv.render(bv.data(), 2048);
+  float half = 0;
+  for (float s : bv) half = std::fmax(half, std::fabs(s));
+  CHECK(half > 0.02f && half < full * 0.8f);
+  mv.set_mute(true);
+  mv.play(SfxId::Jump);
+  std::fill(bv.begin(), bv.end(), 99.f);
+  mv.render(bv.data(), 64);
+  for (int i = 0; i < 64; ++i) CHECK(bv[i] == 0.f);
+  CHECK(mv.gain() == 0.f);
   std::puts("sfx ok");
   return 0;
 }

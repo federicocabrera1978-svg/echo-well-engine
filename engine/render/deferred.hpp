@@ -31,7 +31,12 @@ struct FrameView {
   std::array<float, kMaxWaterBodies * kMaxWaterCols> water_surface{};
   float light_x = 160, light_y = 90;         // luz principal (px mundo)
   float fade = 0;                            // 0..1 pantalla de meta (light pass)
+  int pause = 0;                             // 1 = menú de pausa (light pass)
+  int pause_sel = 0;
+  float pause_vol = 0.8f;
+  int pause_mute = 0;
 };
+
 
 // G-buffer a 320x180: albedo (RGBA8), normal (RGBA8, n*0.5+0.5) + depth24.
 // Pase de luz -> target "lit" 320x180 -> blit escalado entero (NEAREST) a pantalla.

@@ -44,7 +44,7 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
 ./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** salir. Gamepad (Xbox/SDL): stick o d-pad caminar, **A**/RB saltar, **X**/**B** switch, **LB**/**Y** agarrar cuerda, stick Y / d-pad trepar, **Start** = R (corto/largo). `--nogamepad` o `EW_NOGAMEPAD=1` lo apaga. SFX procedural (beeps) si hay dispositivo; `--nosound` o `EW_NOSOUND=1` lo apaga (CI headless). El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** o **Start** abre el menú de pausa (seguir, reiniciar desde checkpoint, volumen/mute, salir). Gamepad (Xbox/SDL): stick o d-pad caminar, **A**/RB saltar, **X**/**B** switch, **LB**/**Y** agarrar cuerda, stick Y / d-pad trepar, **Start** = R (corto/largo). `--nogamepad` o `EW_NOGAMEPAD=1` lo apaga. SFX procedural (beeps) si hay dispositivo; `--nosound` o `EW_NOSOUND=1` lo apaga (CI headless). El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
 
 ### Vertical slice (`slice`)
 Camino corto **start → goal** en 4×1 chunks (1280×184 px) que junta las mecánicas existentes:
@@ -143,6 +143,8 @@ Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test
 carga `tests/fixtures/atlas_128.png` y el default del repo, comprueba el fallback). `atlas_gen_check` corre `gen_atlas.py --check`. `fuzz_atlas` cubre el loader con libFuzzer.
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm --nosound`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
+
+Menú de pausa: `PauseMenu` en `engine/game/menu.hpp` (sin GL, testeable: `menu_test`). Esc/Start abre y cierra; ↑/↓ navega, Enter/Espacio/A confirma, ←/→ ajusta el volumen (pasos de 0.1), confirmar en Volumen mutea. El mixer aplica ganancia/mute (thread-safe). La simulación se congela mientras el menú está abierto; `--demo` no lo abre.
 
 SFX: `engine/audio` genera beeps de seno (salto, muerte, checkpoint, meta, switch, splash). Test `sfx_test` (sin dispositivo). `echo_engine` los reproduce con miniaudio (se descarga al compilar, no está vendorizado) y si no hay hardware o se pasa `--nosound`/`EW_NOSOUND` sigue en silencio. Se desactiva con `-DEW_AUDIO=OFF`.
 
