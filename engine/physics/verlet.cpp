@@ -44,6 +44,7 @@ void World::step(float dt, const SolidFn& solid) {
     solve_pairs();
     for (auto& p : points_)
       if (p.inv_mass > 0 && p.collide_tiles) collide(p, solid);
+    collide_sticks(solid);
   }
 }
 
@@ -118,6 +119,85 @@ void World::collide(Point& p, const SolidFn& solid) {
       p.prev = p.pos - v;
       if (n.y < -0.5f) p.grounded = true;
     }
+}
+
+namespace {
+// Segmento vs AABB (Liang-Barsky). El AABB se achica un epsilon para permitir
+// rozar la cara (envolverse en una esquina) sin contar como atravesar.
+bool segment_hits_aabb(Vec2 a, Vec2 b, float l, float t, float r, float bot) {
+  constexpr float eps = 0.05f;
+  l += eps; t += eps; r -= eps; bot -= eps;
+  if (l >= r || t >= bot) return false;
+  float t0 = 0.f, t1 = 1.f;
+  const float dx = b.x - a.x, dy = b.y - a.y;
+  auto clip = [&](float p, float q) {
+    if (std::fabs(p) < 1e-12f) return q >= 0.f;
+    const float u = q / p;
+    if (p < 0.f) { if (u > t1) return false; if (u > t0) t0 = u; }
+    else         { if (u < t0) return false; if (u < t1) t1 = u; }
+    return true;
+  };
+  return clip(-dx, a.x - l) && clip(dx, r - a.x) && clip(-dy, a.y - t) && clip(dy, bot - a.y);
+}
+
+bool segment_blocked(Vec2 a, Vec2 b, float ts, const SolidFn& solid) {
+  const float minx = std::min(a.x, b.x), maxx = std::max(a.x, b.x);
+  const float miny = std::min(a.y, b.y), maxy = std::max(a.y, b.y);
+  const int x0 = int(std::floor(minx / ts)), x1 = int(std::floor(maxx / ts));
+  const int y0 = int(std::floor(miny / ts)), y1 = int(std::floor(maxy / ts));
+  for (int ty = y0; ty <= y1; ++ty)
+    for (int tx = x0; tx <= x1; ++tx)
+      if (solid(tx, ty) && segment_hits_aabb(a, b, tx * ts, ty * ts, (tx + 1) * ts, (ty + 1) * ts))
+        return true;
+  return false;
+}
+}  // namespace
+
+void World::collide_sticks(const SolidFn& solid) {
+  const float ts = tile_size;
+  for (const auto& s : sticks_) {
+    Point& a = points_[s.a];
+    Point& b = points_[s.b];
+    if (a.inv_mass == 0 && b.inv_mass == 0) continue;
+    if (!segment_blocked(a.pos, b.pos, ts, solid)) continue;
+    const bool ma = a.inv_mass > 0, mb = b.inv_mass > 0;
+    float best = 1e9f;
+    Vec2 da{}, db{}, ndir{};
+    const Vec2 dirs[4] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    const float hi0 = std::max(ts * 2.f, length(b.pos - a.pos) + ts);
+    for (const auto& dir : dirs) {
+      auto clear_at = [&](float d) {
+        const Vec2 pa = ma ? a.pos + dir * d : a.pos;
+        const Vec2 pb = mb ? b.pos + dir * d : b.pos;
+        return !segment_blocked(pa, pb, ts, solid);
+      };
+      if (!clear_at(hi0)) continue;
+      float lo = 0.f, hi = hi0;
+      for (int i = 0; i < 12; ++i) {
+        const float mid = (lo + hi) * 0.5f;
+        if (clear_at(mid)) hi = mid; else lo = mid;
+      }
+      if (hi < best) {
+        best = hi;
+        da = ma ? dir * hi : Vec2{};
+        db = mb ? dir * hi : Vec2{};
+        ndir = dir;
+      }
+    }
+    if (best > 1e8f) continue;
+    auto apply = [&](Point& p, Vec2 dlt) {
+      if (dlt.x == 0 && dlt.y == 0) return;
+      // Conservar velocidad previa al empuje y anular la componente entrante.
+      const Vec2 v0 = p.pos - p.prev;
+      p.pos += dlt;
+      Vec2 v = v0;
+      const float vn = dot(v, ndir);
+      if (vn < 0) v -= ndir * vn;
+      p.prev = p.pos - v;
+    };
+    apply(a, da);
+    apply(b, db);
+  }
 }
 
 }  // namespace ew::physics

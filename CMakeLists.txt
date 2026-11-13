@@ -90,6 +90,9 @@ add_executable(slice_test tests/slice_test.cpp)
 target_link_libraries(slice_test PRIVATE echo_game)
 add_dependencies(slice_test ew_maps)
 add_test(NAME slice_path COMMAND slice_test ${EW_SLICE_MAP})
+add_executable(rope_wall_test tests/rope_wall_test.cpp)
+target_link_libraries(rope_wall_test PRIVATE echo_physics)
+add_test(NAME rope_wall COMMAND rope_wall_test)
 
 # --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
 add_library(echo_atlas engine/render/tile_atlas.cpp)
