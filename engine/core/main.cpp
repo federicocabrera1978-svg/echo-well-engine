@@ -1,5 +1,5 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC salir. --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
@@ -11,6 +11,7 @@
 #include <string>
 
 #include "game/sim.hpp"
+#include "game/gamepad.hpp"
 #include "audio/device.hpp"
 #include "audio/sfx.hpp"
 #include "render/deferred.hpp"
@@ -84,11 +85,12 @@ void push_hazards(FrameView& v, ew::game::Scene& s) {
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false, has_start = false, nosound = false;
+  bool demo = false, has_start = false, nosound = false, nogamepad = false;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path;
   if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
   if (const char* e = std::getenv("EW_NOSOUND"); e && e[0] && e[0] != '0') nosound = true;
+  if (const char* e = std::getenv("EW_NOGAMEPAD"); e && e[0] && e[0] != '0') nogamepad = true;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--scale" && i + 1 < argc) scale = std::atoi(argv[++i]);
@@ -99,6 +101,7 @@ int main(int argc, char** argv) {
     else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
     else if (a == "--demo") demo = true;
     else if (a == "--nosound") nosound = true;
+    else if (a == "--nogamepad") nogamepad = true;
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
@@ -183,6 +186,37 @@ int main(int argc, char** argv) {
       r_full_sent = false;
     }
     r_was_down = r_down;
+    // Gamepad (primer mando reconocido). Se combina con el teclado; --demo lo ignora.
+    if (!demo && !nogamepad) {
+      ew::game::PadRaw raw;
+      bool found = false;
+      for (int j = GLFW_JOYSTICK_1; j <= GLFW_JOYSTICK_LAST; ++j) {
+        if (!glfwJoystickIsGamepad(j)) continue;
+        GLFWgamepadstate st;
+        if (!glfwGetGamepadState(j, &st)) continue;
+        raw.lx = st.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+        raw.ly = st.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+        raw.a = st.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS;
+        raw.b = st.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS;
+        raw.x = st.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS;
+        raw.y = st.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS;
+        raw.lb = st.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
+        raw.rb = st.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] == GLFW_PRESS;
+        raw.start = st.buttons[GLFW_GAMEPAD_BUTTON_START] == GLFW_PRESS;
+        raw.du = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] == GLFW_PRESS;
+        raw.dd = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] == GLFW_PRESS;
+        raw.dl = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] == GLFW_PRESS;
+        raw.dr = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS;
+        found = true;
+        break;
+      }
+      static ew::game::PadEdges pad_edges;
+      static bool pad_announced = false;
+      if (found) {
+        if (!pad_announced) { std::printf("echo_engine: gamepad\n"); pad_announced = true; }
+        ew::game::apply_pad(raw, in, hanging, pad_edges, now_in);
+      }
+    }
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
       in.move_x = (sim_steps / 150) % 2 ? -1.f : 1.f;
       in.jump = sim_steps % 90 == 45;
