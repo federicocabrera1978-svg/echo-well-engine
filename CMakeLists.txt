@@ -20,6 +20,10 @@ if(MSVC)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+if(WIN32)
+  # windows.h define min/max como macros y rompe std::min/std::max.
+  add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
 
 # --- echo_map: formato .ewmap + MapLoader -----------------------------------
 add_library(echo_map
