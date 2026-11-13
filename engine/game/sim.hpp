@@ -28,6 +28,8 @@ class Sim {
   static constexpr float kSwingForce = 900.f; // px/s² sobre el nodo agarrado
   static constexpr float kClimbSpeed = 40.f;  // px/s a lo largo de la cuerda
   static constexpr float kHeldInvMass = 0.25f;  // el player "pesa" 4× un nodo
+  static constexpr float kGoalReach = 16.f;     // px: distancia al entity "goal"
+  static constexpr uint16_t kMetaGoal = 3;      // META tile = zona de meta
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
@@ -48,6 +50,8 @@ class Sim {
   bool player_in_water() const;
   bool on_rope() const { return held_ > 0; }
   int rope_node() const { return held_; }  // 1..n de held_rope() (0 = no colgado)
+  // Meta: entity "goal" a ≤ kGoalReach, o tile META == kMetaGoal bajo el player.
+  bool finished() const { return finished_; }
 
  private:
   Scene& scene_;
@@ -60,7 +64,9 @@ class Sim {
   int held_ = 0;         // nodo agarrado (0 = suelto)
   float climb_acc_ = 0;  // px acumulados de trepada
   int regrab_cd_ = 0;    // pasos sin auto-reagarre tras soltar
+  bool finished_ = false;
   void grab(int rope, int node);
+  void check_goal();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }
   void release();
 };

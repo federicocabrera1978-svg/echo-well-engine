@@ -7,7 +7,7 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 - **Agua** con resortes de **Hooke** (superficie dinámica).
 - Mapas en binario propio **`.ewmap`**, cargados por chunks con streaming LRU.
 
-> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara), física Verlet + agua Hooke (`echo_physics`) y `echo_engine` jugable sobre el Deferred 320×180.
+> Estado: `.ewmap` (`ewmapc` + `echo_map`), escena (`echo_game`: MapLoader → colisión/entidades/cámara), física Verlet + agua Hooke (`echo_physics`) y `echo_engine` jugable sobre el Deferred 320×180. Mapa por defecto: **`slice`** (camino corto start→goal).
 
 ## Estructura
 ```
@@ -34,14 +34,24 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 
 ## Correr el prototipo
 ```sh
-./build/echo_engine              # ventana 1280×720 (320×180 ×4)
+./build/echo_engine              # ventana 1280×720 (320×180 ×4), mapa slice (camino start→goal)
 ./build/echo_engine --scale 3    # 960×540
 ./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
 ./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
+./build/echo_engine --map build/maps/hello.ewmap       # mapa de pruebas (2 chunks, 2 cuerdas)
 ./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
-./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1 de hello
+./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **ESC** salir. El build compila `assets/maps/src/hello.yaml` → `build/maps/hello.ewmap` (con CRC) y lo usa por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
+
+### Vertical slice (`slice`)
+Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecánicas existentes:
+
+1. **Chunk 0:** spawn, **switch → puerta**, pileta de **agua** (hay que nadar). Seam en x=320.
+2. **Chunk 1:** **cuerda** (sección ROPE) para subir una pared que no se salta, cornisa con **atlas** de tiles. Seam en x=640. La cámara usa dead-zone + slide en los seams.
+3. **Chunk 2:** la cornisa llega a la **meta** (entidad `goal` + zona `META` id 3). Al tocarla, `Sim::finished()` queda en true y el motor imprime `¡meta!`.
+
+`slice_test` (ctest, sin GL) carga el mapa, verifica el loader (entidades, capas COL/VIS/FG/META, cuerda, agua) y recorre el camino con input scriptado hasta la meta. `hello` sigue como mapa de los demás tests.
 
 ### Escena (MapLoader → render)
 - `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.

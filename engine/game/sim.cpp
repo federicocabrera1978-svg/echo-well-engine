@@ -1,6 +1,7 @@
 #include "game/sim.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace ew::game {
 using ew::physics::Vec2;
@@ -100,6 +101,20 @@ void Sim::step(const Input& in) {
     p.grounded = false;
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
+  check_goal();
+}
+
+void Sim::check_goal() {
+  if (finished_) return;
+  const auto& p = player();
+  for (const auto& e : scene_.entities()) {
+    if (e.type != "goal") continue;
+    const float dx = e.x - p.pos.x, dy = e.y - p.pos.y;
+    if (dx * dx + dy * dy <= kGoalReach * kGoalReach) { finished_ = true; return; }
+  }
+  const int tx = int(std::floor(p.pos.x / float(ew::map::kTileSize)));
+  const int ty = int(std::floor(p.pos.y / float(ew::map::kTileSize)));
+  if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) finished_ = true;
 }
 
 }  // namespace ew::game

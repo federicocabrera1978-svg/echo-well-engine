@@ -1,0 +1,59 @@
+# slice.yaml — vertical slice: camino corto start → goal (3×1 chunks).
+# Cada chunk = 1 pantalla (40×23 tiles de 8 px = 320×184 px).
+#
+# Chunk 0 (x 0–319): spawn, switch → puerta, pileta (nadar). Seam en x=320.
+# Chunk 1 (x 320–639): cuerda para subir una pared alta, cornisa. Seam en x=640.
+# Chunk 2 (x 640–959): cornisa hasta el goal (entidad + zona META id 3).
+name: slice
+size_chunks: [3, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  # piso continuo (los 3 chunks) y paredes laterales
+  - {layer: COL, x: 0,   y: 20, w: 120, h: 3, tile: 1}
+  - {layer: VIS, x: 0,   y: 20, w: 120, h: 3, tile: 17}
+  - {layer: COL, x: 0,   y: 0,  w: 1,   h: 23, tile: 1}
+  - {layer: VIS, x: 0,   y: 0,  w: 1,   h: 23, tile: 17}
+  - {layer: COL, x: 119, y: 0,  w: 1,   h: 23, tile: 1}
+  - {layer: VIS, x: 119, y: 0,  w: 1,   h: 23, tile: 17}
+
+  # chunk 0: pileta (META 2 = agua) entre tiles 28 y 37, después de la puerta (x=200)
+  - {layer: META, x: 29, y: 17, w: 8, h: 3, tile: 2}
+  - {layer: COL,  x: 28, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS,  x: 28, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL,  x: 37, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS,  x: 37, y: 17, w: 1, h: 3, tile: 17}
+
+  # chunk 1: pared alta que no se salta (tiles 50–51, y=8..19 = 96 px de alto)
+  - {layer: COL, x: 50, y: 8,  w: 2,  h: 12, tile: 1}
+  - {layer: VIS, x: 50, y: 8,  w: 2,  h: 12, tile: 17}
+  # cornisa a la derecha de la pared: y=8 (tope = 64 px), desde tile 52 hasta el final
+  - {layer: COL, x: 52, y: 8,  w: 67, h: 1,  tile: 3}
+  - {layer: VIS, x: 52, y: 8,  w: 67, h: 1,  tile: 5}
+  # atlas: columnas de fondo (sin COL)
+  - {layer: VIS, x: 44, y: 4,  w: 2,  h: 16, tile: 9}
+  - {layer: VIS, x: 108, y: 0, w: 2,  h: 8,  tile: 21}
+  # FG de decorado (se dibuja cuando haya soporte de capa FG en el renderer)
+  - {layer: FG,  x: 104, y: 0, w: 4,  h: 6,  tile: 13}
+
+  # chunk 2: zona goal (META id 3), alrededor de la entidad goal
+  - {layer: META, x: 102, y: 5, w: 8, h: 3, tile: 3}
+
+entities:
+  - {name: spawn,        type: player_spawn, x: 32,  y: 152}
+  - {name: switch_start, type: switch,       x: 96,  y: 152}
+  - {name: door_start,   type: door,         x: 200, y: 136}
+  - {name: goal,         type: goal,         x: 840, y: 56}
+
+links:
+  - {from: switch_start, to: door_start}
+
+ropes:
+  # ancla a la izquierda de la pared (tile 50 = x=400). 16×6 = 96 px, punta en y=120.
+  - {x: 392, y: 24, segments: 16, seg_len: 6}
+
+water:
+  # entre tiles 29 y 36 (paredes 28 y 37): 232–296 px, superficie y=136, fondo y=160
+  - {x: 232, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}

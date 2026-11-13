@@ -53,13 +53,18 @@ target_include_directories(echo_physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engin
 add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp)
 target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 
-# Mapa por defecto compilado en el build (CRC siempre on)
+# Mapas compilados en el build (CRC siempre on). slice = camino jugable por defecto.
 set(EW_HELLO_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/hello.ewmap)
+set(EW_SLICE_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/slice.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP})
+add_custom_command(OUTPUT ${EW_SLICE_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml -o ${EW_SLICE_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -81,6 +86,10 @@ add_executable(rope_test tests/rope_test.cpp)
 target_link_libraries(rope_test PRIVATE echo_game)
 add_dependencies(rope_test ew_maps)
 add_test(NAME rope_hello COMMAND rope_test ${EW_HELLO_MAP})
+add_executable(slice_test tests/slice_test.cpp)
+target_link_libraries(slice_test PRIVATE echo_game)
+add_dependencies(slice_test ew_maps)
+add_test(NAME slice_path COMMAND slice_test ${EW_SLICE_MAP})
 
 # --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
 add_library(echo_atlas engine/render/tile_atlas.cpp)
@@ -136,7 +145,7 @@ if(EW_BUILD_ENGINE)
   add_executable(echo_engine engine/core/main.cpp)
   target_compile_definitions(echo_engine PRIVATE
     EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
-    EW_DEFAULT_MAP="${EW_HELLO_MAP}")
+    EW_DEFAULT_MAP="${EW_SLICE_MAP}")
   target_link_libraries(echo_engine PRIVATE echo_render echo_game glfw)
   add_dependencies(echo_engine ew_maps)
 endif()
