@@ -14,7 +14,7 @@ Sim::Sim(Scene& scene) : scene_(scene) {
   for (const auto& r : scene_.map().ropes()) {  // sección ROPE (validada por ewmapc)
     if (r.segments < 1 || r.segments > 256 || !(r.seg_len > 0)) continue;
     const int n = int(r.segments);
-    const uint32_t first = world_.add_rope({float(r.x), float(r.y)}, n, r.seg_len, 1.5f);
+    const uint32_t first = world_.add_rope({float(r.x), float(r.y)}, n, r.seg_len, kRopeRadius);
     for (int i = 1; i <= n; ++i) world_.add_collision_pair(player_, first + uint32_t(i));
     ropes_.push_back({first, n, r.seg_len});
   }
@@ -35,13 +35,18 @@ void Sim::grab(int rope, int node, bool flash) {
   climb_acc_ = 0;
   if (flash) grab_flash_ = kGrabFlashFrames;
   auto& pts = world_.points();
-  pts[held_index()].inv_mass = kHeldInvMass;
+  auto& nd = pts[held_index()];
+  held_r0_ = nd.radius;
+  nd.inv_mass = kHeldInvMass;
+  nd.radius = kPlayerRadius;  // el player viaja en el nodo: misma colisión contra tiles
   world_.set_pairs_enabled(player_, false);
 }
 
 void Sim::release() {
   if (!held_) return;
-  world_.points()[held_index()].inv_mass = 1;
+  auto& nd = world_.points()[held_index()];
+  nd.inv_mass = 1;
+  nd.radius = held_r0_;
   world_.set_pairs_enabled(player_, true);
   held_ = 0;
   regrab_cd_ = 12;

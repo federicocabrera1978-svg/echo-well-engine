@@ -1,12 +1,28 @@
 // Test sin GL: vertical slice sobre slice.ewmap (loader + camino start→goal).
 // Recorre el camino con input scriptado: switch→puerta, agua, seam, cuerda, meta.
 #include "game/sim.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
 #define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "FAIL: %s\n", #c); return 1; } } while (0)
 using namespace ew;
 using game::Input;
+
+// El círculo del player (r) entra al interior de un tile sólido (margen eps).
+static bool circle_in_solid(game::Scene& s, physics::Vec2 p, float r, float eps = 0.15f) {
+  const float ts = float(map::kTileSize);
+  const int x0 = int(std::floor((p.x - r) / ts)), x1 = int(std::floor((p.x + r) / ts));
+  const int y0 = int(std::floor((p.y - r) / ts)), y1 = int(std::floor((p.y + r) / ts));
+  for (int ty = y0; ty <= y1; ++ty)
+    for (int tx = x0; tx <= x1; ++tx) {
+      if (!s.solid_tile(tx, ty)) continue;
+      const physics::Vec2 c{std::clamp(p.x, tx * ts, (tx + 1) * ts),
+                            std::clamp(p.y, ty * ts, (ty + 1) * ts)};
+      if (physics::length(p - c) < r - eps) return true;
+    }
+  return false;
+}
 
 int main(int argc, char** argv) {
   if (argc < 2) return 2;
@@ -122,6 +138,21 @@ int main(int argc, char** argv) {
   std::printf("agarre: on_rope=%d nodo=%d y=%.1f\n", int(sim.on_rope()), sim.rope_node(),
               sim.player().pos.y);
   CHECK(sim.on_rope());
+  CHECK(pts[sim.rope_first() + uint32_t(sim.rope_node())].radius == game::Sim::kPlayerRadius);
+
+  // Colgado contra la pared (tile 50, x=400): el círculo del player (r=4) no entra.
+  int wall_hits = 0;
+  float hang_max_x = 0;
+  for (int i = 0; i < 120; ++i) {
+    sim.step({1.f});
+    hang_max_x = std::fmax(hang_max_x, sim.player().pos.x);
+    if (circle_in_solid(scene, {sim.player().pos.x, sim.player().pos.y}, game::Sim::kPlayerRadius))
+      ++wall_hits;
+  }
+  std::printf("colgado vs pared: max_x=%.1f hits=%d (pared x=400)\n", hang_max_x, wall_hits);
+  CHECK(sim.on_rope());
+  CHECK(wall_hits == 0);
+  CHECK(hang_max_x <= 400.f - game::Sim::kPlayerRadius + 0.2f);
 
   // Trepar hasta cerca del tope (cornisa a y=64; queremos y ≲ 60).
   { Input up; up.climb = -1;
@@ -138,6 +169,8 @@ int main(int argc, char** argv) {
               sim.player().pos.x, sim.player().pos.y, int(sim.on_rope()),
               int(sim.player().grounded));
   CHECK(!sim.on_rope());
+  for (int i = 0; i < sim.rope_points(); ++i)
+    CHECK(pts[sim.rope_first() + uint32_t(i)].radius == game::Sim::kRopeRadius);  // al soltar, radio original
   CHECK(sim.player().pos.y < 80.f);          // sobre la cornisa (stand ≈ 60)
   CHECK(sim.player().pos.x > 400.f);         // a la derecha de la cuerda / sobre la pared
 
