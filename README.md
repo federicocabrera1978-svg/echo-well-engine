@@ -42,14 +42,14 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
 ./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** reiniciar al spawn, **ESC** salir. El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
 
 ### Vertical slice (`slice`)
 Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecánicas existentes:
 
 1. **Chunk 0:** spawn, **switch → puerta**, pileta de **agua** (hay que nadar). Seam en x=320.
 2. **Chunk 1:** **cuerda** (sección ROPE) para subir una pared que no se salta, cornisa con **atlas** de tiles. Seam en x=640. La cámara usa dead-zone + slide en los seams.
-3. **Chunk 2:** la cornisa llega a la **meta** (entidad `goal` + zona `META` id 3). Al tocarla, `Sim::finished()` queda en true y el motor imprime `¡meta!`.
+3. **Chunk 2:** la cornisa llega a la **meta** (entidad `goal` + zona `META` id 3). Al tocarla, `Sim::finished()` queda en true, el motor imprime `¡meta!`, la escena hace un fade (~0.75 s) con la palabra **META** y la pista **R**, y **R** reinicia al spawn (puerta cerrada, cuerdas y agua de nuevo). `Input::restart` / `Sim::reset()` / `Sim::finish_t()` lo testean en `slice_test` (sin GL).
 
 `slice_test` (ctest, sin GL) carga el mapa, verifica el loader (entidades, capas COL/VIS/FG/META, cuerda, agua) y recorre el camino con input scriptado hasta la meta. `hello` sigue como mapa de los demás tests.
 

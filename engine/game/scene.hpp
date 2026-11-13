@@ -44,6 +44,8 @@ class Scene {
   bool door_blocks(int tx, int ty) const;
   // Avanza la animación de las puertas (hacia 1 si active, hacia 0 si no).
   void tick(float dt);
+  // Entidades y cámara al estado inicial (switches/puertas apagados, cam en el spawn).
+  void reset_state();
   const Entity* find_type(std::string_view type) const;
   const ew::map::MapLoader& map() const { return map_; }
 

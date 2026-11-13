@@ -16,6 +16,7 @@ struct Input {
   bool interact = false;  // flanco: activar switch cercano (E / X / ↓)
   bool grab = false;      // flanco: agarrar/soltar la cuerda (C / Shift)
   float climb = 0;        // -1 sube, +1 baja (solo colgado; ↑/↓ o W/S)
+  bool restart = false;   // flanco: reiniciar al spawn (R)
 };
 
 class Sim {
@@ -32,9 +33,12 @@ class Sim {
   static constexpr int kGrabFlashFrames = 18;   // ~0.3 s de destello al agarrar
   static constexpr float kGoalReach = 16.f;     // px: distancia al entity "goal"
   static constexpr uint16_t kMetaGoal = 3;      // META tile = zona de meta
+  static constexpr float kFinishFadeSec = 0.75f;  // fade de la pantalla de meta
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
+  // Reconstruye física y entidades; cámara al spawn. `finished()` vuelve a false.
+  void reset();
 
   Scene& scene() { return scene_; }
   ew::physics::World& world() { return world_; }
@@ -55,6 +59,8 @@ class Sim {
   int grab_flash() const { return grab_flash_; }  // frames de destello restantes (0 = nada)
   // Meta: entity "goal" a ≤ kGoalReach, o tile META == kMetaGoal bajo el player.
   bool finished() const { return finished_; }
+  // 0..1, avanza en kFinishFadeSec segundos después de tocar la meta.
+  float finish_t() const { return finish_t_; }
 
  private:
   Scene& scene_;
@@ -70,6 +76,8 @@ class Sim {
   int grab_flash_ = 0;   // destello visual al agarrar
   float held_r0_ = kRopeRadius;  // radio original del nodo agarrado
   bool finished_ = false;
+  float finish_t_ = 0;  // 0..1, pantalla de fin
+  void build();
   void grab(int rope, int node, bool flash = true);
   void check_goal();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }

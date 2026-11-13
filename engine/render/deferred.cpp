@@ -124,6 +124,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   BindFramebuffer(GL_FRAMEBUFFER, lit_fbo_);
   UseProgram(light_prog_);
   Uniform1f(GetUniformLocation(light_prog_, "u_time"), t);
+  Uniform1f(GetUniformLocation(light_prog_, "u_fade"), v.fade);
   Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, albedo_);
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, normal_);

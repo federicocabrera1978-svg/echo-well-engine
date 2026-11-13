@@ -30,6 +30,7 @@ struct FrameView {
   std::array<float, kMaxWaterBodies * 4> water_rect{};
   std::array<float, kMaxWaterBodies * kMaxWaterCols> water_surface{};
   float light_x = 160, light_y = 90;         // luz principal (px mundo)
+  float fade = 0;                            // 0..1 pantalla de meta (light pass)
 };
 
 // G-buffer a 320x180: albedo (RGBA8), normal (RGBA8, n*0.5+0.5) + depth24.

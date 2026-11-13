@@ -61,6 +61,7 @@ class World {
   void add_collision_pair(uint32_t a, uint32_t b) { pairs_.push_back({a, b, true}); }
   // Desactiva/activa las colisiones de pares que involucran al punto `i` (p. ej. player colgado).
   void set_pairs_enabled(uint32_t i, bool on);
+  void clear() { points_.clear(); sticks_.clear(); pairs_.clear(); }
 
  private:
   void solve_sticks();

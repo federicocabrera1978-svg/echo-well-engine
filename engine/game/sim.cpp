@@ -6,8 +6,21 @@
 namespace ew::game {
 using ew::physics::Vec2;
 
-Sim::Sim(Scene& scene) : scene_(scene) {
+Sim::Sim(Scene& scene) : scene_(scene) { build(); }
+
+void Sim::build() {
+  world_.clear();
   world_.tile_size = float(ew::map::kTileSize);
+  water_.clear();
+  ropes_.clear();
+  held_rope_ = 0;
+  held_ = 0;
+  climb_acc_ = 0;
+  regrab_cd_ = 0;
+  grab_flash_ = 0;
+  held_r0_ = kRopeRadius;
+  finished_ = false;
+  finish_t_ = 0;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -20,6 +33,11 @@ Sim::Sim(Scene& scene) : scene_(scene) {
   }
   for (const auto& w : scene_.map().water())
     water_.emplace_back(float(w.x), float(w.y), float(w.w), float(w.h), w.stiffness, w.damping);
+}
+
+void Sim::reset() {
+  scene_.reset_state();
+  build();
 }
 
 bool Sim::player_in_water() const {
@@ -53,6 +71,16 @@ void Sim::release() {
 }
 
 void Sim::step(const Input& in) {
+  if (in.restart) { reset(); return; }
+  if (finished_) {
+    finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
+    for (auto& w : water_) { w.interact(world_); w.step(); }
+    world_.step(kDt, [this](int tx, int ty) { return scene_.solid_tile(tx, ty); });
+    const auto& p = world_.points()[player_];
+    scene_.follow(p.pos.x, p.pos.y, kDt);
+    scene_.tick(kDt);
+    return;
+  }
   auto& pts = world_.points();
   if (regrab_cd_ > 0) --regrab_cd_;
   if (grab_flash_ > 0) --grab_flash_;
