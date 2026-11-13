@@ -88,6 +88,39 @@ int main() {
     std::puts("atlas_test: EW_TEST_FIXTURES no seteado, se saltean los PNG");
   }
 
+  // Atlas default del repo (generado por tools/gen_atlas.py).
+  if (const char* def = std::getenv("EW_DEFAULT_ATLAS"); def && *def) {
+    auto d = load_tile_atlas_file(def);
+    CHECK(d.source == AtlasSource::Png);
+    CHECK(d.px.size() == proc.size());
+    CHECK(d.px != proc);
+    auto at = [&](int id, int x, int y) -> const uint8_t* {
+      auto o = tile_uv(uint8_t(id));
+      return &d.px[(std::size_t(o.y + y) * kAtlasPx + (o.x + x)) * 4];
+    };
+    // Bisel: mask 0 expone E/S (A baja); mask 15 es interior (A alta).
+    CHECK(at(0, 7, 4)[3] < at(15, 7, 4)[3]);
+    CHECK(at(0, 4, 7)[3] < at(15, 4, 7)[3]);
+    CHECK(at(15, 4, 4)[3] > 200);
+    // mask solo E (2): borde E sin bisel de altura; W expuesto más claro que el interior de mask 15.
+    CHECK(at(2, 7, 4)[3] > 200);
+    CHECK(at(2, 0, 4)[0] > at(15, 0, 4)[0]);
+    // interior de una familia idéntico entre máscaras (pixel (3,3), sin bisel ni cap).
+    { auto p = at(16, 3, 3), q = at(31, 3, 3);
+      CHECK(p[0] == q[0] && p[1] == q[1] && p[2] == q[2] && p[3] == q[3]); }
+    // Familias distintas: piedra (1) vs ladrillo (2) vs pasto (4) vs musgo (10).
+    CHECK(at(16, 3, 3)[0] != at(32, 3, 3)[0] || at(16, 3, 3)[1] != at(32, 3, 3)[1]);
+    CHECK(at(64, 3, 3)[1] > at(48, 3, 3)[1]);  // pasto más verde que tierra
+    // Cap de pasto (fam 4): con N expuesto (mask 0) la fila y=0 es más verde, en
+    // promedio, que con N presente (mask 15, sin cap).
+    int g0 = 0, g15 = 0;
+    for (int x = 0; x < kTilePx; ++x) { g0 += at(64, x, 0)[1]; g15 += at(64 + 15, x, 0)[1]; }
+    CHECK(g0 > g15);
+    for (std::size_t i = 0; i < d.px.size(); i += 4) CHECK(d.px[i] | d.px[i + 1] | d.px[i + 2]);
+  } else {
+    std::puts("atlas_test: EW_DEFAULT_ATLAS no seteado, se saltea el default");
+  }
+
   std::puts("atlas ok");
   return 0;
 }

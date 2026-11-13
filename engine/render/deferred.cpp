@@ -1,4 +1,5 @@
 #include "render/deferred.hpp"
+#include <cstdio>
 
 #include <algorithm>
 #include "render/tile_atlas.hpp"
@@ -77,6 +78,9 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err, const std:
   {  // atlas de tiles 128×128 RGBA8 (unidad 1)
     const auto loaded = load_tile_atlas_file(atlas_path.empty() ? nullptr : atlas_path.c_str());
     const auto& atlas = loaded.px;
+    std::fprintf(stderr, "echo_engine: atlas %s%s\n",
+                 loaded.source == AtlasSource::Png ? "PNG " : "procedural",
+                 loaded.source == AtlasSource::Png ? atlas_path.c_str() : "");
     glGenTextures(1, &atlas_tex_); glBindTexture(GL_TEXTURE_2D, atlas_tex_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kAtlasPx, kAtlasPx, 0, GL_RGBA, GL_UNSIGNED_BYTE, atlas.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
