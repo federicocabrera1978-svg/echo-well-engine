@@ -17,7 +17,7 @@ inline constexpr int kTilesW = 120, kTilesH = 69;  // 3×3 chunks de 40×23
 struct FrameView {
   float cam_x = 0, cam_y = 0;
   float chunk_x_px = 0, chunk_y_px = 0;      // origen del vecindario 3×3 (chunk activo - 1)
-  const uint8_t* tiles = nullptr;            // kTilesW×kTilesH RG8 (R=COL, G=VIS), 3×3 chunks
+  const uint8_t* tiles = nullptr;            // kTilesW×kTilesH RGB8 (R=COL, G=VIS, B=FG), 3×3 chunks
   uint32_t tiles_version = 0;                // re-sube la textura si cambia
   // Marcadores: (x, y, radio, forma 0=círculo 1=cuadrado) + color RGB.
   int marker_count = 0;

@@ -71,10 +71,11 @@ class Scene {
   int chunk_y() const { return cy_; }
   // Incrementa cada vez que cambia el chunk activo (para re-subir texturas).
   uint32_t chunk_version() const { return chunk_ver_; }
-  // Vecindario 3×3 de chunks centrado en el activo, empaquetado (R = COL, G = VIS),
-  // kNbW×kNbH tiles, fila 0 = arriba. Chunks fuera del mapa = 0. Origen en nb_origin_*.
+  // Vecindario 3×3 de chunks centrado en el activo, empaquetado (R = COL, G = VIS, B = FG),
+  // kNbW×kNbH tiles, kPackedCh bytes por tile, fila 0 = arriba. Fuera del mapa = 0.
   static constexpr int kNbW = ew::map::kChunkW * 3, kNbH = ew::map::kChunkH * 3;
-  const std::array<uint8_t, std::size_t(kNbW) * kNbH * 2>& active_tiles() const { return packed_; }
+  static constexpr int kPackedCh = 3;  // COL, VIS, FG
+  const std::array<uint8_t, std::size_t(kNbW) * kNbH * kPackedCh>& active_tiles() const { return packed_; }
   float nb_origin_x() const { return float((cx_ - 1) * ew::map::kChunkW * ew::map::kTileSize); }
   float nb_origin_y() const { return float((cy_ - 1) * ew::map::kChunkH * ew::map::kTileSize); }
 
@@ -89,7 +90,7 @@ class Scene {
   float off_x_ = 0, off_y_ = 0;  // offset de cámara dentro del chunk (dead-zone)
   int cx_ = -1, cy_ = -1;
   uint32_t chunk_ver_ = 0;
-  std::array<uint8_t, std::size_t(kNbW) * kNbH * 2> packed_{};
+  std::array<uint8_t, std::size_t(kNbW) * kNbH * kPackedCh> packed_{};
 };
 
 }  // namespace ew::game

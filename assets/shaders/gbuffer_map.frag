@@ -1,5 +1,5 @@
 #version 330 core
-// Geometry pass: tiles COL/VIS del vecindario 3×3 (textura RG8UI 120×69) + marcadores
+// Geometry pass: tiles COL/VIS/FG del vecindario 3×3 (textura RGB8UI 120×69) + marcadores
 // (player, entidades, cuerpos Verlet) + superficie de agua. Coordenadas de mundo en px, y hacia abajo.
 in vec2 v_uv;
 layout(location = 0) out vec4 o_albedo;
@@ -28,9 +28,9 @@ void main() {
   vec2 world = u_cam + vec2(v_uv.x * 320.0, (1.0 - v_uv.y) * 180.0);
   vec2 local = world - u_chunk;
   ivec2 t = ivec2(floor(local / 8.0));
-  uvec2 cv = uvec2(0u);
+  uvec3 cv = uvec3(0u);
   bool inside = t.x >= 0 && t.y >= 0 && t.x < 120 && t.y < 69;
-  if (inside) cv = texelFetch(u_tiles, ivec2(t.x, t.y), 0).rg;
+  if (inside) cv = texelFetch(u_tiles, ivec2(t.x, t.y), 0).rgb;
   bool solid = cv.r != 0u;
   vec3 albedo = vec3(0.05, 0.06, 0.10);
   vec3 n = vec3(0.0, 0.0, 1.0);
@@ -70,7 +70,7 @@ void main() {
       }
     }
   }
-  // Marcadores
+  // Marcadores (actores)
   for (int i = 0; i < u_marker_count; ++i) {
     vec4 m = u_markers[i];
     vec2 d = world - m.xy;
@@ -80,6 +80,14 @@ void main() {
       n = m.w < 0.5 && m.z > 1.5 ? normalize(vec3(d.x / m.z, -d.y / m.z, 1.0)) : vec3(0.0, 0.0, 1.0);
       depth = 0.3;
     }
+  }
+  // FG: primer plano, sobre los actores (depth 0.2). Mismo atlas que VIS; id = canal B.
+  if (inside && cv.b != 0u) {
+    albedo = atlas_texel(cv.b, l).rgb;
+    float dx = atlas_h(cv.b, l + ivec2(1, 0)) - atlas_h(cv.b, l - ivec2(1, 0));
+    float dy = atlas_h(cv.b, l + ivec2(0, 1)) - atlas_h(cv.b, l - ivec2(0, 1));
+    n = normalize(vec3(-dx, dy, 1.0));
+    depth = 0.2;
   }
   o_albedo = vec4(albedo, 1.0);
   o_normal = vec4(n * 0.5 + 0.5, 1.0);

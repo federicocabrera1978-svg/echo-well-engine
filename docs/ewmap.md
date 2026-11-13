@@ -57,8 +57,8 @@ Binario de mapas de echo-well-engine. Lo genera `ewmapc` a partir de YAML (`asse
 |---|---|---|
 | 0 | `COL` | colisión (0 = vacío) |
 | 1 | `VIS` | tile visual (G-buffer, pasada deferred) |
-| 2 | `FG` | primer plano, sobre los actores |
-| 3 | `META` | marcadores (zonas de agua, triggers, etc.) |
+| 2 | `FG` | primer plano, sobre los actores. El runtime lo sube en el canal B (`RGB8UI`) y el geometry pass lo dibuja encima (depth 0.2, atlas de `VIS`). |
+| 3 | `META` | marcadores de zona. Runtime: id **2** = agua (documentación; simula la sección `WATER`), id **3** = meta (`Sim::kMetaGoal`). |
 
 El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurable) sobre `MapLoader::chunk_layer()`.
 

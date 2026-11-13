@@ -20,9 +20,9 @@ int main(int argc, char** argv) {
   s.follow(300, 180);
   CHECK(s.cam_x() == 0 && s.cam_y() == 4);  // clamp: mapa 320×184, vista 320×180
   constexpr int W = ew::game::Scene::kNbW;
-  CHECK(s.active_tiles()[((23 + 22) * W + 40 + 5) * 2] == 1);   // piso del chunk 0 (centro del 3×3)
-  CHECK(s.active_tiles()[((23 + 22) * W + 80 + 5) * 2] == 1);   // vecino derecho (chunk 1) también
-  CHECK(s.active_tiles()[((23 + 22) * W + 5) * 2] == 0);        // vecino izquierdo: fuera del mapa
+  CHECK(s.active_tiles()[((23 + 22) * W + 40 + 5) * 3] == 1);   // piso del chunk 0 (centro del 3×3)
+  CHECK(s.active_tiles()[((23 + 22) * W + 80 + 5) * 3] == 1);   // vecino derecho (chunk 1) también
+  CHECK(s.active_tiles()[((23 + 22) * W + 5) * 3] == 0);        // vecino izquierdo: fuera del mapa
   // Seam: cruzar al chunk 1 cambia el chunk activo; la cámara desliza y termina en x=320.
   const auto ver = s.chunk_version();
   s.follow(330, 150, 1.f / 60.f);
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   CHECK(s.cam_x() > 0 && s.cam_x() < 320 && s.cam_transitioning());
   for (int i = 0; i < 60; ++i) s.follow(330, 150, 1.f / 60.f);
   CHECK(s.cam_x() == 320 && !s.cam_transitioning());
-  CHECK(s.active_tiles()[((23 + 22) * W + 5) * 2] == 1);        // ahora el izquierdo es el chunk 0
+  CHECK(s.active_tiles()[((23 + 22) * W + 5) * 3] == 1);        // ahora el izquierdo es el chunk 0
   CHECK(!s.solid_px(330, 150) && s.solid_px(636, 100));         // pared derecha del mapa
   // Dead-zone (función pura): vista 320, extensión 480, semi-zona 48 → zona [112,208] con off=0.
   using S = ew::game::Scene;

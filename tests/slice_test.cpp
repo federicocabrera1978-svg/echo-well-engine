@@ -29,6 +29,16 @@ int main(int argc, char** argv) {
   CHECK(scene.tile(104, 0, map::Layer::FG) != 0);               // FG de decorado
   CHECK(scene.tile(44, 10, map::Layer::VIS) == 9);              // atlas de fondo
   CHECK(scene.chunk_x() == 0 && scene.chunk_y() == 0);
+  // FG de chunk 2 entra al vecindario al ir al chunk 1 (ox=2, local 24,0).
+  {
+    scene.follow(400, 150);
+    CHECK(scene.chunk_x() == 1);
+    constexpr int W = game::Scene::kNbW, C = game::Scene::kPackedCh;
+    const std::size_t o = (std::size_t(23 + 0) * W + std::size_t(80 + 24)) * C + 2;
+    CHECK(scene.active_tiles()[o] == 13);
+    scene.follow(spawn->x, spawn->y);  // volver al spawn para el camino
+    CHECK(scene.chunk_x() == 0);
+  }
 
   game::Sim sim(scene);
   CHECK(sim.rope_count() == 1 && sim.water().size() == 1);
