@@ -71,7 +71,7 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err) {
   if (!(light_prog_ = program(dir, "fullscreen.vert", "light.frag", err))) return false;
   glGenTextures(1, &tiles_tex_); glBindTexture(GL_TEXTURE_2D, tiles_tex_);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8UI, kTilesW, kTilesH, 0, GL_RG_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, kTilesW, kTilesH, 0, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   {  // atlas de tiles 128×128 RGBA8 (unidad 1)
@@ -95,7 +95,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, tiles_tex_);
   if (v.tiles && v.tiles_version != tiles_version_) {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kTilesW, kTilesH, GL_RG_INTEGER, GL_UNSIGNED_BYTE, v.tiles);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kTilesW, kTilesH, GL_RGB_INTEGER, GL_UNSIGNED_BYTE, v.tiles);
     tiles_version_ = v.tiles_version;
   }
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, atlas_tex_);

@@ -134,9 +134,10 @@ void Scene::rebuild_active() {
       for (int ty = 0; ty < kChunkH; ++ty)
         for (int tx = 0; tx < kChunkW; ++tx) {
           const std::size_t i = std::size_t(ty) * kChunkW + std::size_t(tx);
-          const std::size_t o = (std::size_t(oy * kChunkH + ty) * kNbW + std::size_t(ox * kChunkW + tx)) * 2;
+          const std::size_t o = (std::size_t(oy * kChunkH + ty) * kNbW + std::size_t(ox * kChunkW + tx)) * kPackedCh;
           packed_[o + 0] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::COL)][i], 255));
           packed_[o + 1] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::VIS)][i], 255));
+          packed_[o + 2] = uint8_t(std::min<uint16_t>(c->layers[uint32_t(Layer::FG)][i], 255));
         }
     }
   ++chunk_ver_;

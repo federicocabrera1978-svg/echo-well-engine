@@ -55,10 +55,10 @@ Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecá
 
 ### Escena (MapLoader → render)
 - `ew::game::Scene` carga el `.ewmap`, lee tiles vía `ChunkCache` y expone `solid_px()` (capa `COL`; fuera del mapa = sólido), entidades y una cámara que sigue al player clampada al mapa. El **chunk activo** sale de la posición del player.
-- Pipeline: geometry pass → los tiles `COL`/`VIS` del vecindario 3×3 se suben como textura `RG8UI` 120×69 (solo cuando cambia el chunk) y el shader los dibuja con bisel por tile; marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
+- Pipeline: geometry pass → los tiles `COL`/`VIS`/`FG` del vecindario 3×3 se suben como textura `RGB8UI` 120×69 (solo cuando cambia el chunk) y el shader dibuja COL/VIS con bisel, luego actores, y **FG por encima** (primer plano); marcadores (player, `switch`, `door`, `player_spawn`) van como uniforms → G-buffer 320×180 (albedo + normal + depth24) → light pass (ambiente + luz puntual que sigue al player) → blit NEAREST con escalado entero y letterbox.
 
 ### Chunks vecinos y cámara por pantallas
-- Cada chunk (40×23 tiles = 320×184 px) es **una pantalla**, como en *Animal Well*. El renderer recibe el **vecindario 3×3** del chunk activo (textura `RG8UI` 120×69, re-subida solo al cambiar de chunk), así que se dibujan el activo y sus 8 vecinos (incluye los 4 ortogonales); los que caen fuera del mapa quedan vacíos.
+- Cada chunk (40×23 tiles = 320×184 px) es **una pantalla**, como en *Animal Well*. El renderer recibe el **vecindario 3×3** del chunk activo (textura `RGB8UI` 120×69 (R=COL, G=VIS, B=FG), re-subida solo al cambiar de chunk), así que se dibujan el activo y sus 8 vecinos (incluye los 4 ortogonales); los que caen fuera del mapa quedan vacíos.
 - **Elección de cámara: slide corto, no snap.** Al cruzar un seam el chunk activo cambia en el acto (colisión/streaming) y la cámara **desliza** hacia la nueva pantalla con un ease exponencial (`kCamSlide = 12/s`, ~0.3 s; termina exacto en el origen del chunk). Dentro de una pantalla la cámara usa una **dead-zone** centrada (`kDeadHalfW = 48`, `kDeadHalfH = 24` px): mientras el player esté adentro no se mueve; al salir, la arrastra lo justo y se clampa a la pantalla del chunk. Al entrar a un chunk nuevo (o en snap) se re-centra clampado y el slide del seam sigue igual. Con chunks de 320×184 el efecto real es solo vertical (holgura 4 px); en chunks más grandes que la vista funciona en ambos ejes. Lógica pura en `Scene::dead_zone_step` (testeada en `scene_test`). Se redondea a px enteros al render (pixel-perfect). `follow(x, y)` sin `dt` hace snap (carga / `--start`).
 - `hello` ahora es 2×1 chunks: el chunk 1 tiene plataformas escalonadas; se llega abriendo la puerta con el switch. Probar: activar el switch, caminar a la derecha y cruzar x=320, o `--start 330 150`.
 
@@ -87,6 +87,10 @@ Camino corto **start → goal** en 3×1 chunks (960×184 px) que junta las mecá
 - Render: el geometry pass recibe, por cuerpo, rect + n° de columnas + altura de cada columna (uniform arrays, stride 64) y dibuja el volumen + una línea de superficie clara con normales según la pendiente (el light pass la ilumina). Hasta **4 cuerpos por frame** (`kMaxWaterBodies`); se mandan solo los que tocan la vista.
 - Contención: en `hello` cada pileta tiene piso y bordes `COL` de 3 tiles a ambos lados hasta la superficie (pileta 1 entre tiles x=19/28 en el chunk 0, pileta 2 entre x=62/71 en el chunk 1). La superficie además se clampa a ±90 % de la profundidad. `water_test` verifica que todo cuerpo del mapa esté contenido.
 - `water_test` (ctest) verifica propagación, amortiguación, salpicadura y flotación.
+
+### Capas `FG` y `META`
+- **`FG`** (primer plano): se empaqueta en el canal B de la textura del vecindario (`RGB8UI`) y el geometry pass la dibuja **sobre los actores** (depth 0.2, mismo atlas que `VIS`). `slice` trae una franja de decorado FG en el chunk 2; `slice_test` verifica el tile y el packed.
+- **`META`**: marcadores de zona. El runtime usa **id 3** como zona de meta (`Sim::kMetaGoal`); **id 2** documenta agua (el runtime usa la sección `WATER`). Ver [docs/ewmap.md](docs/ewmap.md).
 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
