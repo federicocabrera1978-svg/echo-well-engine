@@ -22,6 +22,7 @@ class Sim {
  public:
   static constexpr float kDt = 1.f / 60.f;  // paso fijo
   static constexpr float kPlayerRadius = 4.f;
+  static constexpr float kRopeRadius = 1.5f;  // nodos de cuerda (el agarrado usa kPlayerRadius)
   static constexpr float kWalkSpeed = 90.f;   // px/s
   static constexpr float kJumpSpeed = 230.f;  // px/s
   static constexpr float kGrabRange = 10.f;   // px desde el centro del player a un nodo
@@ -67,6 +68,7 @@ class Sim {
   float climb_acc_ = 0;  // px acumulados de trepada
   int regrab_cd_ = 0;    // pasos sin auto-reagarre tras soltar
   int grab_flash_ = 0;   // destello visual al agarrar
+  float held_r0_ = kRopeRadius;  // radio original del nodo agarrado
   bool finished_ = false;
   void grab(int rope, int node, bool flash = true);
   void check_goal();
