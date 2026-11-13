@@ -1,6 +1,7 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--dump FILE.ppm] [--demo] [--start X Y]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), ESC salir. --demo = input automático.
+// Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -42,6 +43,10 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
       else push_marker(v, e.x + 4, e.y + 1, 1, 1, 0.3f, 0.2f, 0.4f);
     }
     else if (e.type == "player_spawn") push_marker(v, e.x, e.y + 7, 1, 1, 0.3f, 0.9f, 0.4f);
+    else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
+      push_marker(v, e.x, e.y + 6, 4, 1, 0.45f, 0.35f, 0.15f);
+      push_marker(v, e.x, e.y, 5, 0, 1.0f, 0.85f, 0.25f);
+    }
   }
 }
 }  // namespace
@@ -74,6 +79,7 @@ int main(int argc, char** argv) {
   }
   std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
               scene.height_px(), scene.entities().size());
+  if (scene.find_type("goal")) std::printf("echo_engine: hay una meta — llegá para completar el camino\n");
 
   glfwSetErrorCallback([](int c, const char* d) { std::fprintf(stderr, "glfw %d: %s\n", c, d); });
   if (!glfwInit()) return 1;
@@ -100,7 +106,7 @@ int main(int argc, char** argv) {
   if (!renderer.init(shader_dir, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false, act_was_down = false, grab_was_down = false;
+  bool jump_was_down = false, act_was_down = false, grab_was_down = false, announced_goal = false;
   double acc = 0, last = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -136,6 +142,10 @@ int main(int argc, char** argv) {
       ++sim_steps;
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
+    if (sim.finished() && !announced_goal) {
+      std::printf("echo_engine: ¡meta! camino completado\n");
+      announced_goal = true;
+    }
     const auto& pl = sim.player();
     const float px = pl.pos.x, py = pl.pos.y;
 
@@ -146,6 +156,9 @@ int main(int argc, char** argv) {
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
+    if (sim.finished())
+      if (const auto* g = scene.find_type("goal"))
+        push_marker(v, g->x, g->y, 8, 0, 1.0f, 1.0f, 0.55f);
     const auto& pts = sim.world().points();
     for (int r = 0; r < sim.rope_count(); ++r)  // cuerdas Verlet (sección ROPE)
       for (int i = 0; i < sim.rope_points(r); ++i) {

@@ -69,5 +69,6 @@ El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurabl
 - `RopeRecord` (16 B): `i32 x, y` (ancla fija, px), `u32 segments` (1..256), `f32 seg_len` (px).
 
 ## Fuente YAML (v1)
-Ver `assets/maps/src/hello.yaml`. Claves: `name`, `size_chunks: [w, h]`, `fill: {CAPA: tile}`, `rects: - {layer, x, y, w, h, tile}` (en tiles), `entities: - {name, type, x, y}` (px), `links: - {from, to}` (por nombre), `water: - {x, y, w, h, stiffness, damping}`, `ropes: - {x, y, segments, seg_len}` (seg_len por defecto 6).
+Ver `assets/maps/src/hello.yaml` y `assets/maps/src/slice.yaml`. Claves: `name`, `size_chunks: [w, h]`, `fill: {CAPA: tile}`, `rects: - {layer, x, y, w, h, tile}` (en tiles), `entities: - {name, type, x, y}` (px), `links: - {from, to}` (por nombre), `water: - {x, y, w, h, stiffness, damping}`, `ropes: - {x, y, segments, seg_len}` (seg_len por defecto 6).
+Tipos de entidad usados: `player_spawn`, `switch`, `door`, `goal` (meta; `Sim` la considera alcanzada a ≤ 16 px, o al pisar un tile `META` con id **3**). Ids de `META` reservados: **2** = zona de agua (documentación / edición; el runtime usa la sección `WATER`), **3** = zona de meta.
 El parser es un subconjunto mínimo de YAML (listas como flow maps `- {k: v}`). El adapter TMX queda para después.
