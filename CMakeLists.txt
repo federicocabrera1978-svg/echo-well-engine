@@ -133,6 +133,10 @@ add_executable(gamepad_test tests/gamepad_test.cpp)
 target_link_libraries(gamepad_test PRIVATE echo_game)
 add_test(NAME gamepad COMMAND gamepad_test)
 
+add_executable(menu_test tests/menu_test.cpp)
+target_link_libraries(menu_test PRIVATE echo_game)
+add_test(NAME pause_menu COMMAND menu_test)
+
 # --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
 # corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.

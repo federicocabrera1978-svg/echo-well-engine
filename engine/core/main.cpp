@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC salir. --demo = input automático.
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, reiniciar, volumen, salir). --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
@@ -12,6 +12,7 @@
 
 #include "game/sim.hpp"
 #include "game/gamepad.hpp"
+#include "game/menu.hpp"
 #include "audio/device.hpp"
 #include "audio/sfx.hpp"
 #include "render/deferred.hpp"
@@ -136,9 +137,7 @@ int main(int argc, char** argv) {
   if (!win) { glfwTerminate(); return 1; }
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);
-  glfwSetKeyCallback(win, [](GLFWwindow* w, int key, int, int action, int) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) glfwSetWindowShouldClose(w, GLFW_TRUE);
-  });
+  // ESC abre/cierra el menú de pausa (se maneja en el loop, no cierra la ventana).
 
   if (const char* miss = ew::gl::load([](const char* n) { return reinterpret_cast<void*>(glfwGetProcAddress(n)); })) {
     std::fprintf(stderr, "echo_engine: falta %s (se requiere GL 3.3 core)\n", miss);
@@ -158,7 +157,9 @@ int main(int argc, char** argv) {
 
   int frames = 0, sim_steps = 0;
   bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;
+  bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false, m_ok_was = false, m_b_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
+  ew::game::PauseMenu menu;
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
     auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
@@ -190,6 +191,7 @@ int main(int argc, char** argv) {
       r_full_sent = false;
     }
     r_was_down = r_down;
+    bool pad_start = false, pad_a = false, pad_b = false, pad_du = false, pad_dd = false, pad_dl = false, pad_dr = false;
     // Gamepad (primer mando reconocido). Se combina con el teclado; --demo lo ignora.
     if (!demo && !nogamepad) {
       ew::game::PadRaw raw;
@@ -202,15 +204,18 @@ int main(int argc, char** argv) {
         raw.ly = st.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
         raw.a = st.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS;
         raw.b = st.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS;
+        pad_a = raw.a; pad_b = raw.b;
+        pad_start = st.buttons[GLFW_GAMEPAD_BUTTON_START] == GLFW_PRESS;
         raw.x = st.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS;
         raw.y = st.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS;
         raw.lb = st.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
         raw.rb = st.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] == GLFW_PRESS;
-        raw.start = st.buttons[GLFW_GAMEPAD_BUTTON_START] == GLFW_PRESS;
+        raw.start = false;  // Start abre el menú, no es R
         raw.du = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] == GLFW_PRESS;
         raw.dd = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] == GLFW_PRESS;
         raw.dl = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] == GLFW_PRESS;
         raw.dr = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS;
+        pad_du = raw.du; pad_dd = raw.dd; pad_dl = raw.dl; pad_dr = raw.dr;
         found = true;
         break;
       }
@@ -226,12 +231,46 @@ int main(int argc, char** argv) {
       in.jump = sim_steps % 90 == 45;
       in.interact = sim_steps % 300 == 43;  // ~x=96: pasa por el switch y lo alterna
     }
+    // Menú de pausa (Esc / Start). En --demo no se abre (determinista).
+    ew::game::MenuInput mi;
+    if (!demo) {
+      const bool esc_down = key(GLFW_KEY_ESCAPE);
+      mi.toggle = (esc_down && !esc_was) || (pad_start && !start_was);
+      esc_was = esc_down;
+      start_was = pad_start;
+      if (menu.open() && pad_b && !m_b_was) mi.toggle = true;  // B cierra
+      m_b_was = pad_b;
+      const bool up = key(GLFW_KEY_UP) || key(GLFW_KEY_W) || pad_du;
+      const bool dn = key(GLFW_KEY_DOWN) || key(GLFW_KEY_S) || pad_dd;
+      const bool lt = key(GLFW_KEY_LEFT) || key(GLFW_KEY_A) || pad_dl;
+      const bool rt = key(GLFW_KEY_RIGHT) || key(GLFW_KEY_D) || pad_dr;
+      const bool ok = key(GLFW_KEY_ENTER) || key(GLFW_KEY_SPACE) || key(GLFW_KEY_Z) || pad_a;
+      if (menu.open()) {
+        mi.up = up && !m_up_was;
+        mi.down = dn && !m_dn_was;
+        mi.left = lt && !m_lt_was;
+        mi.right = rt && !m_rt_was;
+        mi.confirm = ok && !m_ok_was;
+      }
+      m_up_was = up; m_dn_was = dn; m_lt_was = lt; m_rt_was = rt; m_ok_was = ok;
+    }
+    const auto mact = menu.handle(mi);
+    if (mact == ew::game::MenuAction::Quit) glfwSetWindowShouldClose(win, GLFW_TRUE);
+    if (mact == ew::game::MenuAction::Restart) {
+      ew::game::Input rst; rst.restart = true;
+      sim.step(rst);
+      ++sim_steps;
+    }
+    mixer.set_gain(menu.volume_setting());
+    mixer.set_mute(menu.muted());
+
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
     const double now = glfwGetTime();
-    acc += max_frames ? ew::game::Sim::kDt : now - last;
+    if (menu.open()) { acc = 0; last = now; }  // congelado: no acumular al reanudar
+    else acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
-    const bool did_restart = in.restart || in.restart_full;
-    for (int n = 0; acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
+    const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart;
+    for (int n = 0; !menu.open() && acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
       sim.step(in);
       in.jump = false;
       in.interact = false;
@@ -303,6 +342,10 @@ int main(int argc, char** argv) {
     }
     v.light_x = px; v.light_y = py;
     v.fade = sim.finish_t();
+    v.pause = menu.open() ? 1 : 0;
+    v.pause_sel = menu.cursor();
+    v.pause_vol = menu.volume_setting();
+    v.pause_mute = menu.muted() ? 1 : 0;
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);

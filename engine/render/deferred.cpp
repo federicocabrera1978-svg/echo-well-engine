@@ -131,6 +131,10 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1f(GetUniformLocation(light_prog_, "u_time"), t);
   Uniform1f(GetUniformLocation(light_prog_, "u_fade"), v.fade);
   Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
+  Uniform1i(GetUniformLocation(light_prog_, "u_pause"), v.pause);
+  Uniform1i(GetUniformLocation(light_prog_, "u_sel"), v.pause_sel);
+  Uniform1f(GetUniformLocation(light_prog_, "u_vol"), v.pause_vol);
+  Uniform1i(GetUniformLocation(light_prog_, "u_mute"), v.pause_mute);
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, albedo_);
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, normal_);
   glDrawArrays(GL_TRIANGLES, 0, 3);

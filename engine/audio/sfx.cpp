@@ -60,7 +60,7 @@ void Mixer::render(float* out, int frames, int rate) {
       if (v.t >= v.dur) v.on = false;
       else ++on;
     }
-    out[n] = std::clamp(acc, -1.f, 1.f);
+    out[n] = std::clamp(acc * (mute_.load() ? 0.f : gain_.load()), -1.f, 1.f);
     active_ = on;
   }
 }
