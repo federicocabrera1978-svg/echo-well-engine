@@ -1,6 +1,7 @@
 #version 330 core
 // Light pass: ambiente + luz puntual (sigue al player, con leve parpadeo) sobre el G-buffer.
 // Con u_fade > 0: pantalla de meta (oscurece, viñeta dorada, "META" + pista "R").
+// HUD (u_items_total > 0): huevo + "n/total" arriba a la izquierda, también sobre la meta.
 in vec2 v_uv;
 out vec4 o_color;
 uniform sampler2D u_albedo;
@@ -12,12 +13,41 @@ uniform int u_pause;   // 1 = menú de pausa
 uniform int u_sel;     // ítem seleccionado 0..3
 uniform float u_vol;   // 0..1 ajuste (aunque esté mute)
 uniform int u_mute;
+uniform int u_items;        // collectibles agarrados
+uniform int u_items_total;  // 0 = sin HUD
+uniform float u_items_flash; // 0..1 destello al agarrar
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
 float glyph5(int bits, vec2 p) {
   ivec2 c = ivec2(floor(p));
   if (c.x < 0 || c.y < 0 || c.x > 4 || c.y > 4) return 0.0;
   return float((bits >> (c.y * 5 + c.x)) & 1);
+}
+
+// Dígitos 0-9 (mismos glifos que el menú) y '/'.
+const int DIG[10] = int[](15324974, 14815428, 32584238, 16267791, 8682793,
+                          16268351, 15252526, 2167071, 15252014, 15235630);
+const int GSLASH = 1118480;
+
+// Contador de huevos: ícono (óvalo 5×7) + "n/t" a escala 1, esquina superior izquierda.
+vec3 hud_items(vec3 c, vec2 px) {
+  int n = clamp(u_items, 0, 9), t = clamp(u_items_total, 0, 9);
+  bool all = n >= t;
+  vec2 e = (px - vec2(8.5, 8.5)) / vec2(2.6, 3.4);  // huevo: un poco más ancho abajo
+  e.x *= 1.0 + 0.18 * clamp(-e.y, 0.0, 1.0);
+  float egg = step(dot(e, e), 1.0);
+  vec3 egg_on = vec3(1.0, 0.93, 0.70), egg_off = vec3(0.35, 0.33, 0.30);
+  // placa oscura detrás para que se lea sobre cualquier fondo
+  if (px.x >= 3.0 && px.x <= 33.0 && px.y >= 3.0 && px.y <= 14.0) c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
+  float flash = clamp(u_items_flash, 0.0, 1.0);
+  c = mix(c, mix(n > 0 ? egg_on : egg_off, vec3(1.0), flash * 0.6), egg);
+  float g = 0.0;
+  vec2 o = vec2(15.0, 6.0);
+  g = max(g, glyph5(DIG[n], px - o));
+  g = max(g, glyph5(GSLASH, px - o - vec2(6.0, 0.0)));
+  g = max(g, glyph5(DIG[t], px - o - vec2(12.0, 0.0)));
+  vec3 tc = all ? vec3(1.0, 0.85, 0.30) : vec3(0.85, 0.85, 0.88);
+  return mix(c, mix(tc, vec3(1.0), flash * 0.5), g);
 }
 
 void main() {
@@ -56,6 +86,8 @@ void main() {
     g = max(g, glyph5(GR, (px - orr) / sr));
     c = mix(c, vec3(1.0, 0.9, 0.45), g * a);
   }
+
+  if (u_items_total > 0) c = hud_items(c, px);
 
   if (u_pause > 0) {
     // Oscurece y dibuja PAUSA + 4 ítems (SEGUIR, REINICIO, VOL/MUTE, SALIR).

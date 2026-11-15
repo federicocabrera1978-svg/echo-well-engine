@@ -1,7 +1,7 @@
 // Carga un .ewmap y verifica la estructura (cualquier mapa).
 // Opcional: --name STR --chunks N --ents N --links N --water N --ropes N --has TYPE
 //   ewmap_smoke hello.ewmap --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --has player_spawn
-//   ewmap_smoke slice.ewmap --name slice --chunks 3 --ents 4 --has goal
+//   ewmap_smoke slice.ewmap --name slice --chunks 5 --ents 11 --ropes 2 --has collectible
 #include "map/chunk_cache.hpp"
 #include "map/map_loader.hpp"
 #include <cstdio>

@@ -41,12 +41,15 @@ class Sim {
   static constexpr float kRestartFullHold = 0.8f; // s: R largo → reset total
   static constexpr float kFloodRestY = 72.f;      // superficie objetivo (justo bajo la cornisa)
   static constexpr float kFloodSpeed = 48.f;      // px/s que sube/baja el agua del flood_switch
+  static constexpr float kCollectReach = 12.f;    // px: agarrar un collectible (huevo)
+  static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
 
   explicit Sim(Scene& scene);
   void step(const Input& in);
-  // Reconstruye física y entidades; cámara al spawn. Limpia checkpoint y `finished()`.
+  // Reconstruye física y entidades; cámara al spawn. Limpia checkpoint, `finished()` y
+  // collectibles (R largo = partida limpia).
   void reset();
-  // Teleporta al último checkpoint (o al spawn); no toca puertas/switches.
+  // Teleporta al último checkpoint (o al spawn); no toca puertas/switches ni collectibles.
   void respawn();
 
   Scene& scene() { return scene_; }
@@ -74,6 +77,11 @@ class Sim {
   int checkpoint_index() const { return ckpt_; }
   const Entity* checkpoint() const;
   int deaths() const { return deaths_; }
+  // Collectibles (entidades type "collectible"; Entity::active = agarrado). Sobreviven a
+  // respawn / muerte; reset() los vuelve a poner. El goal no los requiere (HUD x/total).
+  int collected() const;
+  int collectible_total() const;
+  int pickup_flash() const { return pickup_flash_; }
   int invuln() const { return invuln_; }
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
@@ -96,6 +104,7 @@ class Sim {
   int ckpt_ = -1;       // último checkpoint, -1 = spawn
   int deaths_ = 0;
   int invuln_ = 0;
+  int pickup_flash_ = 0;
   uint32_t sfx_ = 0;
   bool was_in_water_ = false;
   ew::physics::SolidFn solid_fn_;  // cache: evita alocar std::function en cada step
@@ -104,6 +113,7 @@ class Sim {
   void check_goal();
   void check_checkpoints();
   void check_hazards();
+  void check_collectibles();
   void kill();
   void apply_flood();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }

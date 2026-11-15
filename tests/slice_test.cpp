@@ -1,5 +1,6 @@
 // Test sin GL: vertical slice sobre slice.ewmap (loader + camino start→goal).
 // Recorre el camino: switch→puerta, agua, seam, cuerda, checkpoint, salta el hueco, meta.
+// Sala 3 (chunk 4): con el agua baja, switch_well abre el pasillo; cuerda 2 → repisa → huevo.
 #include "game/sim.hpp"
 #include <algorithm>
 #include <cmath>
@@ -31,7 +32,7 @@ int main(int argc, char** argv) {
   if (!scene.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
 
   // --- loader: geometría, entidades, capas, cuerda, agua ---
-  CHECK(scene.width_px() == 1280 && scene.height_px() == 184);  // 4×1 chunks
+  CHECK(scene.width_px() == 1600 && scene.height_px() == 184);  // 5×1 chunks
   const auto* spawn = scene.find_type("player_spawn");
   const auto* sw = scene.find_type("switch");
   const auto* door = scene.find_type("door");
@@ -66,7 +67,8 @@ int main(int argc, char** argv) {
   }
 
   game::Sim sim(scene);
-  CHECK(sim.rope_count() == 1 && sim.water().size() == 2);
+  CHECK(sim.rope_count() == 2 && sim.water().size() == 2);
+  CHECK(sim.collectible_total() == 1 && sim.collected() == 0);
   CHECK(sim.water()[1].x() == 808.f && sim.water()[1].rest_y() == 136.f);
   CHECK(sim.rope_points() == 17);
   CHECK(!sim.finished());
@@ -158,6 +160,109 @@ int main(int argc, char** argv) {
       min_y = std::fmin(min_y, sim6.player().pos.y);
     }
     CHECK(min_y > 90.f);  // no alcanza la cornisa (y≈60)
+  }
+
+  // Sala 3: puertas del pasillo + huevo (unitario). Las puertas cierran la pared de la pileta.
+  {
+    game::Scene s7;
+    if (!s7.load(argv[1], err)) return 1;
+    game::Sim sim7(s7);
+    CHECK(s7.solid_tile(141, 15) && s7.solid_tile(141, 18));   // door_well_hi / _lo cerradas
+    CHECK(s7.solid_tile(141, 12) && !s7.solid_tile(150, 15));  // pared fija arriba; pasillo libre
+    CHECK(!s7.solid_tile(167, 8) && s7.solid_tile(165, 8) && s7.solid_tile(172, 8));  // hueco de la cuerda 2
+    CHECK(sim7.rope_first(1) > sim7.rope_first(0) && sim7.rope_points(1) == 17);
+    const auto* egg = s7.find_type("collectible");
+    CHECK(egg && egg->x == 1440.f && egg->y == 56.f && !egg->active);
+    // Teleport al huevo: se agarra (SFX + destello), y sobrevive a muerte/R corto.
+    auto& p7 = sim7.world().points()[sim7.player_index()];
+    p7.pos = p7.prev = {1440.f, 60.f};
+    sim7.take_sfx();
+    sim7.step({});
+    CHECK(sim7.collected() == 1 && egg->active);
+    CHECK(sim7.take_sfx() & 64u);  // kSfxPickup
+    CHECK(sim7.pickup_flash() > 0);
+    sim7.step({});
+    CHECK(sim7.collected() == 1);  // no se cuenta dos veces
+    { Input rst; rst.restart = true; sim7.step(rst); }
+    CHECK(sim7.collected() == 1);
+    auto& p7b = sim7.world().points()[sim7.player_index()];
+    p7b.pos = p7b.prev = {700.f, 156.f};  // pinchos
+    for (int i = 0; i < 40; ++i) sim7.step({});
+    CHECK(sim7.deaths() >= 1 && sim7.collected() == 1);
+    { Input full; full.restart_full = true; sim7.step(full); }
+    CHECK(sim7.collected() == 0 && !egg->active);  // R largo: partida limpia
+    // Sin el switch_well, nadando contra las puertas no se entra al pasillo.
+    auto& p7c = sim7.world().points()[sim7.player_index()];
+    p7c.pos = p7c.prev = {1100.f, 134.f};
+    for (int i = 0; i < 240; ++i) { Input in; in.move_x = 1.f; in.jump = (i % 15 == 0); sim7.step(in); }
+    CHECK(sim7.player().pos.x < 1128.f && sim7.collected() == 0);
+  }
+
+  // Sala 3 jugable: desde el checkpoint de la cornisa, SIN inundar: saltar el hueco, caer a la
+  // pileta baja, nadar al switch_well, abrir, nadar por la puerta al pasillo, cuerda 2, repisa,
+  // huevo; volver por arriba saltando el hueco de la cuerda y llegar a la meta con 1/1.
+  {
+    game::Scene s8;
+    if (!s8.load(argv[1], err)) return 1;
+    game::Sim sim8(s8);
+    auto& P = sim8.world().points();
+    const uint32_t pi8 = sim8.player_index();
+    P[pi8].pos = P[pi8].prev = {536.f, 56.f};
+    sim8.step({});
+    CHECK(sim8.checkpoint() && sim8.checkpoint()->x == 536.f);
+    for (int i = 0; i < 50 && sim8.player().pos.x < 600.f; ++i) sim8.step({1.f});
+    { Input j; j.jump = true; j.move_x = 1; sim8.step(j); }
+    for (int i = 0; i < 200 && sim8.player().pos.x < 790.f; ++i) sim8.step({1.f});
+    CHECK(sim8.player().pos.y < 80.f && sim8.deaths() == 0);  // cruzó el hueco de pinchos
+    // Caer a la pileta baja y nadar a la derecha hasta el switch_well.
+    const auto* sww = &s8.entities()[0];
+    for (const auto& e : s8.entities()) if (e.name == "switch_well") sww = &e;
+    CHECK(sww->name == "switch_well" && !sww->active);
+    bool wet = false;
+    for (int i = 0; i < 900 && sim8.player().pos.x < sww->x - 2.f; ++i) {
+      Input in; in.move_x = 1.f;
+      sim8.step(in);
+      wet = wet || sim8.player_in_water();
+    }
+    std::printf("sala3 switch_well: x=%.1f y=%.1f agua=%d\n", sim8.player().pos.x, sim8.player().pos.y, int(wet));
+    CHECK(wet && sim8.water()[1].rest_y() == 136.f);  // agua baja (sin flood)
+    { Input a; a.interact = true; sim8.step(a); }
+    CHECK(sww->active);
+    for (int i = 0; i < 30; ++i) sim8.step({});
+    CHECK(!s8.solid_tile(141, 15) && !s8.solid_tile(141, 18));  // puertas abiertas
+    // Nadar por la puerta al pasillo y caminar hasta debajo de la cuerda 2.
+    const float rx2 = P[sim8.rope_first(1)].pos.x;
+    CHECK(std::fabs(rx2 - 1352.f) < 0.5f);
+    for (int i = 0; i < 900 && sim8.player().pos.x < rx2 - 6.f; ++i) sim8.step({1.f});
+    std::printf("sala3 bajo cuerda 2: x=%.1f y=%.1f chunk=%d\n", sim8.player().pos.x, sim8.player().pos.y, s8.chunk_x());
+    CHECK(sim8.player().pos.x > 1340.f && sim8.player().pos.y > 140.f);
+    CHECK(s8.chunk_x() == 4);
+    // Misma receta que la cuerda 1: saltar, agarrar, trepar, balancear y saltar a la repisa.
+    { Input j; j.jump = true; j.move_x = 1; sim8.step(j); }
+    for (int i = 0; i < 50 && !sim8.on_rope(); ++i) { Input in; in.move_x = 0.3f; in.grab = true; sim8.step(in); }
+    CHECK(sim8.on_rope() && sim8.held_rope() == 1);
+    for (int i = 0; i < 120; ++i) sim8.step({1.f});
+    { Input up; up.climb = -1;
+      for (int i = 0; i < 240 && sim8.player().pos.y > 50.f; ++i) sim8.step(up); }
+    CHECK(sim8.on_rope() && sim8.player().pos.y < 70.f);
+    for (int i = 0; i < 25; ++i) sim8.step({1.f});
+    { Input j; j.jump = true; j.move_x = 1; sim8.step(j); }
+    for (int i = 0; i < 200 && sim8.collected() == 0; ++i) sim8.step({1.f});
+    std::printf("sala3 huevo: x=%.1f y=%.1f huevos=%d/%d\n", sim8.player().pos.x, sim8.player().pos.y,
+                sim8.collected(), sim8.collectible_total());
+    CHECK(sim8.collected() == 1 && sim8.collectible_total() == 1);
+    CHECK(sim8.player().pos.y < 80.f);  // sobre la repisa
+    // Volver por arriba: caminar a la izquierda, saltar el hueco de la cuerda, llegar a la meta.
+    for (int i = 0; i < 200 && sim8.player().pos.x > 1384.f; ++i) sim8.step({-1.f});
+    { Input j; j.jump = true; j.move_x = -1; sim8.step(j); }
+    for (int i = 0; i < 400 && !sim8.finished(); ++i) sim8.step({-1.f});
+    std::printf("sala3 meta: x=%.1f y=%.1f finished=%d\n", sim8.player().pos.x, sim8.player().pos.y, int(sim8.finished()));
+    CHECK(sim8.finished() && sim8.collected() == 1);
+    // R corto: el huevo se conserva; R largo: vuelve a 0/1.
+    { Input rst; rst.restart = true; sim8.step(rst); }
+    CHECK(!sim8.finished() && sim8.collected() == 1);
+    { Input full; full.restart_full = true; sim8.step(full); }
+    CHECK(sim8.collected() == 0 && !s8.find_type("collectible")->active);
   }
 
   // --- camino jugable ---
@@ -297,6 +402,7 @@ int main(int argc, char** argv) {
   CHECK(scene.cam_x() >= 940.f);
   CHECK(sim.finished());  // se mantiene
   CHECK(sim.finish_t() >= 0.999f);  // 60 pasos ≥ 0.75 s de fade
+  CHECK(sim.collected() == 0);       // la meta no requiere el huevo (HUD 0/1)
 
   // Congelado: el input de movimiento no saca al player de la meta.
   {

@@ -25,6 +25,7 @@ void Sim::build() {
   ckpt_ = -1;
   deaths_ = 0;
   invuln_ = 0;
+  pickup_flash_ = 0;
   sfx_ = 0;
   was_in_water_ = false;
   const Entity* spawn = scene_.find_type("player_spawn");
@@ -125,6 +126,7 @@ void Sim::step(const Input& in) {
   auto& pts = world_.points();
   if (regrab_cd_ > 0) --regrab_cd_;
   if (grab_flash_ > 0) --grab_flash_;
+  if (pickup_flash_ > 0) --pickup_flash_;
   // Agarrar: nodo más cercano dentro de kGrabRange.
   if (in.grab && !held_ && regrab_cd_ == 0) {
     int best = 0, best_r = 0;
@@ -187,8 +189,35 @@ void Sim::step(const Input& in) {
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
   was_in_water_ = in_w;
   check_checkpoints();
+  check_collectibles();
   check_hazards();
   check_goal();
+}
+
+int Sim::collected() const {
+  int n = 0;
+  for (const auto& e : scene_.entities()) n += (e.type == "collectible" && e.active) ? 1 : 0;
+  return n;
+}
+
+int Sim::collectible_total() const {
+  int n = 0;
+  for (const auto& e : scene_.entities()) n += e.type == "collectible" ? 1 : 0;
+  return n;
+}
+
+void Sim::check_collectibles() {
+  const auto& p = player();
+  const auto& ents = scene_.entities();
+  const float r2 = kCollectReach * kCollectReach;
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "collectible" || ents[i].active) continue;
+    const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
+    if (dx * dx + dy * dy > r2) continue;
+    scene_.set_active(i, true);  // agarrado: persiste hasta reset()
+    pickup_flash_ = kPickupFlashFrames;
+    sfx_ |= 64u;  // kSfxPickup
+  }
 }
 
 void Sim::check_goal() {

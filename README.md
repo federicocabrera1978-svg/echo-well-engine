@@ -47,13 +47,16 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** o **Start** abre el menú de pausa (seguir, reiniciar desde checkpoint, volumen/mute, salir). Gamepad (Xbox/SDL): stick o d-pad caminar, **A**/RB saltar, **X**/**B** switch, **LB**/**Y** agarrar cuerda, stick Y / d-pad trepar, **Start** = R (corto/largo). `--nogamepad` o `EW_NOGAMEPAD=1` lo apaga. SFX procedural (beeps) si hay dispositivo; `--nosound` o `EW_NOSOUND=1` lo apaga (CI headless). El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
 
 ### Vertical slice (`slice`)
-Camino corto **start → goal** en 4×1 chunks (1280×184 px) que junta las mecánicas existentes:
+Camino corto **start → goal** en 5×1 chunks (1600×184 px) que junta las mecánicas existentes:
 
 1. **Chunk 0:** spawn, **switch → puerta**, pileta de **agua** (hay que nadar). Seam en x=320.
 2. **Chunk 1:** **cuerda** (sección ROPE) para subir una pared que no se salta, cornisa con **atlas** de tiles. Seam en x=640. La cámara usa dead-zone + slide en los seams.
 3. **Chunk 2:** **checkpoint** en la cornisa, **hueco con pinchos** (META 4) y un **`flood_switch`**.
 4. **Chunk 3:** pileta cuyo nivel **sube** al activar el switch (de y=136 a y=72, `Sim::kFloodRestY`) para nadar hasta la cornisa de salida y la **meta** (goal + META 3, x=1184). Otro checkpoint en la salida.
-Al tocar la meta, fade (~0.75 s) con **META**. **R** corto vuelve al último checkpoint; **R** largo (~0.8 s) al spawn limpio. `slice_test` recorre todo el camino (incluye inundación) sin GL.
+5. **Chunk 4 — sala del huevo (opcional):** con el agua **baja** (sin activar el `flood_switch`), un `switch_well` dentro de la pileta abre dos **puertas** en su pared derecha; se nada al pasillo bajo la cornisa de salida, se usa una **segunda cuerda** para trepar a una repisa y se agarra el **huevo** (`type: collectible`). Desde la repisa se vuelve por arriba saltando el hueco de la cuerda hasta la meta.
+
+**Collectibles:** HUD arriba a la izquierda con huevo + **n/total** (dorado al completar, destello + beep al agarrar). Lo agarrado **sobrevive** a morir y a **R** corto (checkpoint); **R** largo (spawn limpio) vuelve a 0. La meta **no** requiere el huevo (se puede terminar 0/1).
+Al tocar la meta, fade (~0.75 s) con **META**. **R** corto vuelve al último checkpoint; **R** largo (~0.8 s) al spawn limpio. `slice_test` recorre todo el camino (incluye inundación) y resuelve la sala del huevo (switch_well → puertas → cuerda 2 → huevo → meta 1/1) sin GL.
 
 `slice_test` (ctest, sin GL) carga el mapa, verifica el loader (entidades, capas COL/VIS/FG/META, cuerda, agua) y recorre el camino con input scriptado hasta la meta. `hello` sigue como mapa de los demás tests.
 
