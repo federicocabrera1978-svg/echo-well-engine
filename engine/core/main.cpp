@@ -33,6 +33,10 @@ using ew::render::FrameView;
 
 void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, float cg, float cb) {
   if (v.marker_count >= ew::render::kMaxMarkers) return;
+  // Fuera de la vista no gasta slots (hay kMaxMarkers; con 2 cuerdas no alcanzan para todo).
+  constexpr float m = 16.f;
+  if (x + r < v.cam_x - m || x - r > v.cam_x + float(ew::render::kInternalW) + m ||
+      y + r < v.cam_y - m || y - r > v.cam_y + float(ew::render::kInternalH) + m) return;
   const int i = v.marker_count++;
   v.markers[i * 4 + 0] = x; v.markers[i * 4 + 1] = y; v.markers[i * 4 + 2] = r; v.markers[i * 4 + 3] = float(shape);
   v.marker_colors[i * 3 + 0] = cr; v.marker_colors[i * 3 + 1] = cg; v.marker_colors[i * 3 + 2] = cb;
@@ -60,6 +64,11 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
     else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
       push_marker(v, e.x, e.y + 6, 4, 1, 0.45f, 0.35f, 0.15f);
       push_marker(v, e.x, e.y, 5, 0, 1.0f, 0.85f, 0.25f);
+    } else if (e.type == "collectible") {  // huevo: dos círculos crema; agarrado = no se dibuja
+      if (!e.active) {
+        push_marker(v, e.x, e.y + 1, 3, 0, 1.0f, 0.93f, 0.72f);
+        push_marker(v, e.x, e.y - 2, 2, 0, 1.0f, 0.97f, 0.85f);
+      }
     } else if (e.type == "checkpoint") {  // totem: cian inactivo, verde si es el actual
       if (e.active) {
         push_marker(v, e.x, e.y, 5, 1, 0.3f, 1.0f, 0.55f);
@@ -171,6 +180,7 @@ int main(int argc, char** argv) {
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false, m_ok_was = false, m_b_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
+  int last_items = 0;
   const double t_loop = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -300,6 +310,7 @@ int main(int argc, char** argv) {
       if (bits & kSfxGoal) device_play(SfxId::Goal);
       if (bits & kSfxSwitch) device_play(SfxId::Switch);
       if (bits & kSfxSplash) device_play(SfxId::Splash);
+      if (bits & kSfxPickup) device_play(SfxId::Pickup);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim.finished() && !announced_goal) {
@@ -358,6 +369,13 @@ int main(int argc, char** argv) {
     v.pause_sel = menu.cursor();
     v.pause_vol = menu.volume_setting();
     v.pause_mute = menu.muted() ? 1 : 0;
+    v.items = sim.collected();
+    v.items_total = sim.collectible_total();
+    v.items_flash = float(sim.pickup_flash()) / float(ew::game::Sim::kPickupFlashFrames);
+    if (v.items != last_items) {
+      if (v.items > last_items) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
+      last_items = v.items;
+    }
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);

@@ -35,6 +35,10 @@ struct FrameView {
   int pause_sel = 0;
   float pause_vol = 0.8f;
   int pause_mute = 0;
+  // HUD de collectibles (light pass): ícono de huevo + "n/total" arriba a la izquierda.
+  // total == 0 → no se dibuja. flash 0..1 = destello al agarrar uno.
+  int items = 0, items_total = 0;
+  float items_flash = 0;
 };
 
 
