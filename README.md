@@ -24,6 +24,7 @@ tools/ewmapc/        compilador YAML -> .ewmap (+ smoke test)
 assets/maps/src/     fuentes de mapas (YAML)
 assets/maps/bin/     mapas compilados (generados, ignorados por git)
 docs/ewmap.md        especificación binaria
+docs/level-design.md guía para armar salas (YAML, capas, entidades)
 ```
 
 ## Build
@@ -31,7 +32,7 @@ Requisitos: CMake ≥ 3.20 y un compilador C++20 (GCC 11+, Clang 14+, MSVC 19.30
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
+ctest --test-dir build --output-on-failure   # compila hello/slice/room y los verifica con ewmap_smoke
 ```
 
 ## Correr el prototipo
@@ -41,10 +42,11 @@ ctest --test-dir build --output-on-failure   # compila hello.yaml y lo carga
 ./build/echo_engine --frames 120 # sale tras N frames (smoke test / headless con xvfb-run)
 ./build/echo_engine --map otro.ewmap --dump frame.ppm  # otro mapa; vuelca el último frame 320×180
 ./build/echo_engine --map build/maps/hello.ewmap       # mapa de pruebas (2 chunks, 2 cuerdas)
+./build/echo_engine --map build/maps/room.ewmap        # ejemplo mínimo de la guía (1 chunk, salto → meta)
 ./build/echo_engine --demo        # input automático (camina, salta y activa el switch)
 ./build/echo_engine --start 330 150  # aparece en (x, y) px; p. ej. chunk 1
 ```
-Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** o **Start** abre el menú de pausa (seguir, reiniciar desde checkpoint, volumen/mute, salir). Gamepad (Xbox/SDL): stick o d-pad caminar, **A**/RB saltar, **X**/**B** switch, **LB**/**Y** agarrar cuerda, stick Y / d-pad trepar, **Start** = R (corto/largo). `--nogamepad` o `EW_NOGAMEPAD=1` lo apaga. SFX procedural (beeps) si hay dispositivo; `--nosound` o `EW_NOSOUND=1` lo apaga (CI headless). El build compila `assets/maps/src/{slice,hello}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto.
+Controles: **←/→** o **A/D** caminar, **Espacio/↑/Z** saltar (también nadar hacia arriba en el agua), **E/X/↓** activar el switch cercano, **C/Shift** agarrar/soltar la cuerda, **R** corto vuelve al último checkpoint (o al spawn), **R** largo (~0.8 s) reinicia todo al inicio, **ESC** o **Start** abre el menú de pausa (seguir, reiniciar desde checkpoint, volumen/mute, salir). Gamepad (Xbox/SDL): stick o d-pad caminar, **A**/RB saltar, **X**/**B** switch, **LB**/**Y** agarrar cuerda, stick Y / d-pad trepar, **Start** = R (corto/largo). `--nogamepad` o `EW_NOGAMEPAD=1` lo apaga. SFX procedural (beeps) si hay dispositivo; `--nosound` o `EW_NOSOUND=1` lo apaga (CI headless). El build compila `assets/maps/src/{slice,hello,room}.yaml` → `build/maps/*.ewmap` (con CRC) y usa **slice** por defecto. Cómo armar una sala nueva: [docs/level-design.md](docs/level-design.md).
 
 ### Vertical slice (`slice`)
 Camino corto **start → goal** en 5×1 chunks (1600×184 px) que junta las mecánicas existentes:

@@ -49,6 +49,9 @@ add_test(NAME ewmapc_hello
 add_test(NAME ewmapc_slice
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap)
+add_test(NAME ewmapc_room
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
           --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2
@@ -57,8 +60,12 @@ add_test(NAME ewmap_load_slice
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
           --name slice --chunks 5 --ents 11 --links 3 --water 2 --ropes 2 --has checkpoint --has flood_switch --has goal --has collectible
           --has player_spawn --has switch --has door --has goal)
+add_test(NAME ewmap_load_room
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap
+          --name room --chunks 1 --ents 2 --has player_spawn --has goal)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)
+set_tests_properties(ewmap_load_room PROPERTIES DEPENDS ewmapc_room)
 
 # --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
 add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)
@@ -70,6 +77,7 @@ target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 # Mapas compilados en el build (CRC siempre on). slice = camino jugable por defecto.
 set(EW_HELLO_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/hello.ewmap)
 set(EW_SLICE_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/slice.ewmap)
+set(EW_ROOM_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/room.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -78,7 +86,11 @@ add_custom_command(OUTPUT ${EW_SLICE_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml -o ${EW_SLICE_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/slice.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP})
+add_custom_command(OUTPUT ${EW_ROOM_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml -o ${EW_ROOM_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -249,6 +261,6 @@ if(EW_BUILD_ENGINE)
 endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png DESTINATION assets/atlas)
-install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} DESTINATION assets/maps/bin)
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/DIST.txt DESTINATION .)

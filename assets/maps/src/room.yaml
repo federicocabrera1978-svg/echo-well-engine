@@ -1,0 +1,27 @@
+# room.yaml — ejemplo mínimo de docs/level-design.md.
+# 1×1 chunk (320×184 px). Camino: spawn → saltar un hueco → goal.
+# Coordenadas de rects en TILES (8 px); entidades / water / ropes en PX. Y hacia abajo.
+name: room
+size_chunks: [1, 1]
+# autotile: true   # default: VIS/FG → familia*16+máscara (N=1,E=2,S=4,W=8)
+
+fill:
+  VIS: 0
+
+rects:
+  # Piso y paredes (COL = colisión, VIS = dibujo; misma forma).
+  - {layer: COL, x: 0,  y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0,  y: 20, w: 40, h: 3, tile: 17}   # familia dirt (autotile: tile 17 → familia 3)
+  - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}
+  - {layer: VIS, x: 0,  y: 0,  w: 1,  h: 23, tile: 17}
+  - {layer: COL, x: 39, y: 0,  w: 1,  h: 23, tile: 1}
+  - {layer: VIS, x: 39, y: 0,  w: 1,  h: 23, tile: 17}
+  # Hueco en el piso (tiles 16–19 = x 128–160 px). Los rects posteriores pisan a los anteriores.
+  - {layer: COL, x: 16, y: 20, w: 4, h: 3, tile: 0}
+  - {layer: VIS, x: 16, y: 20, w: 4, h: 3, tile: 0}
+  # Zona de meta en META (id 3). La entidad goal alcanza igual a ≤ 16 px; el tile es un respaldo.
+  - {layer: META, x: 35, y: 17, w: 3, h: 3, tile: 3}
+
+entities:
+  - {name: spawn, type: player_spawn, x: 32,  y: 152}   # un toque arriba del piso (superficie y=160; radio 4)
+  - {name: goal,  type: goal,         x: 288, y: 152}
