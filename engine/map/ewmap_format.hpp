@@ -19,7 +19,7 @@ enum class Layer : uint32_t { COL = 0, VIS = 1, FG = 2, META = 3 };
 inline constexpr uint32_t kLayerCount = 4;
 
 enum class SectionType : uint32_t {
-  TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6, ROPE = 7,
+  TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6, ROPE = 7, MOVER = 8,
 };
 
 enum HeaderFlags : uint32_t {
@@ -75,6 +75,21 @@ struct RopeRecord {             // 16 bytes: cuerda Verlet colgando de un ancla 
   uint32_t segments;            // cantidad de segmentos (>= 1)
   float    seg_len;             // largo de cada segmento (px)
 };
+
+inline constexpr uint32_t kMaxMoverWaypoints = 8;
+inline constexpr uint16_t kMaxMoverTiles = 64;  // w/h en tiles
+
+struct MoverRecord {            // 88 bytes: plataforma que recorre waypoints (ping-pong)
+  uint32_t entity;              // índice en ENT (type "mover")
+  uint16_t w_tiles, h_tiles;    // tamaño en tiles (1..kMaxMoverTiles)
+  float    speed;               // px/s a lo largo del segmento
+  float    pause;               // s de pausa al llegar a cada waypoint
+  uint16_t n_wp;                // 2..kMaxMoverWaypoints
+  uint16_t tile;                // id fuente YAML (familia = (tile%15)+1)
+  uint32_t pad;                 // 0
+  int32_t  wp_x[kMaxMoverWaypoints];
+  int32_t  wp_y[kMaxMoverWaypoints];
+};
 #pragma pack(pop)
 
 static_assert(sizeof(EwMapHeader) == 40);
@@ -84,6 +99,7 @@ static_assert(sizeof(EntityRecord) == 16);
 static_assert(sizeof(LinkRecord) == 8);
 static_assert(sizeof(WaterRecord) == 24);
 static_assert(sizeof(RopeRecord) == 16);
+static_assert(sizeof(MoverRecord) == 88);
 
 inline constexpr std::size_t kChunkBytes =
     sizeof(ChunkHeader) + kLayerCount * kTilesPerChunk * sizeof(uint16_t); // 7368

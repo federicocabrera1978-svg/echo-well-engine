@@ -11,6 +11,7 @@ inline constexpr int kInternalH = 180;
 inline constexpr int kMaxMarkers = 48;
 inline constexpr int kMaxWaterCols = 64;
 inline constexpr int kMaxWaterBodies = 4;
+inline constexpr int kMaxMovers = 8;
 inline constexpr int kTilesW = 120, kTilesH = 69;  // 3×3 chunks de 40×23
 
 // Lo que el juego le pasa al renderer cada frame (coords de mundo en px, y hacia abajo).
@@ -39,6 +40,10 @@ struct FrameView {
   // total == 0 → no se dibuja. flash 0..1 = destello al agarrar uno.
   int items = 0, items_total = 0;
   float items_flash = 0;
+  // Plataformas móviles: rect (x, y, w, h) en px mundo + familia de atlas (1..15).
+  int mover_count = 0;
+  std::array<float, kMaxMovers * 4> mover_rect{};
+  std::array<float, kMaxMovers> mover_fam{};
 };
 
 

@@ -16,6 +16,9 @@ uniform int u_water_count;         // cuerpos de agua (máx. 4)
 uniform int u_water_cols[4];
 uniform vec4 u_water_rect[4];      // x, y reposo, w, y fondo
 uniform float u_water[256];        // superficie por columna (px mundo), stride 64 por cuerpo
+uniform int u_mover_count;         // plataformas móviles (máx. 8)
+uniform vec4 u_mover_rect[8];      // x, y, w, h (px mundo, esquina sup. izq.)
+uniform float u_mover_fam[8];      // familia de atlas 1..15
 
 // Texel del atlas para el tile id `vis` en coord local l (0..7).
 vec4 atlas_texel(uint vis, ivec2 l) {
@@ -75,6 +78,30 @@ void main() {
         }
         depth = min(depth, 0.4);
       }
+    }
+  }
+  // Plataformas móviles: tiles del atlas, autotile 4 vecinos dentro del rect, depth 0.35.
+  for (int i = 0; i < u_mover_count; ++i) {
+    vec4 mr = u_mover_rect[i];
+    vec2 rel = world - mr.xy;
+    if (rel.x >= 0.0 && rel.y >= 0.0 && rel.x < mr.z && rel.y < mr.w) {
+      int nw = max(int(floor(mr.z / 8.0 + 0.5)), 1);
+      int nh = max(int(floor(mr.w / 8.0 + 0.5)), 1);
+      ivec2 cell = ivec2(clamp(int(floor(rel.x / 8.0)), 0, nw - 1),
+                         clamp(int(floor(rel.y / 8.0)), 0, nh - 1));
+      ivec2 ml = ivec2(floor(rel)) - cell * 8;
+      uint mask = 0u;
+      if (cell.y > 0) mask |= 1u;
+      if (cell.x < nw - 1) mask |= 2u;
+      if (cell.y < nh - 1) mask |= 4u;
+      if (cell.x > 0) mask |= 8u;
+      uint vis = uint(u_mover_fam[i]) * 16u + mask;
+      albedo = atlas_texel(vis, ml).rgb;
+      float mdx = atlas_h(vis, ml + ivec2(1, 0)) - atlas_h(vis, ml - ivec2(1, 0));
+      float mdy = atlas_h(vis, ml + ivec2(0, 1)) - atlas_h(vis, ml - ivec2(0, 1));
+      n = normalize(vec3(-mdx, mdy, 1.0));
+      autotile_bevel(n, vis, ml);
+      depth = 0.35;
     }
   }
   // Marcadores (actores)

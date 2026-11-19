@@ -42,6 +42,22 @@ void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, f
   v.marker_colors[i * 3 + 0] = cr; v.marker_colors[i * 3 + 1] = cg; v.marker_colors[i * 3 + 2] = cb;
 }
 
+void push_movers(FrameView& v, const ew::game::Sim& sim) {
+  constexpr float m = 16.f;
+  const float x0 = v.cam_x - m, x1 = v.cam_x + float(ew::render::kInternalW) + m;
+  const float y0 = v.cam_y - m, y1 = v.cam_y + float(ew::render::kInternalH) + m;
+  for (int i = 0; i < sim.mover_count() && v.mover_count < ew::render::kMaxMovers; ++i) {
+    const auto& mv = sim.mover(i);
+    if (mv.x + mv.w < x0 || mv.x > x1 || mv.y + mv.h < y0 || mv.y > y1) continue;
+    const int k = v.mover_count++;
+    v.mover_rect[k * 4 + 0] = mv.x;
+    v.mover_rect[k * 4 + 1] = mv.y;
+    v.mover_rect[k * 4 + 2] = mv.w;
+    v.mover_rect[k * 4 + 3] = mv.h;
+    v.mover_fam[k] = float((mv.tile % 15) + 1);
+  }
+}
+
 void push_entities(FrameView& v, const ew::game::Scene& s) {
   for (const auto& e : s.entities()) {
     if (e.type == "switch" || e.type == "flood_switch") {  // base gris + luz: ámbar = apagado, verde = encendido
@@ -333,6 +349,7 @@ int main(int argc, char** argv) {
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
+    push_movers(v, sim);
     push_hazards(v, scene);
     if (sim.finished())
       if (const auto* g = scene.find_type("goal"))

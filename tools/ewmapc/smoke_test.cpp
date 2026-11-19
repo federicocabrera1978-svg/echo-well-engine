@@ -1,5 +1,5 @@
 // Carga un .ewmap y verifica la estructura (cualquier mapa).
-// Opcional: --name STR --chunks N --ents N --links N --water N --ropes N --has TYPE
+// Opcional: --name STR --chunks N --ents N --links N --water N --ropes N --movers N --has TYPE
 //   ewmap_smoke hello.ewmap --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --has player_spawn
 //   ewmap_smoke slice.ewmap --name slice --chunks 5 --ents 11 --ropes 2 --has collectible
 #include "map/chunk_cache.hpp"
@@ -17,12 +17,12 @@ using namespace ew::map;
 int main(int argc, char** argv) {
   if (argc < 2) {
     std::fprintf(stderr, "uso: ewmap_smoke FILE [--name STR] [--chunks N] [--ents N] "
-                         "[--links N] [--water N] [--ropes N] [--has TYPE]...\n");
+                         "[--links N] [--water N] [--ropes N] [--movers N] [--has TYPE]...\n");
     return 2;
   }
   const char* path = argv[1];
   const char* expect_name = nullptr;
-  int exp_chunks = -1, exp_ents = -1, exp_links = -1, exp_water = -1, exp_ropes = -1;
+  int exp_chunks = -1, exp_ents = -1, exp_links = -1, exp_water = -1, exp_ropes = -1, exp_movers = -1;
   std::vector<std::string> has;
   for (int i = 2; i < argc; ++i) {
     auto eq = [&](const char* s) { return std::strcmp(argv[i], s) == 0; };
@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
     else if (eq("--links")) need(exp_links);
     else if (eq("--water")) need(exp_water);
     else if (eq("--ropes")) need(exp_ropes);
+    else if (eq("--movers")) need(exp_movers);
     else if (eq("--has") && i + 1 < argc) has.emplace_back(argv[++i]);
     else { std::fprintf(stderr, "flag desconocido: %s\n", argv[i]); return 2; }
   }
@@ -75,6 +76,13 @@ int main(int argc, char** argv) {
   // Agua y cuerdas con geometría coherente (los mismos límites que ewmapc).
   for (const auto& w : m.water()) CHECK(w.w > 0 && w.h > 0);
   for (const auto& r : m.ropes()) CHECK(r.segments >= 1 && r.segments <= 256 && r.seg_len > 0);
+  for (const auto& mv : m.movers()) {
+    CHECK(mv.entity < nent);
+    CHECK(mv.w_tiles >= 1 && mv.h_tiles >= 1 && mv.w_tiles <= kMaxMoverTiles && mv.h_tiles <= kMaxMoverTiles);
+    CHECK(mv.n_wp >= 2 && mv.n_wp <= kMaxMoverWaypoints);
+    CHECK(mv.speed > 0 && mv.pause >= 0);
+    CHECK(m.string_at(m.entities()[mv.entity].type_str) == "mover");
+  }
 
   // Nombre del mapa = primer string de STRTAB (offset 1).
   const auto map_name = m.string_at(1);
@@ -91,6 +99,7 @@ int main(int argc, char** argv) {
   if (exp_links >= 0) CHECK(int(m.links().size()) == exp_links);
   if (exp_water >= 0) CHECK(int(m.water().size()) == exp_water);
   if (exp_ropes >= 0) CHECK(int(m.ropes().size()) == exp_ropes);
+  if (exp_movers >= 0) CHECK(int(m.movers().size()) == exp_movers);
   for (const auto& t : has) {
     bool found = false;
     for (const auto& ent : m.entities())
@@ -98,8 +107,8 @@ int main(int argc, char** argv) {
     if (!found) { std::fprintf(stderr, "FAIL: falta entidad type=%s\n", t.c_str()); return 1; }
   }
 
-  std::printf("ewmap_smoke: %s (%s, %u chunks, %zu ents, %zu links, %zu water, %zu ropes) OK\n",
+  std::printf("ewmap_smoke: %s (%s, %u chunks, %zu ents, %zu links, %zu water, %zu ropes, %zu movers) OK\n",
               path, map_name.data(), m.chunk_count(), m.entities().size(), m.links().size(),
-              m.water().size(), m.ropes().size());
+              m.water().size(), m.ropes().size(), m.movers().size());
   return 0;
 }

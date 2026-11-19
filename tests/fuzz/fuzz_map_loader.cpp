@@ -18,6 +18,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   for (const auto& l : m.links()) sink += l.from_entity ^ l.to_entity;
   for (const auto& w : m.water()) sink += uint32_t(w.w);
   for (const auto& r : m.ropes()) sink += r.segments;
+  for (const auto& mv : m.movers()) sink += mv.entity + mv.n_wp + mv.w_tiles;
   sink += m.chunk_count();
   const auto& h = m.header();
   for (uint16_t cy = 0; cy < h.map_h_chunks && cy < 64; ++cy)

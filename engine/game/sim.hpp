@@ -44,12 +44,21 @@ class Sim {
   static constexpr float kCollectReach = 12.f;    // px: agarrar un collectible (huevo)
   static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
 
+  // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
+  // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
+  struct Mover {
+    float x = 0, y = 0, w = 0, h = 0;
+    float speed = 40.f, pause = 0.5f;
+    uint16_t tile = 6;
+  };
+
   explicit Sim(Scene& scene);
   void step(const Input& in);
   // Reconstruye física y entidades; cámara al spawn. Limpia checkpoint, `finished()` y
-  // collectibles (R largo = partida limpia).
+  // collectibles (R largo = partida limpia). Las plataformas vuelven al primer waypoint.
   void reset();
   // Teleporta al último checkpoint (o al spawn); no toca puertas/switches ni collectibles.
+  // Las plataformas sí vuelven a su estado inicial (el puzzle queda armado otra vez).
   void respawn();
 
   Scene& scene() { return scene_; }
@@ -83,6 +92,10 @@ class Sim {
   int collectible_total() const;
   int pickup_flash() const { return pickup_flash_; }
   int invuln() const { return invuln_; }
+  int mover_count() const { return int(movers_.size()); }
+  const Mover& mover(int i) const { return movers_[std::size_t(i)]; }
+  // Índice de la plataforma que está cargando al player, o -1.
+  int ridden() const { return ridden_; }
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
 
@@ -108,7 +121,21 @@ class Sim {
   uint32_t sfx_ = 0;
   bool was_in_water_ = false;
   ew::physics::SolidFn solid_fn_;  // cache: evita alocar std::function en cada step
+  struct MoverState : Mover {
+    float prev_x = 0, prev_y = 0;
+    std::vector<ew::physics::Vec2> wp;
+    int seg = 0;    // índice del waypoint de salida del segmento actual
+    int dir = 1;    // +1 o -1 (ping-pong)
+    float dist = 0; // px recorridos en el segmento
+    float wait = 0; // s de pausa restante
+  };
+  std::vector<MoverState> movers_;
+  int ridden_ = -1;  // plataforma que carga al player
   void build();
+  void reset_movers();
+  void advance_movers();
+  void carry_player();
+  void collide_movers();
   void grab(int rope, int node, bool flash = true);
   void check_goal();
   void check_checkpoints();

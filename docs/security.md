@@ -4,7 +4,7 @@
 
 Superficie de entrada no confiable: archivos `.ewmap` (`MapLoader`) y fuentes YAML de mapa (`yaml_lite` en `ewmapc`).
 
-- `tests/fuzz/fuzz_map_loader.cpp` — carga bytes arbitrarios y, si validan, recorre secciones, entidades/strings, links, agua, cuerdas y capas de chunks.
+- `tests/fuzz/fuzz_map_loader.cpp` — carga bytes arbitrarios y, si validan, recorre secciones, entidades/strings, links, agua, cuerdas, plataformas móviles y capas de chunks.
 - `tests/fuzz/fuzz_yaml_lite.cpp` — parsea texto arbitrario.
 - Corpus semilla: `tests/fuzz/corpus/{ewmap,yaml}` (incluye `hello` con y sin CRC).
 

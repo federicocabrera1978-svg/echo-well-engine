@@ -124,6 +124,11 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_water_rect"), v.water_count, v.water_rect.data());
     Uniform1fv(GetUniformLocation(geom_prog_, "u_water"), v.water_count * kMaxWaterCols, v.water_surface.data());
   }
+  Uniform1i(GetUniformLocation(geom_prog_, "u_mover_count"), v.mover_count);
+  if (v.mover_count > 0) {
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_mover_rect"), v.mover_count, v.mover_rect.data());
+    Uniform1fv(GetUniformLocation(geom_prog_, "u_mover_fam"), v.mover_count, v.mover_fam.data());
+  }
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // 2) Light pass -> lit target
   BindFramebuffer(GL_FRAMEBUFFER, lit_fbo_);
