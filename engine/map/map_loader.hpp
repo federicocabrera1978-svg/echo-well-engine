@@ -40,6 +40,7 @@ public:
   std::span<const LinkRecord>   links()    const;
   std::span<const WaterRecord>  water()    const;
   std::span<const RopeRecord>   ropes()    const;  // vacío si el mapa no tiene ROPE
+  std::span<const MoverRecord>  movers()   const;  // vacío si el mapa no tiene MOVER
   std::string_view              string_at(uint32_t offset) const;
 
   uint32_t chunk_count() const;

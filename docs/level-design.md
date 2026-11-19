@@ -120,6 +120,14 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | `flood_switch` | Como `switch` (también se puede linkear a puertas). Activo, sube las piletas con **`x ≥ 400`** hasta `Sim::kFloodRestY` (72 px) a `kFloodSpeed` (48 px/s). Al apagarse, bajan a su `y` inicial. |
 | `goal` | Meta, alcance `Sim::kGoalReach` (16 px) o pisar `META` 3. No exige collectibles. |
 | `collectible` | Huevo, alcance `Sim::kCollectReach` (12 px) al centro del player. Sobrevive a morir y a R corto; R largo lo restablece. El HUD muestra n/total. |
+| `mover` | Plataforma sólida de `w`×`h` **tiles** que recorre waypoints en ping-pong, a `speed` px/s (default 40) con `pause` s en cada extremo (default 0.5). `(x, y)` es la esquina **sup. izq.** (px) y el primer waypoint. El segundo sale de `to_x`/`to_y`, o una ruta más larga con `path: "x y x y ..."` (hasta 8 puntos en total, sin comas). `tile` es el id fuente del atlas (default 6, metal). Se dibuja con el atlas, con autotile 4 vecinos dentro del rect. El player parado encima viaja con ella (carry). No se atraviesa desde arriba, de costado ni desde abajo. **Aplastamiento:** la plataforma empuja; si después de empujar el player queda metido en un tile sólido o en otra plataforma, muere y reaparece en el checkpoint. `reset()` (R largo) y `respawn()` (R corto o muerte) la devuelven al primer waypoint. La cuerda colisiona contra ella; el agua no se toca. |
+
+Ejemplo:
+
+```yaml
+  - {name: plat, type: mover, x: 96, y: 128, w: 3, h: 1, to_x: 216, to_y: 128, speed: 80, pause: 0.25, tile: 6}
+  - {name: lift, type: mover, x: 80, y: 144, w: 2, h: 1, path: "80 64 160 64", speed: 40, pause: 0.5}
+```
 
 `links: - {from: nombre_switch, to: nombre_door}` abre la puerta cuando el switch (o
 `flood_switch`) está activo. Un mismo switch puede apuntar a varias puertas.
@@ -226,3 +234,7 @@ bloques de `hello.yaml` / `slice.yaml`.
   mata (caída fuera).
 - `flood_switch` ignora piletas con `x < 400`. En un mapa de un solo chunk, el agua no va
   a subir.
+- Un `mover` mide `w` y `h` en **tiles**, pero `(x, y)` y `to_x`/`to_y`/`path` van en **px**.
+  `path` es una lista de enteros separados por espacios (`x y x y ...`), no usa comas (el
+  parser de flow maps parte por coma). Sin `to_*` ni `path` el compilador rechaza la entidad.
+  `w`/`h` van de 1 a 64, `speed` en (0, 1000], `pause` en [0, 60], como máximo 8 waypoints.

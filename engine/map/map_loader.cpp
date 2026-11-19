@@ -101,6 +101,7 @@ std::span<const EntityRecord> MapLoader::entities() const { return records<Entit
 std::span<const LinkRecord>   MapLoader::links()    const { return records<LinkRecord>(SectionType::LINK); }
 std::span<const WaterRecord>  MapLoader::water()    const { return records<WaterRecord>(SectionType::WATER); }
 std::span<const RopeRecord>   MapLoader::ropes()    const { return records<RopeRecord>(SectionType::ROPE); }
+std::span<const MoverRecord>  MapLoader::movers()   const { return records<MoverRecord>(SectionType::MOVER); }
 
 std::string_view MapLoader::string_at(uint32_t offset) const {
   auto s = section(SectionType::STRTAB);

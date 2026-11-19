@@ -52,6 +52,9 @@ add_test(NAME ewmapc_slice
 add_test(NAME ewmapc_room
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap)
+add_test(NAME ewmapc_mover
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/mover.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/mover.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
           --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2
@@ -63,9 +66,14 @@ add_test(NAME ewmap_load_slice
 add_test(NAME ewmap_load_room
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap
           --name room --chunks 1 --ents 2 --has player_spawn --has goal)
+add_test(NAME ewmap_load_mover
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/mover.ewmap
+          --name mover --chunks 1 --ents 3 --ropes 1 --water 1 --movers 2
+          --has player_spawn --has mover)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)
 set_tests_properties(ewmap_load_room PROPERTIES DEPENDS ewmapc_room)
+set_tests_properties(ewmap_load_mover PROPERTIES DEPENDS ewmapc_mover)
 
 # --- echo_game: escena sin GL (MapLoader -> colisión, entidades, cámara) -----
 add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)
@@ -78,6 +86,7 @@ target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 set(EW_HELLO_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/hello.ewmap)
 set(EW_SLICE_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/slice.ewmap)
 set(EW_ROOM_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/room.ewmap)
+set(EW_MOVER_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/mover.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -90,7 +99,11 @@ add_custom_command(OUTPUT ${EW_ROOM_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml -o ${EW_ROOM_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/room.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP})
+add_custom_command(OUTPUT ${EW_MOVER_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/mover.yaml -o ${EW_MOVER_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/mover.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -100,6 +113,10 @@ add_executable(physics_test tests/physics_test.cpp)
 target_link_libraries(physics_test PRIVATE echo_game)
 add_dependencies(physics_test ew_maps)
 add_test(NAME physics_hello COMMAND physics_test ${EW_HELLO_MAP})
+add_executable(mover_test tests/mover_test.cpp)
+target_link_libraries(mover_test PRIVATE echo_game)
+add_dependencies(mover_test ew_maps)
+add_test(NAME physics_movers COMMAND mover_test ${EW_MOVER_MAP})
 add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)

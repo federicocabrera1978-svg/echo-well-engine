@@ -14,6 +14,8 @@ void Sim::build() {
   world_.tile_size = float(ew::map::kTileSize);
   water_.clear();
   ropes_.clear();
+  movers_.clear();
+  ridden_ = -1;
   held_rope_ = 0;
   held_ = 0;
   climb_acc_ = 0;
@@ -40,6 +42,42 @@ void Sim::build() {
   }
   for (const auto& w : scene_.map().water())
     water_.emplace_back(float(w.x), float(w.y), float(w.w), float(w.h), w.stiffness, w.damping);
+  const auto ents = scene_.map().entities();
+  for (const auto& rec : scene_.map().movers()) {
+    if (rec.entity >= ents.size()) continue;
+    if (scene_.map().string_at(ents[rec.entity].type_str) != "mover") continue;
+    if (rec.n_wp < 2 || rec.n_wp > ew::map::kMaxMoverWaypoints) continue;
+    if (rec.w_tiles < 1 || rec.h_tiles < 1) continue;
+    if (!(rec.speed > 0.f)) continue;
+    MoverState m;
+    m.w = float(rec.w_tiles * ew::map::kTileSize);
+    m.h = float(rec.h_tiles * ew::map::kTileSize);
+    m.speed = rec.speed;
+    m.pause = rec.pause < 0.f ? 0.f : rec.pause;
+    m.tile = rec.tile;
+    m.wp.reserve(rec.n_wp);
+    for (uint16_t i = 0; i < rec.n_wp; ++i) m.wp.push_back({float(rec.wp_x[i]), float(rec.wp_y[i])});
+    m.x = m.prev_x = m.wp[0].x;
+    m.y = m.prev_y = m.wp[0].y;
+    m.seg = 0;
+    m.dir = 1;
+    m.dist = 0;
+    m.wait = 0;
+    movers_.push_back(std::move(m));
+  }
+}
+
+void Sim::reset_movers() {
+  ridden_ = -1;
+  for (auto& m : movers_) {
+    if (m.wp.empty()) continue;
+    m.x = m.prev_x = m.wp[0].x;
+    m.y = m.prev_y = m.wp[0].y;
+    m.seg = 0;
+    m.dir = 1;
+    m.dist = 0;
+    m.wait = 0;
+  }
 }
 
 void Sim::reset() {
@@ -69,6 +107,7 @@ void Sim::respawn() {
   grab_flash_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
+  reset_movers();
   scene_.follow(p.x, p.y, 0.f);
 }
 
@@ -117,7 +156,9 @@ void Sim::step(const Input& in) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     apply_flood();
     for (auto& w : water_) { w.interact(world_); w.step(); }
+    advance_movers();
     world_.step(kDt, solid_fn_);
+    collide_movers();
     const auto& p = world_.points()[player_];
     scene_.follow(p.pos.x, p.pos.y, kDt);
     scene_.tick(kDt);
@@ -175,8 +216,18 @@ void Sim::step(const Input& in) {
   }
   apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
+  advance_movers();
+  carry_player();
   world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
+    const auto& node = world_.points()[held_index()];
+    auto& p = world_.points()[player_];
+    p.pos = node.pos;
+    p.prev = node.prev;
+    p.grounded = false;
+  }
+  collide_movers();
+  if (held_) {  // re-sync si un mover empujó el nodo agarrado
     const auto& node = world_.points()[held_index()];
     auto& p = world_.points()[player_];
     p.pos = node.pos;
@@ -278,6 +329,154 @@ void Sim::apply_flood() {
     if (std::fabs(dy) < 0.05f) { w.set_rest_y(tgt); continue; }
     const float step = kFloodSpeed * kDt;
     w.set_rest_y(y + std::copysign(std::min(step, std::fabs(dy)), dy));
+  }
+}
+
+void Sim::advance_movers() {
+  using ew::physics::length;
+  for (auto& m : movers_) {
+    m.prev_x = m.x;
+    m.prev_y = m.y;
+    if (m.wp.size() < 2 || !(m.speed > 0.f)) continue;
+    const int n = int(m.wp.size());
+    float leftover = kDt;
+    int guard = 0;
+    while (leftover > 1e-8f && guard++ < 16) {
+      if (m.wait > 0.f) {
+        const float d = std::min(m.wait, leftover);
+        m.wait -= d;
+        leftover -= d;
+        continue;
+      }
+      int b = m.seg + m.dir;
+      if (b < 0 || b >= n) { m.dir = -m.dir; b = m.seg + m.dir; }
+      if (b < 0 || b >= n) break;
+      const auto& A = m.wp[std::size_t(m.seg)];
+      const auto& B = m.wp[std::size_t(b)];
+      const float seg_len = length(B - A);
+      if (seg_len < 1e-6f) {
+        m.seg = b;
+        m.dist = 0;
+        if (m.seg + m.dir < 0 || m.seg + m.dir >= n) m.dir = -m.dir;
+        m.wait = m.pause;
+        continue;
+      }
+      const float remain = seg_len - m.dist;
+      const float step = m.speed * leftover;
+      if (step < remain) {
+        m.dist += step;
+        leftover = 0;
+      } else {
+        leftover = (step - remain) / m.speed;
+        m.seg = b;
+        m.dist = 0;
+        if (m.seg + m.dir < 0 || m.seg + m.dir >= n) m.dir = -m.dir;
+        m.wait = m.pause;
+      }
+    }
+    int b = m.seg + m.dir;
+    if (b < 0 || b >= n) b = m.seg;
+    const auto& A = m.wp[std::size_t(m.seg)];
+    const auto& B = m.wp[std::size_t(b)];
+    const float seg_len = length(B - A);
+    const float t = seg_len > 1e-6f ? m.dist / seg_len : 0.f;
+    m.x = A.x + (B.x - A.x) * t;
+    m.y = A.y + (B.y - A.y) * t;
+  }
+}
+
+void Sim::carry_player() {
+  if (held_ || ridden_ < 0 || ridden_ >= int(movers_.size())) return;
+  const auto& m = movers_[std::size_t(ridden_)];
+  const float dx = m.x - m.prev_x, dy = m.y - m.prev_y;
+  if (dx == 0.f && dy == 0.f) return;
+  auto& p = world_.points()[player_];
+  p.pos.x += dx; p.pos.y += dy;
+  p.prev.x += dx; p.prev.y += dy;
+}
+
+namespace {
+// Círculo vs AABB. Empuja afuera, fricción como en tiles, grounded si sale por arriba (n.y < -0.5).
+bool collide_circle_aabb(ew::physics::Point& p, float l, float top, float r, float bot) {
+  using ew::physics::Vec2;
+  using ew::physics::dot;
+  using ew::physics::length;
+  const Vec2 closest{std::clamp(p.pos.x, l, r), std::clamp(p.pos.y, top, bot)};
+  const Vec2 d = p.pos - closest;
+  const float dist = length(d);
+  Vec2 n;
+  float pen;
+  if (dist > 1e-6f) {
+    if (dist >= p.radius) return false;
+    n = d * (1.f / dist);
+    pen = p.radius - dist;
+  } else {
+    const float left = p.pos.x - l, right = r - p.pos.x;
+    const float up = p.pos.y - top, down = bot - p.pos.y;
+    const float m = std::min({left, right, up, down});
+    n = m == left ? Vec2{-1, 0} : m == right ? Vec2{1, 0} : m == up ? Vec2{0, -1} : Vec2{0, 1};
+    pen = m + p.radius;
+  }
+  p.pos += n * pen;
+  Vec2 v = p.pos - p.prev;
+  const float vn = dot(v, n);
+  if (vn < 0) v -= n * vn;
+  const Vec2 vt = v - n * dot(v, n);
+  v -= vt * 0.08f;
+  p.prev = p.pos - v;
+  if (n.y < -0.5f) p.grounded = true;
+  return true;
+}
+
+bool circle_hits_aabb(ew::physics::Vec2 c, float rad, float l, float top, float r, float bot, float eps) {
+  using ew::physics::Vec2;
+  using ew::physics::length;
+  const Vec2 closest{std::clamp(c.x, l, r), std::clamp(c.y, top, bot)};
+  return length(c - closest) < rad - eps;
+}
+}  // namespace
+
+void Sim::collide_movers() {
+  if (movers_.empty()) { ridden_ = -1; return; }
+  auto& pts = world_.points();
+  const uint32_t skip = held_ ? player_ : ~0u;  // colgado: el nodo representa al player
+  int ride = -1;
+  for (int it = 0; it < 4; ++it) {
+    for (int i = 0; i < int(movers_.size()); ++i) {
+      const auto& m = movers_[std::size_t(i)];
+      const float l = m.x, top = m.y, r = m.x + m.w, bot = m.y + m.h;
+      for (uint32_t k = 0; k < uint32_t(pts.size()); ++k) {
+        auto& p = pts[k];
+        if (p.inv_mass == 0 || !p.collide_tiles || k == skip) continue;
+        const bool was_grounded = p.grounded;
+        if (collide_circle_aabb(p, l, top, r, bot) && k == player_ && p.grounded && !was_grounded)
+          ride = i;
+        else if (k == player_ && p.grounded && ride < 0 &&
+                 p.pos.y + p.radius <= top + 1.f && p.pos.x + p.radius > l && p.pos.x - p.radius < r)
+          ride = i;
+      }
+    }
+  }
+  if (!held_) ridden_ = ride;
+  else ridden_ = -1;
+
+  // Aplastamiento: si después de empujar el player sigue metido en un sólido (tile u
+  // otra plataforma) más que un epsilon, muere. Quien queda solo apoyado no pisa esto.
+  if (held_ || invuln_ > 0 || finished_) return;
+  auto& pl = pts[player_];
+  constexpr float eps = 0.15f;
+  const float ts = float(ew::map::kTileSize), rad = pl.radius;
+  const int x0 = int(std::floor((pl.pos.x - rad) / ts)), x1 = int(std::floor((pl.pos.x + rad) / ts));
+  const int y0 = int(std::floor((pl.pos.y - rad) / ts)), y1 = int(std::floor((pl.pos.y + rad) / ts));
+  for (int ty = y0; ty <= y1; ++ty)
+    for (int tx = x0; tx <= x1; ++tx) {
+      if (!scene_.solid_tile(tx, ty)) continue;
+      const ew::physics::Vec2 c{std::clamp(pl.pos.x, tx * ts, (tx + 1) * ts),
+                                std::clamp(pl.pos.y, ty * ts, (ty + 1) * ts)};
+      if (ew::physics::length(pl.pos - c) < rad - eps) { kill(); return; }
+    }
+  for (const auto& m : movers_) {
+    if (circle_hits_aabb(pl.pos, rad, m.x, m.y, m.x + m.w, m.y + m.h, eps)) { kill(); return; }
   }
 }
 

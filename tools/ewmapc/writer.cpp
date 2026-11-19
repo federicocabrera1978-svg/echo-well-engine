@@ -4,6 +4,7 @@
 #include "map/autotile.hpp"
 #include <cstring>
 #include <map>
+#include <sstream>
 #include <stdexcept>
 
 using namespace ew::map;
@@ -122,12 +123,51 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
   StrTab st;
   st.add(doc.scalars.count("name") ? doc.scalars.at("name") : "untitled"); // offset 1 = nombre del mapa
   std::vector<EntityRecord> ents;
+  std::vector<MoverRecord> movers;
   std::map<std::string, uint32_t> ent_by_name;
   if (auto it = doc.lists.find("entities"); it != doc.lists.end())
     for (auto& e : it->second) {
       auto name = to_str(e, "name");
+      const auto type = to_str(e, "type");
+      const int ex = to_int(e, "x"), ey = to_int(e, "y");
       if (!name.empty()) ent_by_name[name] = uint32_t(ents.size());
-      ents.push_back({st.add(name), st.add(to_str(e, "type")), to_int(e, "x"), to_int(e, "y")});
+      ents.push_back({st.add(name), st.add(type), ex, ey});
+      if (type != "mover") continue;
+      MoverRecord m{};
+      m.entity = uint32_t(ents.size() - 1);
+      const int mw = to_int(e, "w"), mh = to_int(e, "h");
+      if (mw < 1 || mh < 1 || mw > int(kMaxMoverTiles) || mh > int(kMaxMoverTiles)) {
+        err = "mover needs w,h in [1,64] tiles"; return false;
+      }
+      m.w_tiles = uint16_t(mw);
+      m.h_tiles = uint16_t(mh);
+      m.speed = to_float(e, "speed", 40.f);
+      m.pause = to_float(e, "pause", 0.5f);
+      if (!(m.speed > 0.f) || m.speed > 1000.f) { err = "mover speed must be in (0, 1000]"; return false; }
+      if (m.pause < 0.f || m.pause > 60.f) { err = "mover pause must be in [0, 60]"; return false; }
+      const int tile = to_int(e, "tile", 6);
+      if (tile < 0 || tile > 65535) { err = "mover tile out of range"; return false; }
+      m.tile = uint16_t(tile);
+      std::vector<std::pair<int, int>> wp{{ex, ey}};
+      const auto path = to_str(e, "path");
+      if (!path.empty()) {
+        std::stringstream ss(path);
+        std::vector<int> nums;
+        for (int v; ss >> v;) nums.push_back(v);
+        if (nums.size() < 2 || nums.size() % 2) { err = "mover path needs an even list of x y ..."; return false; }
+        for (std::size_t i = 0; i < nums.size(); i += 2) wp.push_back({nums[i], nums[i + 1]});
+      } else if (e.count("to_x") || e.count("to_y")) {
+        wp.push_back({to_int(e, "to_x", ex), to_int(e, "to_y", ey)});
+      }
+      if (wp.size() < 2 || wp.size() > kMaxMoverWaypoints) {
+        err = "mover needs 2..8 waypoints (to_x/to_y or path)"; return false;
+      }
+      m.n_wp = uint16_t(wp.size());
+      for (std::size_t i = 0; i < wp.size(); ++i) {
+        m.wp_x[i] = wp[i].first;
+        m.wp_y[i] = wp[i].second;
+      }
+      movers.push_back(m);
     }
   std::vector<LinkRecord> links;
   if (auto it = doc.lists.find("links"); it != doc.lists.end())
@@ -157,6 +197,7 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
   secs.emplace_back(SectionType::LINK, record_section(links));
   secs.emplace_back(SectionType::WATER, record_section(water));
   secs.emplace_back(SectionType::ROPE, record_section(ropes));
+  secs.emplace_back(SectionType::MOVER, record_section(movers));
   {
     std::vector<std::byte> s(st.data.size());
     std::memcpy(s.data(), st.data.data(), s.size());
