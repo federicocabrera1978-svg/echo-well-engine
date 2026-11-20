@@ -140,6 +140,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_sel"), v.pause_sel);
   Uniform1f(GetUniformLocation(light_prog_, "u_vol"), v.pause_vol);
   Uniform1i(GetUniformLocation(light_prog_, "u_mute"), v.pause_mute);
+  Uniform1i(GetUniformLocation(light_prog_, "u_has_save"), v.pause_has_save);
   Uniform1i(GetUniformLocation(light_prog_, "u_items"), v.items);
   Uniform1i(GetUniformLocation(light_prog_, "u_items_total"), v.items_total);
   Uniform1f(GetUniformLocation(light_prog_, "u_items_flash"), v.items_flash);

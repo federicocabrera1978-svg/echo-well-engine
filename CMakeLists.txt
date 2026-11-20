@@ -95,7 +95,7 @@ set_tests_properties(ewmap_load_mover PROPERTIES DEPENDS ewmapc_mover)
 add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)
 target_include_directories(echo_physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 
-add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp)
+add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp engine/game/save.cpp)
 target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 
 # Mapas compilados en el build (CRC siempre on). slice = camino jugable por defecto.
@@ -203,6 +203,11 @@ add_executable(gamepad_test tests/gamepad_test.cpp)
 target_link_libraries(gamepad_test PRIVATE echo_game)
 add_test(NAME gamepad COMMAND gamepad_test)
 
+add_executable(save_test tests/save_test.cpp)
+target_link_libraries(save_test PRIVATE echo_game)
+add_dependencies(save_test ew_maps)
+add_test(NAME save_game COMMAND save_test ${EW_SLICE_MAP})
+
 add_executable(menu_test tests/menu_test.cpp)
 target_link_libraries(menu_test PRIVATE echo_game)
 add_test(NAME pause_menu COMMAND menu_test)
@@ -211,13 +216,13 @@ add_executable(paths_test tests/paths_test.cpp)
 target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 add_test(NAME asset_paths COMMAND paths_test)
 
-# --- fuzzing: MapLoader (.ewmap), yaml_lite y atlas PNG ----------------------
+# --- fuzzing: MapLoader (.ewmap), yaml_lite, atlas PNG y save (.ewsv) ----------------------
 # Siempre se compilan con un driver standalone (mutaciones deterministas) y
 # corren en ctest; con EW_LIBFUZZER=ON se linkean contra libFuzzer.
 add_library(ew_yaml_lite tools/ewmapc/yaml_lite.cpp)
 target_include_directories(ew_yaml_lite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tools/ewmapc)
 set(EW_FUZZ_CORPUS ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus)
-foreach(t map_loader yaml_lite atlas)
+foreach(t map_loader yaml_lite atlas save)
   if(EW_LIBFUZZER)
     add_executable(fuzz_${t} tests/fuzz/fuzz_${t}.cpp)
     target_compile_options(fuzz_${t} PRIVATE -fsanitize=fuzzer)
@@ -229,10 +234,12 @@ endforeach()
 target_link_libraries(fuzz_map_loader PRIVATE echo_map)
 target_link_libraries(fuzz_yaml_lite PRIVATE ew_yaml_lite)
 target_link_libraries(fuzz_atlas PRIVATE echo_atlas)
+target_link_libraries(fuzz_save PRIVATE echo_game)
 if(NOT EW_LIBFUZZER)
   add_test(NAME fuzz_map_loader_smoke COMMAND fuzz_map_loader -runs=20000 ${EW_FUZZ_CORPUS}/ewmap)
   add_test(NAME fuzz_yaml_lite_smoke  COMMAND fuzz_yaml_lite  -runs=20000 ${EW_FUZZ_CORPUS}/yaml)
   add_test(NAME fuzz_atlas_smoke      COMMAND fuzz_atlas      -runs=20000 ${EW_FUZZ_CORPUS}/png)
+  add_test(NAME fuzz_save_smoke       COMMAND fuzz_save       -runs=20000 ${EW_FUZZ_CORPUS}/save)
 endif()
 
 # --- echo_engine: ventana + loop + stub Deferred (GLFW 3.4 vía FetchContent) --

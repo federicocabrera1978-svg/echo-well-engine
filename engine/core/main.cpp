@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, reiniciar, volumen, salir). --demo = input automático.
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave]
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, continuar partida, reiniciar, volumen, salir). Autoguardado en el directorio de datos del usuario (ver game/save.hpp). --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
@@ -14,6 +14,7 @@
 #include "core/paths.hpp"
 #include "game/gamepad.hpp"
 #include "game/menu.hpp"
+#include "game/save.hpp"
 #include "audio/device.hpp"
 #include "audio/sfx.hpp"
 #include "render/deferred.hpp"
@@ -124,12 +125,13 @@ void push_hazards(FrameView& v, ew::game::Scene& s) {
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false, has_start = false, nosound = false, nogamepad = false;
+  bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path;
   if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
   if (const char* e = std::getenv("EW_NOSOUND"); e && e[0] && e[0] != '0') nosound = true;
   if (const char* e = std::getenv("EW_NOGAMEPAD"); e && e[0] && e[0] != '0') nogamepad = true;
+  if (const char* e = std::getenv("EW_NOSAVE"); e && e[0] && e[0] != '0') nosave = true;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--scale" && i + 1 < argc) scale = std::atoi(argv[++i]);
@@ -141,6 +143,7 @@ int main(int argc, char** argv) {
     else if (a == "--demo") demo = true;
     else if (a == "--nosound") nosound = true;
     else if (a == "--nogamepad") nogamepad = true;
+    else if (a == "--nosave") nosave = true;
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
@@ -206,6 +209,56 @@ int main(int argc, char** argv) {
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
   int last_items = 0;
+
+  // Partida guardada (un slot). Sin guardado con --nosave, --demo o --start, ni con --frames
+  // salvo que EW_SAVE_DIR esté definido (corridas deterministas / de prueba). Se autoguarda
+  // al progresar (checkpoint, huevo, boss) y al cambiar el volumen; si al arrancar hay
+  // save, el menú abre en CONTINUAR.
+  std::string save_path;
+  const bool explicit_dir = std::getenv("EW_SAVE_DIR") != nullptr;  // NOLINT(concurrency-mt-unsafe)
+  if (!nosave && !demo && !has_start && (!max_frames || explicit_dir)) {
+    const std::string dir = ew::game::save_dir(root);
+    if (!dir.empty()) save_path = ew::core::join(dir, ew::game::kSaveFileName);
+  }
+  auto save_matches = [&](const ew::game::SaveData& d) {
+    return d.map == scene.map().string_at(1) && d.active.size() == scene.entities().size();
+  };
+  ew::game::SaveData loaded;
+  bool save_armed = true;  // false = hay un save sin continuar todavía: no pisarlo con un spawn limpio
+  if (!save_path.empty()) {
+    const auto e = ew::game::read_save_file(save_path, loaded);
+    if (e == ew::game::SaveError::None && save_matches(loaded)) {
+      menu.set_has_save(true);
+      menu.set_audio(loaded.volume, loaded.muted);
+      menu.open_at(ew::game::PauseMenu::kContinuar);
+      save_armed = false;
+      std::printf("echo_engine: partida guardada en %s — CONTINUAR en el menú\n", save_path.c_str());
+    } else if (e != ew::game::SaveError::Io) {
+      std::printf("echo_engine: save ignorado (%s)\n", e == ew::game::SaveError::None ? "otro mapa" : ew::game::save_error_str(e));
+    } else {
+      std::printf("echo_engine: guardado en %s\n", save_path.c_str());
+    }
+  }
+  struct SaveKey {
+    int ck = -1, items = 0;
+    bool boss = false, muted = false;
+    float vol = 0;
+    bool operator==(const SaveKey&) const = default;
+  };
+  auto save_key = [&] {
+    return SaveKey{sim.checkpoint_index(), sim.collected(), sim.boss_count() > 0 && sim.bosses_defeated(),
+                   menu.muted(), menu.volume_setting()};
+  };
+  SaveKey last_key = save_key();
+  auto write_save = [&](ew::game::SaveData d) {
+    d.volume = menu.volume_setting();
+    d.muted = menu.muted();
+    if (ew::game::write_save_file(save_path, d) == ew::game::SaveError::None) {
+      menu.set_has_save(true);
+    } else {
+      std::fprintf(stderr, "echo_engine: no se pudo guardar en %s\n", save_path.c_str());
+    }
+  };
   const double t_loop = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -303,6 +356,20 @@ int main(int argc, char** argv) {
     }
     const auto mact = menu.handle(mi);
     if (mact == ew::game::MenuAction::Quit) glfwSetWindowShouldClose(win, GLFW_TRUE);
+    if (mact == ew::game::MenuAction::Continue && !save_path.empty()) {
+      ew::game::SaveData d;
+      auto e = ew::game::read_save_file(save_path, d);
+      if (e == ew::game::SaveError::None) e = ew::game::apply_save(sim, d);
+      if (e == ew::game::SaveError::None) {
+        menu.set_audio(d.volume, d.muted);
+        save_armed = true;
+        last_key = save_key();
+        std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim.checkpoint_index(),
+                    sim.collected(), sim.collectible_total());
+      } else {
+        std::fprintf(stderr, "echo_engine: no se pudo cargar la partida (%s)\n", ew::game::save_error_str(e));
+      }
+    }
     if (mact == ew::game::MenuAction::Restart) {
       ew::game::Input rst; rst.restart = true;
       sim.step(rst);
@@ -347,6 +414,16 @@ int main(int argc, char** argv) {
       announced_goal = false;
       glfwSetWindowTitle(win, "Echo Well");
       std::printf("echo_engine: reinicio\n");
+    }
+    if (!save_path.empty()) {  // autoguardado
+      const SaveKey k = save_key();
+      if (!(k == last_key)) {
+        const bool progress = k.ck != last_key.ck || k.items != last_key.items || k.boss != last_key.boss;
+        if (progress && (k.ck >= 0 || k.items > 0 || k.boss)) save_armed = true;  // jugando de verdad
+        if (save_armed) write_save(ew::game::capture_save(sim));
+        else if (menu.has_save()) write_save(loaded);  // solo cambió el volumen: no pisar la partida
+        last_key = k;
+      }
     }
     const auto& pl = sim.player();
     const float px = pl.pos.x, py = pl.pos.y;
@@ -414,6 +491,7 @@ int main(int argc, char** argv) {
     v.pause_sel = menu.cursor();
     v.pause_vol = menu.volume_setting();
     v.pause_mute = menu.muted() ? 1 : 0;
+    v.pause_has_save = menu.has_save() ? 1 : 0;
     v.items = sim.collected();
     v.items_total = sim.collectible_total();
     v.items_flash = float(sim.pickup_flash()) / float(ew::game::Sim::kPickupFlashFrames);

@@ -10,7 +10,8 @@ uniform float u_time;
 uniform float u_fade;  // 0..1
 uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
-uniform int u_sel;     // ítem seleccionado 0..3
+uniform int u_sel;     // ítem seleccionado 0..4
+uniform int u_has_save; // 1 = hay partida guardada (CONTINUAR habilitado)
 uniform float u_vol;   // 0..1 ajuste (aunque esté mute)
 uniform int u_mute;
 uniform int u_items;        // collectibles agarrados
@@ -90,7 +91,7 @@ void main() {
   if (u_items_total > 0) c = hud_items(c, px);
 
   if (u_pause > 0) {
-    // Oscurece y dibuja PAUSA + 4 ítems (SEGUIR, REINICIO, VOL/MUTE, SALIR).
+    // Oscurece y dibuja PAUSA + 5 ítems (SEGUIR, CONTINUAR, REINICIO, VOL/MUTE, SALIR).
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
     // A=0 … Z=25, 0-9=26-35, '>'=36. Solo las letras usadas están llenas.
     const int G[37] = int[](
@@ -117,41 +118,46 @@ void main() {
       tg = max(tg, glyph5(G[title[i]], (px - to - vec2(float(i) * 6.0 * ts, 0.0)) / ts));
     c = mix(c, vec3(1.0, 0.92, 0.50), tg);
 
-    int rows[4 * 8];
-    int rlen[4];
+    const int NR = 5, W = 9;
+    int rows[NR * W];
+    int rlen[NR];
+    for (int i = 0; i < NR * W; ++i) rows[i] = 0;
     // SEGUIR
-    rows[0]=18; rows[1]=4; rows[2]=6; rows[3]=20; rows[4]=8; rows[5]=17; rows[6]=0; rows[7]=0; rlen[0]=6;
+    rows[0]=18; rows[1]=4; rows[2]=6; rows[3]=20; rows[4]=8; rows[5]=17; rlen[0]=6;
+    // CONTINUAR
+    rows[9]=2; rows[10]=14; rows[11]=13; rows[12]=19; rows[13]=8; rows[14]=13; rows[15]=20; rows[16]=0; rows[17]=17; rlen[1]=9;
     // REINICIO
-    rows[8]=17; rows[9]=4; rows[10]=8; rows[11]=13; rows[12]=8; rows[13]=2; rows[14]=8; rows[15]=14; rlen[1]=8;
+    rows[18]=17; rows[19]=4; rows[20]=8; rows[21]=13; rows[22]=8; rows[23]=2; rows[24]=8; rows[25]=14; rlen[2]=8;
     // VOL xx  o  MUTE
     if (u_mute > 0) {
-      rows[16]=12; rows[17]=20; rows[18]=19; rows[19]=4; rows[20]=0; rows[21]=0; rows[22]=0; rows[23]=0; rlen[2]=4;
+      rows[27]=12; rows[28]=20; rows[29]=19; rows[30]=4; rlen[3]=4;
     } else {
       int pct = int(clamp(u_vol, 0.0, 1.0) * 100.0 + 0.5);
-      rows[16]=21; rows[17]=14; rows[18]=11;  // VOL
+      rows[27]=21; rows[28]=14; rows[29]=11;  // VOL
       if (pct >= 100) {
-        rows[19]=27; rows[20]=26; rows[21]=26; rlen[2]=6;  // VOL100
+        rows[30]=27; rows[31]=26; rows[32]=26; rlen[3]=6;  // VOL100
       } else {
-        rows[19]=26 + pct / 10; rows[20]=26 + pct % 10; rlen[2]=5;
+        rows[30]=26 + pct / 10; rows[31]=26 + pct % 10; rlen[3]=5;
       }
     }
     // SALIR
-    rows[24]=18; rows[25]=0; rows[26]=11; rows[27]=8; rows[28]=17; rows[29]=0; rows[30]=0; rows[31]=0; rlen[3]=5;
+    rows[36]=18; rows[37]=0; rows[38]=11; rows[39]=8; rows[40]=17; rlen[4]=5;
 
     float is_ = 2.0;
-    for (int r = 0; r < 4; ++r) {
-      vec2 o = vec2(112.0, 68.0 + float(r) * 18.0);
+    for (int r = 0; r < NR; ++r) {
+      vec2 o = vec2(112.0, 62.0 + float(r) * 17.0);
       float g = 0.0;
       if (r == u_sel)
         g = max(g, glyph5(G[36], (px - vec2(o.x - 14.0, o.y)) / is_));
       for (int i = 0; i < rlen[r]; ++i)
-        g = max(g, glyph5(G[rows[r * 8 + i]], (px - o - vec2(float(i) * 6.0 * is_, 0.0)) / is_));
+        g = max(g, glyph5(G[rows[r * W + i]], (px - o - vec2(float(i) * 6.0 * is_, 0.0)) / is_));
       vec3 col = (r == u_sel) ? vec3(1.0, 0.95, 0.55) : vec3(0.75, 0.75, 0.80);
+      if (r == 1 && u_has_save == 0) col *= 0.45;  // sin partida guardada: apagado
       c = mix(c, col, g);
     }
     // Barrita de volumen bajo el ítem VOL.
     {
-      float bx = 112.0, by = 68.0 + 2.0 * 18.0 + 12.0, bw = 80.0, bh = 3.0;
+      float bx = 112.0, by = 62.0 + 3.0 * 17.0 + 11.0, bw = 80.0, bh = 2.0;
       if (px.x >= bx && px.x <= bx + bw && px.y >= by && px.y <= by + bh) {
         float f = (px.x - bx) / bw;
         if (u_mute > 0) c = vec3(0.25, 0.22, 0.22);

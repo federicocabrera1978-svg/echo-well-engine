@@ -33,7 +33,7 @@ int main() {
   CHECK(!m.open());
 
   in = {}; in.toggle = true; m.handle(in);
-  in = {}; in.down = true; m.handle(in);
+  in = {}; in.down = true; m.handle(in); m.handle(in);
   CHECK(m.cursor() == PauseMenu::kReiniciar);
   in = {}; in.confirm = true;
   CHECK(m.handle(in) == MenuAction::Restart);
@@ -49,7 +49,7 @@ int main() {
   // Volumen: derecha sube, izquierda baja; confirm mutea; mute volume()=0.
   PauseMenu v;
   in = {}; in.toggle = true; v.handle(in);
-  in = {}; in.down = true; v.handle(in); v.handle(in);
+  in = {}; in.down = true; v.handle(in); v.handle(in); v.handle(in);
   CHECK(v.cursor() == PauseMenu::kVolumen);
   const float mid = v.volume_setting();
   in = {}; in.right = true; v.handle(in);
@@ -77,6 +77,29 @@ int main() {
   in = {}; in.toggle = true; v.handle(in);
   CHECK(v.open() && v.cursor() == PauseMenu::kSeguir);
   CHECK(std::fabs(v.volume_setting() - kept) < 1e-6f);
+
+  // Continuar: sin save no hace nada (queda abierto); con save cierra y devuelve Continue.
+  PauseMenu c;
+  CHECK(!c.has_save());
+  in = {}; in.toggle = true; c.handle(in);
+  in = {}; in.down = true; c.handle(in);
+  CHECK(c.cursor() == PauseMenu::kContinuar);
+  in = {}; in.confirm = true;
+  CHECK(c.handle(in) == MenuAction::None && c.open());
+  c.set_has_save(true);
+  CHECK(c.handle(in) == MenuAction::Continue && !c.open());
+  // Arranque con save: abre directo en Continuar.
+  c.open_at(PauseMenu::kContinuar);
+  CHECK(c.open() && c.cursor() == PauseMenu::kContinuar);
+  c.open_at(99);
+  CHECK(c.cursor() == PauseMenu::kSeguir);
+  // set_audio clampa y 0 = mute.
+  c.set_audio(0.3f, false);
+  CHECK(std::fabs(c.volume_setting() - 0.3f) < 1e-6f && !c.muted());
+  c.set_audio(7.f, true);
+  CHECK(c.volume_setting() == 1.f && c.muted() && c.volume() == 0.f);
+  c.set_audio(-1.f, false);
+  CHECK(c.volume_setting() == 0.f && c.muted());
 
   std::puts("menu ok");
   return 0;

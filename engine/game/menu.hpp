@@ -1,11 +1,11 @@
 #pragma once
-// Menú de pausa (sin GL): abrir/cerrar, cursor, volumen/mute, acciones.
+// Menú de pausa (sin GL): abrir/cerrar, cursor, volumen/mute, continuar partida, acciones.
 // echo_engine lo dibuja en el light pass y aplica el volumen al Mixer.
 #include <algorithm>
 
 namespace ew::game {
 
-enum class MenuAction { None, Resume, Restart, Quit };
+enum class MenuAction { None, Resume, Continue, Restart, Quit };
 
 struct MenuInput {
   bool toggle = false;   // flanco Esc / Start: abre o cierra (cerrar = Resume)
@@ -18,8 +18,8 @@ struct MenuInput {
 
 class PauseMenu {
  public:
-  static constexpr int kItemCount = 4;  // Seguir, Reiniciar, Volumen, Salir
-  static constexpr int kSeguir = 0, kReiniciar = 1, kVolumen = 2, kSalir = 3;
+  static constexpr int kItemCount = 5;  // Seguir, Continuar, Reiniciar, Volumen, Salir
+  static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kSalir = 4;
   static constexpr float kVolStep = 0.10f;
   static constexpr float kVolDefault = 0.80f;
 
@@ -29,6 +29,19 @@ class PauseMenu {
   float volume() const { return muted_ ? 0.f : volume_; }
   float volume_setting() const { return volume_; }
   bool muted() const { return muted_; }
+  // Hay partida guardada: habilita "Continuar" (sin save, confirm ahí no hace nada).
+  bool has_save() const { return has_save_; }
+  void set_has_save(bool s) { has_save_ = s; }
+  // Restaura volumen/mute (p. ej. desde el save). Clampa a [0, 1].
+  void set_audio(float vol, bool muted) {
+    volume_ = std::clamp(vol, 0.f, 1.f);
+    muted_ = muted || volume_ <= 0.f;
+  }
+  // Abre el menú con el cursor en `item` (al arrancar con save: en Continuar).
+  void open_at(int item) {
+    open_ = true;
+    cursor_ = (item >= 0 && item < kItemCount) ? item : kSeguir;
+  }
 
   MenuAction handle(const MenuInput& in) {
     if (in.toggle) {
@@ -54,6 +67,10 @@ class PauseMenu {
     if (!in.confirm) return MenuAction::None;
     switch (cursor_) {
       case kSeguir:    open_ = false; return MenuAction::Resume;
+      case kContinuar:
+        if (!has_save_) return MenuAction::None;
+        open_ = false;
+        return MenuAction::Continue;
       case kReiniciar: open_ = false; return MenuAction::Restart;
       case kVolumen:   muted_ = !muted_; return MenuAction::None;
       case kSalir:     return MenuAction::Quit;
@@ -66,6 +83,7 @@ class PauseMenu {
   int cursor_ = 0;
   float volume_ = kVolDefault;
   bool muted_ = false;
+  bool has_save_ = false;
 };
 
 }  // namespace ew::game
