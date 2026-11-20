@@ -185,6 +185,34 @@ void Sim::reset() {
   build();
 }
 
+void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active) {
+  reset();
+  const auto& ents = scene_.entities();
+  for (std::size_t i = 0; i < ents.size() && i < active.size(); ++i) {
+    if (!active[i]) continue;
+    scene_.set_active(i, true);
+    if (ents[i].type == "door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
+  }
+  for (auto& b : bosses_)
+    if (b.ent < active.size() && active[b.ent]) b.defeated = true;
+  ckpt_ = (checkpoint >= 0 && std::size_t(checkpoint) < ents.size() && ents[std::size_t(checkpoint)].type == "checkpoint")
+              ? checkpoint : -1;
+  ckpt_flip_ = ckpt_ >= 0 && flipped;
+  respawn();
+  invuln_ = 0;
+  // Pileta inundada: el nivel queda directo en su destino (sin la subida animada).
+  for (int i = 0; i < 4096; ++i) {
+    bool moved = false;
+    std::vector<float> before;
+    for (const auto& w : water_) before.push_back(w.rest_y());
+    apply_flood();
+    for (std::size_t k = 0; k < water_.size(); ++k) moved = moved || water_[k].rest_y() != before[k];
+    if (!moved) break;
+  }
+  const auto& p = world_.points()[player_].pos;
+  scene_.follow(p.x, p.y);  // snap de cámara
+}
+
 const Entity* Sim::checkpoint() const {
   if (ckpt_ < 0) return nullptr;
   const auto& e = scene_.entities();

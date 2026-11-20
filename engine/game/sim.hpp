@@ -136,6 +136,11 @@ class Sim {
   float down() const { return flip_ ? -1.f : 1.f; }
   void set_gravity_flipped(bool f);
   int flips() const { return flips_; }  // veces que se invirtió desde reset()
+  bool checkpoint_flipped() const { return ckpt_flip_; }  // gravedad guardada con el checkpoint
+  // Partida guardada: reset() limpio, aplica Entity::active por entidad (puertas, switches,
+  // huevos, boss vencido), fija checkpoint + gravedad y reaparece ahí. `active` debe tener
+  // una entrada por entidad (lo valida apply_save en save.hpp).
+  void load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active);
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
 

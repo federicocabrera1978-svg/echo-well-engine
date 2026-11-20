@@ -37,6 +37,8 @@ class Scene {
   int width_px() const { return w_px_; }
   int height_px() const { return h_px_; }
   const std::vector<Entity>& entities() const { return entities_; }
+  // Acceso de escritura (p. ej. cargar partida: puertas abiertas sin animación).
+  std::vector<Entity>& entities_mut() { doors_dirty_ = true; return entities_; }
   // Switch → puerta (sección LINK). Toggle del switch más cercano dentro de kSwitchReach
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);

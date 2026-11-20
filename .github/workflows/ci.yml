@@ -55,7 +55,7 @@ jobs:
       - name: Configure (clang + libFuzzer + ASan/UBSan)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DEW_BUILD_ENGINE=OFF -DEW_SANITIZE=ON -DEW_LIBFUZZER=ON -DCMAKE_CXX_COMPILER=clang++
       - name: Build fuzz targets
-        run: cmake --build build -j --target fuzz_map_loader fuzz_yaml_lite fuzz_atlas
+        run: cmake --build build -j --target fuzz_map_loader fuzz_yaml_lite fuzz_atlas fuzz_save
       - name: Fuzz MapLoader (.ewmap) 60s
         run: |
           mkdir -p work/ewmap && cp tests/fuzz/corpus/ewmap/* work/ewmap/
@@ -68,6 +68,10 @@ jobs:
         run: |
           mkdir -p work/png && cp tests/fuzz/corpus/png/* work/png/
           ./build/fuzz_atlas -max_total_time=60 -max_len=65536 work/png
+      - name: Fuzz save (.ewsv) 60s
+        run: |
+          mkdir -p work/save && cp tests/fuzz/corpus/save/* work/save/
+          ./build/fuzz_save -max_total_time=60 -max_len=4096 work/save
       - name: Upload crashes
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -95,6 +99,13 @@ jobs:
           assert len(b) == len(hdr) + 320 * 180 * 3, len(b)
           print("frame.ppm OK", len(b), "bytes")
           PY
+      - name: Smoke partida guardada (menú abre en CONTINUAR)
+        run: |
+          mkdir -p savedir
+          ./build/save_test build/maps/slice.ewmap savedir/save.ewsv
+          EW_SAVE_DIR=$PWD/savedir LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" \
+            ./build/echo_engine --frames 30 --dump frame_save.ppm --nosound --nogamepad | tee save_run.log
+          grep -q "CONTINUAR en el menú" save_run.log
       - name: Upload screenshot
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
