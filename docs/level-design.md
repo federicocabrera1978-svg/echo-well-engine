@@ -257,6 +257,11 @@ bloques de `hello.yaml` / `slice.yaml`.
   techo tiene que seguir sólido ese tramo. El hueco del techo lleva `META` 4 arriba y una
   plataforma con la cara de abajo a ras del techo (`y` = fondo del techo − 8). El orbe
   del techo va **después** del foso del piso. `slice_test` la resuelve con `solve_room5`.
+- **Sala final con boss (sala 6 de `slice`).** Arena plana de una pantalla: checkpoint a
+  la entrada (fuera de la patrulla), boss en el medio y la meta detrás de una puerta
+  linkeada al boss. Después de las salas de mecánicas, la pelea solo pide saltar y medir
+  la distancia; lo nuevo es leer el patrón (el aviso antes del salto).
+  `slice_test` la pelea con `solve_room6`.
 - **El secreto es opcional.** Un `collectible` se esconde al costado o “para atrás”
   (agua baja, puertas en la pileta). El HUD n/total informa; no bloquees el `goal`.
 - **Diseñá para la cámara.** Los seams son cada 320 px. Un salto que empieza en un chunk
