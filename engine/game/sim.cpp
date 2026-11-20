@@ -30,6 +30,8 @@ void Sim::build() {
   pickup_flash_ = 0;
   sfx_ = 0;
   was_in_water_ = false;
+  flip_ = ckpt_flip_ = false;
+  flips_ = 0;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -64,6 +66,47 @@ void Sim::build() {
     m.dist = 0;
     m.wait = 0;
     movers_.push_back(std::move(m));
+  }
+  rearm_flips();
+}
+
+void Sim::set_gravity_flipped(bool f) {
+  flip_ = f;
+  world_.points()[player_].gscale = f ? -1.f : 1.f;
+}
+
+// Orbes al alcance quedan desarmados (no disparan al reaparecer encima); el resto, armados.
+void Sim::rearm_flips() {
+  const auto& ents = scene_.entities();
+  flip_armed_.assign(ents.size(), 0);
+  const auto& p = world_.points()[player_].pos;
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "gravity_flip") continue;
+    const float dx = ents[i].x - p.x, dy = ents[i].y - p.y;
+    flip_armed_[i] = (dx * dx + dy * dy > kFlipReach * kFlipReach) ? 1 : 0;
+  }
+}
+
+void Sim::check_gravity_flips() {
+  const auto& p = player().pos;
+  const auto& ents = scene_.entities();
+  if (flip_armed_.size() != ents.size()) flip_armed_.assign(ents.size(), 1);
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "gravity_flip") continue;
+    const float dx = ents[i].x - p.x, dy = ents[i].y - p.y, d2 = dx * dx + dy * dy;
+    if (!flip_armed_[i]) {
+      if (d2 > kFlipRearm * kFlipRearm) flip_armed_[i] = 1;
+      continue;
+    }
+    if (d2 > kFlipReach * kFlipReach) continue;
+    flip_armed_[i] = 0;
+    set_gravity_flipped(!flip_);
+    ++flips_;
+    // El orbe muestra el sentido actual (active = invertida) para el render.
+    for (std::size_t k = 0; k < ents.size(); ++k)
+      if (ents[k].type == "gravity_flip") scene_.set_active(k, flip_);
+    sfx_ |= 16u;  // kSfxSwitch
+    return;
   }
 }
 
@@ -108,6 +151,10 @@ void Sim::respawn() {
   regrab_cd_ = 0;
   climb_acc_ = 0;
   reset_movers();
+  set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
+  for (std::size_t k = 0; k < scene_.entities().size(); ++k)
+    if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, flip_);
+  rearm_flips();
   scene_.follow(p.x, p.y, 0.f);
 }
 
@@ -195,7 +242,9 @@ void Sim::step(const Input& in) {
     if (in.jump) {
       const Vec2 v = pts[held_index()].velocity();
       release();
-      pts[player_].set_velocity({v.x * 1.2f, std::min(v.y, 0.f) - kJumpSpeed * 0.8f * kDt});
+      const float d = down();  // el salto empuja contra la gravedad del player
+      const float vy = d > 0 ? std::min(v.y, 0.f) : std::max(v.y, 0.f);
+      pts[player_].set_velocity({v.x * 1.2f, vy - d * kJumpSpeed * 0.8f * kDt});
       sfx_ |= 1u;  // kSfxJump
     }
   }
@@ -208,7 +257,7 @@ void Sim::step(const Input& in) {
     v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
     const bool swim = player_in_water();
     if (in.jump && (pl.grounded || swim)) {
-      v.y = -kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+      v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
       sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
     }
     pl.set_velocity(v);
@@ -239,6 +288,7 @@ void Sim::step(const Input& in) {
   const bool in_w = player_in_water();
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
   was_in_water_ = in_w;
+  check_gravity_flips();
   check_checkpoints();
   check_collectibles();
   check_hazards();
@@ -292,9 +342,10 @@ void Sim::check_checkpoints() {
     if (ents[i].type != "checkpoint") continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
-    if (ckpt_ == int(i)) return;
+    if (ckpt_ == int(i)) { ckpt_flip_ = flip_; return; }
     if (ckpt_ >= 0) scene_.set_active(std::size_t(ckpt_), false);
     ckpt_ = int(i);
+    ckpt_flip_ = flip_;
     scene_.set_active(i, true);
     sfx_ |= 4u;  // kSfxCheckpoint
     return;
@@ -314,7 +365,7 @@ void Sim::check_hazards() {
                    std::clamp(p.pos.y, ty * ts, (ty + 1) * ts)};
       if (ew::physics::length(p.pos - c) < r) { kill(); return; }
     }
-  if (p.pos.y > float(scene_.height_px()) + r) kill();  // caída fuera del mapa
+  if (p.pos.y > float(scene_.height_px()) + r || p.pos.y < -r) kill();  // caída fuera del mapa
 }
 
 void Sim::apply_flood() {
@@ -398,6 +449,7 @@ void Sim::carry_player() {
 namespace {
 // Círculo vs AABB. Empuja afuera, fricción como en tiles, grounded si sale por arriba (n.y < -0.5).
 bool collide_circle_aabb(ew::physics::Point& p, float l, float top, float r, float bot) {
+  const float gs = p.gscale < 0 ? -1.f : 1.f;
   using ew::physics::Vec2;
   using ew::physics::dot;
   using ew::physics::length;
@@ -424,7 +476,7 @@ bool collide_circle_aabb(ew::physics::Point& p, float l, float top, float r, flo
   const Vec2 vt = v - n * dot(v, n);
   v -= vt * 0.08f;
   p.prev = p.pos - v;
-  if (n.y < -0.5f) p.grounded = true;
+  if (n.y * gs < -0.5f) p.grounded = true;  // apoyado contra su gravedad (arriba si está invertida)
   return true;
 }
 
@@ -452,7 +504,8 @@ void Sim::collide_movers() {
         if (collide_circle_aabb(p, l, top, r, bot) && k == player_ && p.grounded && !was_grounded)
           ride = i;
         else if (k == player_ && p.grounded && ride < 0 &&
-                 p.pos.y + p.radius <= top + 1.f && p.pos.x + p.radius > l && p.pos.x - p.radius < r)
+                 (flip_ ? p.pos.y - p.radius >= bot - 1.f : p.pos.y + p.radius <= top + 1.f) &&
+                 p.pos.x + p.radius > l && p.pos.x - p.radius < r)
           ride = i;
       }
     }

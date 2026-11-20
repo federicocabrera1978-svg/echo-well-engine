@@ -24,7 +24,8 @@ struct Point {
   float inv_mass = 1;     // 0 = fijo (pin)
   float radius = 1;
   bool collide_tiles = true;
-  bool grounded = false;  // tocó suelo en el último step
+  bool grounded = false;  // tocó suelo en el último step (suelo = lado hacia donde tira su gravedad)
+  float gscale = 1;       // multiplica World::gravity para este punto (-1 = gravedad invertida)
   Vec2 velocity() const { return pos - prev; }  // px por step
   void set_velocity(Vec2 v) { prev = pos - v; }
 };

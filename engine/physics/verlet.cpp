@@ -32,7 +32,7 @@ void World::step(float dt, const SolidFn& solid) {
   // Integración Verlet: x' = x + (x - x_prev) * damping + a * dt²
   for (auto& p : points_) {
     if (p.inv_mass == 0) { p.force = {}; p.prev = p.pos; continue; }
-    const Vec2 acc = gravity + p.force * p.inv_mass;
+    const Vec2 acc = gravity * p.gscale + p.force * p.inv_mass;
     const Vec2 vel = (p.pos - p.prev) * damping;
     p.prev = p.pos;
     p.pos += vel + acc * (dt * dt);
@@ -117,7 +117,7 @@ void World::collide(Point& p, const SolidFn& solid) {
       const Vec2 vt = v - n * dot(v, n);
       v -= vt * friction;
       p.prev = p.pos - v;
-      if (n.y < -0.5f) p.grounded = true;
+      if (n.y * (p.gscale < 0 ? -1.f : 1.f) < -0.5f) p.grounded = true;  // apoyado contra su gravedad
     }
 }
 

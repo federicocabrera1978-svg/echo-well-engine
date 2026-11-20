@@ -43,6 +43,8 @@ class Sim {
   static constexpr float kFloodSpeed = 48.f;      // px/s que sube/baja el agua del flood_switch
   static constexpr float kCollectReach = 12.f;    // px: agarrar un collectible (huevo)
   static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
+  static constexpr float kFlipReach = 10.f;       // px: tocar un orbe gravity_flip lo dispara
+  static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
 
   // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
@@ -96,6 +98,13 @@ class Sim {
   const Mover& mover(int i) const { return movers_[std::size_t(i)]; }
   // Índice de la plataforma que está cargando al player, o -1.
   int ridden() const { return ridden_; }
+  // Gravedad del player: false = normal (cae hacia +Y), true = invertida (cae hacia -Y).
+  // La cambian los orbes `gravity_flip`; checkpoint guarda el estado, reset() la normaliza.
+  bool gravity_flipped() const { return flip_; }
+  // +1 con gravedad normal, -1 invertida: dirección "abajo" del player en Y.
+  float down() const { return flip_ ? -1.f : 1.f; }
+  void set_gravity_flipped(bool f);
+  int flips() const { return flips_; }  // veces que se invirtió desde reset()
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
 
@@ -131,6 +140,12 @@ class Sim {
   };
   std::vector<MoverState> movers_;
   int ridden_ = -1;  // plataforma que carga al player
+  bool flip_ = false;       // gravedad del player invertida
+  bool ckpt_flip_ = false;  // gravedad al tomar el último checkpoint
+  int flips_ = 0;
+  std::vector<uint8_t> flip_armed_;  // por entidad: orbe gravity_flip listo para disparar
+  void check_gravity_flips();
+  void rearm_flips();
   void build();
   void reset_movers();
   void advance_movers();

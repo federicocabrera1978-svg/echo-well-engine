@@ -31,8 +31,11 @@
 namespace {
 using ew::render::FrameView;
 
+// Slots que se guardan para el player (cuerpo + pies + ojo), que se dibuja al final (encima).
+int g_marker_reserve = 3;
+
 void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, float cg, float cb) {
-  if (v.marker_count >= ew::render::kMaxMarkers) return;
+  if (v.marker_count >= ew::render::kMaxMarkers - g_marker_reserve) return;
   // Fuera de la vista no gasta slots (hay kMaxMarkers; con 2 cuerdas no alcanzan para todo).
   constexpr float m = 16.f;
   if (x + r < v.cam_x - m || x - r > v.cam_x + float(ew::render::kInternalW) + m ||
@@ -85,6 +88,10 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
         push_marker(v, e.x, e.y + 1, 3, 0, 1.0f, 0.93f, 0.72f);
         push_marker(v, e.x, e.y - 2, 2, 0, 1.0f, 0.97f, 0.85f);
       }
+    } else if (e.type == "gravity_flip") {  // orbe violeta; el punto marca hacia dónde cae el player
+      const float d = e.active ? -1.f : 1.f;
+      push_marker(v, e.x, e.y, 5, 0, 0.6f, 0.35f, 1.0f);
+      push_marker(v, e.x, e.y + 3.f * d, 2, 0, 0.95f, 0.9f, 1.0f);
     } else if (e.type == "checkpoint") {  // totem: cian inactivo, verde si es el actual
       if (e.active) {
         push_marker(v, e.x, e.y, 5, 1, 0.3f, 1.0f, 0.55f);
@@ -106,6 +113,8 @@ void push_hazards(FrameView& v, ew::game::Scene& s) {
   for (int ty = y0; ty <= y1; ++ty)
     for (int tx = x0; tx <= x1; ++tx) {
       if (s.tile(tx, ty, ew::map::Layer::META) != ew::game::Sim::kMetaHazard) continue;
+      // Un marcador por columna (el tile de arriba del foso): un foso de 2 filas no gasta el doble.
+      if (s.tile(tx, ty - 1, ew::map::Layer::META) == ew::game::Sim::kMetaHazard) continue;
       const float x = float(tx) * ts + 4.f, y = float(ty) * ts + 6.f;
       push_marker(v, x, y, 3, 1, 0.95f, 0.2f, 0.15f);
       push_marker(v, x, y - 3, 2, 0, 0.95f, 0.45f, 0.2f);
@@ -368,7 +377,15 @@ int main(int argc, char** argv) {
       const float f = float(sim.grab_flash()) / float(ew::game::Sim::kGrabFlashFrames);
       push_marker(v, node.pos.x, node.pos.y, 3.f + (1.f - f) * 10.f, 0, 1.0f, 0.9f * f, 0.35f * f);
     }
-    push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, 0.95f, 0.95f, 0.9f);  // player
+    {  // player: cuerpo + "pies" del lado de su gravedad (invertida = pies arriba, tono lila)
+      const float d = sim.down();
+      const bool inv = sim.gravity_flipped();
+      g_marker_reserve = 0;
+      push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, inv ? 0.85f : 0.95f, inv ? 0.8f : 0.95f, inv ? 1.0f : 0.9f);
+      push_marker(v, px, py + 3.f * d, 1.5f, 1, 0.35f, 0.3f, 0.45f);  // pies
+      push_marker(v, px + 1.5f, py - 1.5f * d, 1.f, 0, 0.1f, 0.1f, 0.15f);  // ojo
+      g_marker_reserve = 3;
+    }
     for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;
       if (w.x() + w.width() < v.cam_x || w.x() > v.cam_x + ew::render::kInternalW ||
