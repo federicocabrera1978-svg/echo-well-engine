@@ -2,13 +2,14 @@
 // Recorre el camino: switch→puerta, agua, seam, cuerda, checkpoint, salta el hueco, meta.
 // Sala 3 (chunk 4): con el agua baja, switch_well abre el pasillo; cuerda 2 → repisa → huevo.
 // Sala 4 (chunk 5): plataformas móviles sobre un foso de pinchos.
-// Sala 5 (chunk 6): gravedad invertida (orbes), techo con hueco y plataforma colgante → meta.
+// Sala 5 (chunk 6): gravedad invertida (orbes), techo con hueco y plataforma colgante.
+// Sala 6 (chunk 7): boss (3 pisotones) → se abre la puerta → meta.
 #include "game/sim.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 
-#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "FAIL: %s\n", #c); return 1; } } while (0)
+#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "FAIL: %s (línea %d)\n", #c, __LINE__); return 1; } } while (0)
 using namespace ew;
 using game::Input;
 
@@ -68,7 +69,8 @@ static int solve_room4(game::Sim& sim, int max_steps = 3000) {
 
 // Sala 5: desde ck_grav, caminar al orbe del piso (gravedad invertida), quedarse quieto hasta
 // "caer" al techo, esperar a plat_inv al borde del hueco, cruzar colgado de su cara de abajo,
-// seguir por el techo hasta el orbe que devuelve la gravedad y caer al piso de la meta.
+// seguir por el techo hasta el orbe que devuelve la gravedad, caer al piso y caminar hasta
+// el checkpoint de la sala 6.
 static int solve_room5(game::Sim& sim, int max_steps = 3000) {
   const auto& plat = sim.mover(2);  // plat_inv
   int phase = 0, steps = 0;
@@ -91,13 +93,61 @@ static int solve_room5(game::Sim& sim, int max_steps = 3000) {
         in.move_x = steer(x, plat.x + 12.f);
         if (plat.x >= 2119.5f && sim.ridden() == 2) phase = 4;
         break;
-      default:  // techo → orbe → piso de la meta
+      default:  // techo → orbe → piso → puerta a la sala 6
         in.move_x = 1.f;
         break;
     }
     sim.step(in);
+    if (sim.checkpoint() && sim.checkpoint()->name == "ck_boss") return steps + 1;
+  }
+  return -1;
+}
+
+// Sala 6: en el piso, quedarse ~44 px a la izquierda del boss y saltar cuando camina hacia
+// el player; en el aire, apuntar a su cabeza. Vencido, caminar por la puerta a la meta.
+static int solve_room6(game::Sim& sim, int max_steps = 8000) {
+  const int d0 = sim.deaths();
+  int steps = 0;
+  for (; steps < max_steps && !sim.finished() && sim.deaths() == d0; ++steps) {
+    Input in;
+    const float x = sim.player().pos.x;
+    if (sim.bosses_defeated()) {
+      in.move_x = 1.f;
+    } else {
+      const auto& b = sim.boss(0);
+      if (sim.player().grounded) {
+        const float want = b.x - 44.f;
+        in.move_x = steer(x, want);
+        // Saltar solo si el boss sigue caminando durante todo el salto (~0.8 s).
+        if (b.hurt <= 0.f && b.phase == 0 && b.dir < 0 && b.t < game::Sim::kBossWalkSec - 0.85f &&
+            std::fabs(x - want) < 6.f)
+          in.jump = true;
+      } else if (b.hurt <= 0.f) {
+        in.move_x = std::clamp((b.x - x) / 4.f, -1.f, 1.f);  // en el aire, a la cabeza
+      } else {
+        in.move_x = -1.f;  // rebote tras un golpe: alejarse antes de que se le pase
+      }
+    }
+    const auto bb = sim.boss(0);
+    const auto pp = sim.player();
+    sim.step(in);
+    if (sim.deaths() != d0)
+      std::printf("  sala6 muerte: player (%.1f,%.1f) v=(%.2f,%.2f) boss (%.1f,%.1f) fase=%d t=%.2f dir=%d hits=%d\n",
+                  pp.pos.x, pp.pos.y, pp.velocity().x, pp.velocity().y, bb.x, bb.y, bb.phase, bb.t, bb.dir, bb.hits);
   }
   return sim.finished() ? steps : -1;
+}
+
+// Vence al boss con 3 pisotones teleportados (para los tests unitarios de la meta).
+static void defeat_boss(game::Sim& sim) {
+  for (int k = 0; k < game::Sim::kBossHits && !sim.bosses_defeated(); ++k) {
+    for (int i = 0; i < 70; ++i) sim.step({});
+    const auto& b = sim.boss(0);
+    auto& p = sim.world().points()[sim.player_index()];
+    p.pos = {b.x, b.y - game::Sim::kBossH - game::Sim::kPlayerRadius + 1.5f};
+    p.prev = {p.pos.x, p.pos.y - 2.f};
+    sim.step({});
+  }
 }
 
 int main(int argc, char** argv) {
@@ -107,14 +157,14 @@ int main(int argc, char** argv) {
   if (!scene.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
 
   // --- loader: geometría, entidades, capas, cuerda, agua ---
-  CHECK(scene.width_px() == 2240 && scene.height_px() == 184);  // 7×1 chunks
+  CHECK(scene.width_px() == 2560 && scene.height_px() == 184);  // 8×1 chunks
   const auto* spawn = scene.find_type("player_spawn");
   const auto* sw = scene.find_type("switch");
   const auto* door = scene.find_type("door");
   const auto* goal = scene.find_type("goal");
   CHECK(spawn && spawn->x == 32.f && spawn->y == 152.f);
   CHECK(sw && door && goal && !sw->active && !door->active);
-  CHECK(goal->x == 2208.f && goal->y == 152.f);
+  CHECK(goal->x == 2520.f && goal->y == 152.f);
   const auto* ck = scene.find_type("checkpoint");
   CHECK(ck && ck->x == 536.f && ck->y == 56.f && !ck->active);
   CHECK(scene.tile(78, 19, map::Layer::META) == game::Sim::kMetaHazard);
@@ -126,7 +176,15 @@ int main(int argc, char** argv) {
   CHECK(scene.solid_tile(142, 8) && !scene.solid_tile(120, 8));   // cornisa de salida; el hueco es agua
   CHECK(scene.solid_px(200.f + 4.f, 136.f + 4.f));             // puerta cerrada
   CHECK(scene.tile(29, 17, map::Layer::META) == 2);             // zona de agua
-  CHECK(scene.tile(275, 18, map::Layer::META) == game::Sim::kMetaGoal);
+  CHECK(scene.tile(314, 18, map::Layer::META) == game::Sim::kMetaGoal);
+  CHECK(scene.tile(275, 18, map::Layer::META) == 0);             // ni en la sala 5
+  // Sala 6: puerta abierta desde la sala 5, pared con la puerta del boss (cerrada).
+  CHECK(scene.solid_tile(279, 16) && !scene.solid_tile(279, 18));
+  CHECK(scene.solid_tile(310, 16) && scene.solid_px(2484.f, 150.f));
+  {
+    const auto* boss = scene.find_type("boss");
+    CHECK(boss && boss->x == 2400.f && boss->y == 160.f && !boss->active);
+  }
   CHECK(scene.tile(235, 18, map::Layer::META) == 0);             // ni en la sala 4
   // Sala 5: puerta al piso desde la sala 4, techo con hueco, pinchos arriba y abajo.
   CHECK(scene.solid_tile(239, 16) && !scene.solid_tile(239, 18));
@@ -166,6 +224,7 @@ int main(int argc, char** argv) {
   CHECK(!sim.finished());
   CHECK(sim.mover_count() == 3);
   CHECK(sim.mover(2).x == 2048.f && sim.mover(2).y == 16.f);
+  CHECK(sim.boss_count() == 1 && !sim.bosses_defeated());
   CHECK(!sim.gravity_flipped());
   CHECK(sim.mover(0).x == 1648.f && sim.mover(0).y == 64.f && sim.mover(0).w == 24.f);
   CHECK(sim.mover(1).x == 1808.f && sim.mover(1).y == 64.f);
@@ -178,15 +237,21 @@ int main(int argc, char** argv) {
     if (!s2.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
     game::Sim sim2(s2);
     auto& p2 = sim2.world().points()[sim2.player_index()];
-    p2.pos = p2.prev = {2208.f, 152.f};
+    p2.pos = p2.prev = {2520.f, 152.f};
+    sim2.step({});
+    CHECK(!sim2.finished());  // con el boss vivo la meta no cuenta
+    defeat_boss(sim2);
+    CHECK(sim2.bosses_defeated() && s2.find_type("boss")->active);
+    p2.pos = p2.prev = {2520.f, 152.f};
     sim2.step({});
     CHECK(sim2.finished());
-    // META sin entidad cerca: tile META 3 (272,17) centro = (2180, 140); dist a goal ≈ 30.
+    // META sin entidad cerca: tile META 3 (312,17) centro = (2500, 140); dist a goal ≈ 23.
     game::Scene s3;
     if (!s3.load(argv[1], err)) return 1;
     game::Sim sim3(s3);
     auto& p3 = sim3.world().points()[sim3.player_index()];
-    p3.pos = p3.prev = {2180.f, 140.f};
+    defeat_boss(sim3);
+    p3.pos = p3.prev = {2500.f, 140.f};
     sim3.step({});
     CHECK(sim3.finished());
   }
@@ -355,10 +420,12 @@ int main(int argc, char** argv) {
     const int st = solve_room4(sim8);
     CHECK(st > 0 && sim8.deaths() == 0);
     const int st5 = solve_room5(sim8);
-    std::printf("sala4+5 meta: pasos=%d+%d x=%.1f y=%.1f muertes=%d\n", st, st5, sim8.player().pos.x,
-                sim8.player().pos.y, sim8.deaths());
-    CHECK(st5 > 0 && sim8.finished() && sim8.collected() == 1 && sim8.deaths() == 0);
-    CHECK(!sim8.gravity_flipped());
+    CHECK(st5 > 0 && sim8.deaths() == 0 && !sim8.gravity_flipped());
+    const int st6 = solve_room6(sim8);
+    std::printf("sala4+5+6 meta: pasos=%d+%d+%d x=%.1f y=%.1f muertes=%d\n", st, st5, st6,
+                sim8.player().pos.x, sim8.player().pos.y, sim8.deaths());
+    CHECK(st6 > 0 && sim8.finished() && sim8.collected() == 1 && sim8.deaths() == 0);
+    CHECK(sim8.bosses_defeated());
     // R corto: el huevo se conserva; R largo: vuelve a 0/1.
     { Input rst; rst.restart = true; sim8.step(rst); }
     CHECK(!sim8.finished() && sim8.collected() == 1);
@@ -532,17 +599,46 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 40; ++i) sim.step({});
   }
   const int steps5 = solve_room5(sim);
-  std::printf("meta: pasos=%d x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n", steps5,
+  std::printf("sala 5 → ck_boss: pasos=%d x=%.1f y=%.1f\n", steps5, sim.player().pos.x, sim.player().pos.y);
+  CHECK(steps5 > 0);
+  CHECK(!sim.gravity_flipped() && sim.flips() >= 2);
+  // Sala 6: tocar al boss de costado mata y vuelve a ck_boss con el boss curado.
+  {
+    const int d6 = sim.deaths();
+    for (int i = 0; i < 70; ++i) sim.step({});
+    auto& pp = sim.world().points()[sim.player_index()];
+    {  // un pisotón (teleport): 1 golpe
+      const auto& b = sim.boss(0);
+      pp.pos = {b.x, b.y - game::Sim::kBossH - game::Sim::kPlayerRadius + 1.5f};
+      pp.prev = {pp.pos.x, pp.pos.y - 2.f};
+      sim.step({});
+    }
+    CHECK(sim.boss(0).hits == 1 && sim.deaths() == d6);
+    pp.pos = pp.prev = {2280.f, 152.f};  // fuera de su patrulla
+    for (int i = 0; i < 70; ++i) sim.step({});  // pasa la invulnerabilidad del boss
+    CHECK(sim.deaths() == d6);
+    {  // toque de costado: muere
+      const auto& b = sim.boss(0);
+      pp.pos = pp.prev = {b.x - game::Sim::kBossW * 0.5f - 2.f, b.y - 4.f};
+      sim.step({});
+    }
+    CHECK(sim.deaths() == d6 + 1);
+    CHECK(std::fabs(sim.player().pos.x - 2264.f) < 4.f);
+    CHECK(sim.boss(0).hits == 0 && sim.boss(0).x == 2400.f);  // curado
+    for (int i = 0; i < 40; ++i) sim.step({});
+  }
+  const int steps6 = solve_room6(sim);
+  std::printf("meta: pasos=%d x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n", steps6,
               sim.player().pos.x, sim.player().pos.y, scene.chunk_x(), int(sim.finished()),
               scene.cam_x());
-  CHECK(steps5 > 0);
-  CHECK(scene.chunk_x() == 6);
-  CHECK(sim.player().pos.x > 2168.f);
-  CHECK(sim.finished());
-  CHECK(!sim.gravity_flipped() && sim.flips() >= 2);
-  CHECK(sim.deaths() == d_room4 + 3);
+  CHECK(steps6 > 0);
+  CHECK(scene.chunk_x() == 7);
+  CHECK(sim.player().pos.x > 2480.f);
+  CHECK(sim.finished() && sim.bosses_defeated());
+  CHECK(scene.find_type("boss")->active);
+  CHECK(sim.deaths() == d_room4 + 4);
   for (int i = 0; i < 60; ++i) sim.step({});
-  CHECK(scene.cam_x() >= 1900.f);
+  CHECK(scene.cam_x() >= 2220.f);
   CHECK(sim.finished());  // se mantiene
   CHECK(sim.finish_t() >= 0.999f);  // 60 pasos ≥ 0.75 s de fade
   CHECK(sim.collected() == 1);  // la repisa de la sala 3 pasa por el huevo (la meta no lo exige: sim2)
@@ -557,15 +653,17 @@ int main(int argc, char** argv) {
     (void)py;
   }
 
-  // R corto: vuelve al último checkpoint (ck_grav, puerta sigue abierta). R largo: spawn limpio.
-  CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_grav");
+  // R corto: vuelve al último checkpoint (ck_boss; puertas y boss vencido se conservan).
+  // R largo: spawn limpio.
+  CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_boss");
   { Input rst; rst.restart = true; sim.step(rst); }
   CHECK(!sim.finished());
   CHECK(sim.finish_t() == 0.f);
   CHECK(!sim.on_rope());
-  CHECK(std::fabs(sim.player().pos.x - 1936.f) < 4.f);
+  CHECK(std::fabs(sim.player().pos.x - 2264.f) < 4.f);
   CHECK(std::fabs(sim.player().pos.y - 152.f) < 10.f);
   CHECK(!sim.gravity_flipped());
+  CHECK(sim.bosses_defeated());
   CHECK(scene.find_type("door")->active);
   CHECK(sim.checkpoint_index() >= 0);
   { Input full; full.restart_full = true; sim.step(full); }
