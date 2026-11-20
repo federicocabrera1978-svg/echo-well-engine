@@ -1,4 +1,4 @@
-# slice.yaml — vertical slice: camino start → goal (6×1 chunks).
+# slice.yaml — vertical slice: camino start → goal (7×1 chunks).
 # Cada chunk = 1 pantalla (40×23 tiles de 8 px = 320×184 px).
 #
 # Chunk 0 (x 0–319): spawn, switch → puerta, pileta (nadar). Seam en x=320.
@@ -13,23 +13,31 @@
 #   La repisa sigue por un hueco en la pared derecha (tile 199, filas 0–7) hacia la sala 4.
 # Chunk 5 (x 1600–1919): sala 4, plataformas móviles (mover). Checkpoint en la repisa de
 #   entrada; foso de pinchos en todo el piso; plataforma horizontal → pilar → ascensor vertical
-#   que baja al piso seguro de la derecha, donde está la meta.
+#   que baja al piso seguro de la derecha. La pared derecha tiene una puerta abierta al piso.
+# Chunk 6 (x 1920–2239): sala 5, gravedad invertida. Checkpoint al entrar; un orbe en el piso
+#   invierte la gravedad antes de un foso de pinchos imposible de saltar; se camina por el
+#   techo, se cruza un hueco del techo (con pinchos arriba) sobre una plataforma móvil
+#   colgando de su cara de abajo, y un orbe del techo devuelve la gravedad sobre el piso
+#   seguro, donde está la meta.
 # Checkpoint en la cornisa (tras la cuerda): muerte / R corto vuelve ahí; R largo al spawn.
 name: slice
-size_chunks: [6, 1]
+size_chunks: [7, 1]
 
 # autotile: true  (default) — VIS/FG pasan a familia*16+máscara de 4 vecinos
 fill:
   VIS: 0
 
 rects:
-  # piso continuo (los 6 chunks) y paredes laterales
-  - {layer: COL, x: 0,   y: 20, w: 240, h: 3, tile: 1}
-  - {layer: VIS, x: 0,   y: 20, w: 240, h: 3, tile: 17}
+  # piso continuo (los 7 chunks) y paredes laterales
+  - {layer: COL, x: 0,   y: 20, w: 280, h: 3, tile: 1}
+  - {layer: VIS, x: 0,   y: 20, w: 280, h: 3, tile: 17}
   - {layer: COL, x: 0,   y: 0,  w: 1,   h: 23, tile: 1}
   - {layer: VIS, x: 0,   y: 0,  w: 1,   h: 23, tile: 17}
-  - {layer: COL, x: 239, y: 0,  w: 1,   h: 23, tile: 1}
-  - {layer: VIS, x: 239, y: 0,  w: 1,   h: 23, tile: 17}
+  - {layer: COL, x: 279, y: 0,  w: 1,   h: 23, tile: 1}
+  - {layer: VIS, x: 279, y: 0,  w: 1,   h: 23, tile: 17}
+  # pared entre la sala 4 y la 5: puerta abierta al nivel del piso (filas 17–19)
+  - {layer: COL, x: 239, y: 0,  w: 1,   h: 17, tile: 1}
+  - {layer: VIS, x: 239, y: 0,  w: 1,   h: 17, tile: 17}
   # pared entre la sala 3 y la 4: abierta arriba de la repisa (filas 0–7)
   - {layer: COL, x: 199, y: 8,  w: 1,   h: 15, tile: 1}
   - {layer: VIS, x: 199, y: 8,  w: 1,   h: 15, tile: 17}
@@ -95,7 +103,18 @@ rects:
   - {layer: META, x: 200, y: 19, w: 29, h: 2,  tile: 4}
   - {layer: VIS,  x: 200, y: 20, w: 23, h: 1,  tile: 11}
   - {layer: VIS,  x: 226, y: 20, w: 3,  h: 1,  tile: 11}
-  - {layer: META, x: 234, y: 17, w: 4,  h: 3,  tile: 3}    # zona de meta
+
+  # chunk 6: sala 5 (gravedad invertida). Techo sólido (filas 0–2, fondo y=24) salvo un hueco
+  # en los tiles 256–267 (x 2048–2144) con pinchos arriba; plat_inv cruza el hueco colgando
+  # (su cara de abajo a ras del techo). Foso de pinchos en el piso, tiles 247–270.
+  - {layer: COL,  x: 240, y: 0,  w: 16, h: 3,  tile: 1}
+  - {layer: VIS,  x: 240, y: 0,  w: 16, h: 3,  tile: 15}
+  - {layer: COL,  x: 268, y: 0,  w: 11, h: 3,  tile: 1}
+  - {layer: VIS,  x: 268, y: 0,  w: 11, h: 3,  tile: 15}
+  - {layer: META, x: 256, y: 0,  w: 12, h: 3,  tile: 4}    # pinchos del hueco del techo
+  - {layer: META, x: 247, y: 19, w: 24, h: 2,  tile: 4}    # foso del piso
+  - {layer: VIS,  x: 247, y: 20, w: 24, h: 1,  tile: 11}
+  - {layer: META, x: 272, y: 17, w: 6,  h: 3,  tile: 3}    # zona de meta
 
 entities:
   - {name: spawn,        type: player_spawn, x: 32,   y: 152}
@@ -112,7 +131,12 @@ entities:
   - {name: ck_mover,     type: checkpoint,   x: 1620, y: 56}
   - {name: plat_h,       type: mover,        x: 1648, y: 64, w: 3, h: 1, to_x: 1760, to_y: 64, speed: 48, pause: 0.6, tile: 6}
   - {name: lift_v,       type: mover,        x: 1808, y: 64, w: 3, h: 1, to_x: 1808, to_y: 136, speed: 40, pause: 0.8, tile: 6}
-  - {name: goal,         type: goal,         x: 1888, y: 152}
+  # sala 5 (chunk 6)
+  - {name: ck_grav,      type: checkpoint,   x: 1936, y: 152}
+  - {name: flip_up,      type: gravity_flip, x: 1960, y: 152}
+  - {name: plat_inv,     type: mover,        x: 2048, y: 16, w: 3, h: 1, to_x: 2120, to_y: 16, speed: 40, pause: 0.6, tile: 6}
+  - {name: flip_down,    type: gravity_flip, x: 2176, y: 28}
+  - {name: goal,         type: goal,         x: 2208, y: 152}
 
 links:
   - {from: switch_start, to: door_start}

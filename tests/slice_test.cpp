@@ -1,7 +1,8 @@
 // Test sin GL: vertical slice sobre slice.ewmap (loader + camino start→goal).
 // Recorre el camino: switch→puerta, agua, seam, cuerda, checkpoint, salta el hueco, meta.
 // Sala 3 (chunk 4): con el agua baja, switch_well abre el pasillo; cuerda 2 → repisa → huevo.
-// Sala 4 (chunk 5): plataformas móviles sobre un foso de pinchos → meta.
+// Sala 4 (chunk 5): plataformas móviles sobre un foso de pinchos.
+// Sala 5 (chunk 6): gravedad invertida (orbes), techo con hueco y plataforma colgante → meta.
 #include "game/sim.hpp"
 #include <algorithm>
 #include <cmath>
@@ -28,7 +29,8 @@ static bool circle_in_solid(game::Scene& s, physics::Vec2 p, float r, float eps 
 
 // Sala 4: desde la repisa de entrada (o cualquier punto antes de x=1640 sobre la repisa del
 // chunk 4/5), esperar a plat_h, viajar encima, bajar al pilar, esperar a lift_v arriba,
-// subir, bajar con él y caminar a la meta. Devuelve los pasos usados (o -1 si no terminó).
+// subir, bajar con él y caminar hasta el checkpoint de la sala 5. Devuelve los pasos usados
+// (o -1 si no llegó).
 static float steer(float x, float target) { return std::clamp((target - x) / 6.f, -1.f, 1.f); }
 static int solve_room4(game::Sim& sim, int max_steps = 3000) {
   const auto& plat = sim.mover(0);  // plat_h
@@ -54,7 +56,42 @@ static int solve_room4(game::Sim& sim, int max_steps = 3000) {
         in.move_x = steer(x, lift.x + 12.f);
         if (lift.y >= 135.5f && sim.ridden() == 1) phase = 4;
         break;
-      default:  // piso seguro → meta
+      default:  // piso seguro → puerta a la sala 5
+        in.move_x = 1.f;
+        break;
+    }
+    sim.step(in);
+    if (sim.checkpoint() && sim.checkpoint()->name == "ck_grav") return steps + 1;
+  }
+  return -1;
+}
+
+// Sala 5: desde ck_grav, caminar al orbe del piso (gravedad invertida), quedarse quieto hasta
+// "caer" al techo, esperar a plat_inv al borde del hueco, cruzar colgado de su cara de abajo,
+// seguir por el techo hasta el orbe que devuelve la gravedad y caer al piso de la meta.
+static int solve_room5(game::Sim& sim, int max_steps = 3000) {
+  const auto& plat = sim.mover(2);  // plat_inv
+  int phase = 0, steps = 0;
+  for (; steps < max_steps && !sim.finished(); ++steps) {
+    const float x = sim.player().pos.x;
+    Input in;
+    switch (phase) {
+      case 0:  // hasta el orbe del piso
+        in.move_x = 1.f;
+        if (sim.gravity_flipped()) phase = 1;
+        break;
+      case 1:  // cae hacia el techo
+        if (sim.player().grounded && sim.player().pos.y < 32.f) phase = 2;
+        break;
+      case 2:  // borde del hueco del techo
+        in.move_x = steer(x, 2036.f);
+        if (std::fabs(x - 2036.f) < 1.5f && plat.x <= 2048.5f && sim.player().grounded) phase = 3;
+        break;
+      case 3:  // colgado de plat_inv
+        in.move_x = steer(x, plat.x + 12.f);
+        if (plat.x >= 2119.5f && sim.ridden() == 2) phase = 4;
+        break;
+      default:  // techo → orbe → piso de la meta
         in.move_x = 1.f;
         break;
     }
@@ -70,14 +107,14 @@ int main(int argc, char** argv) {
   if (!scene.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
 
   // --- loader: geometría, entidades, capas, cuerda, agua ---
-  CHECK(scene.width_px() == 1920 && scene.height_px() == 184);  // 6×1 chunks
+  CHECK(scene.width_px() == 2240 && scene.height_px() == 184);  // 7×1 chunks
   const auto* spawn = scene.find_type("player_spawn");
   const auto* sw = scene.find_type("switch");
   const auto* door = scene.find_type("door");
   const auto* goal = scene.find_type("goal");
   CHECK(spawn && spawn->x == 32.f && spawn->y == 152.f);
   CHECK(sw && door && goal && !sw->active && !door->active);
-  CHECK(goal->x == 1888.f && goal->y == 152.f);
+  CHECK(goal->x == 2208.f && goal->y == 152.f);
   const auto* ck = scene.find_type("checkpoint");
   CHECK(ck && ck->x == 536.f && ck->y == 56.f && !ck->active);
   CHECK(scene.tile(78, 19, map::Layer::META) == game::Sim::kMetaHazard);
@@ -89,7 +126,16 @@ int main(int argc, char** argv) {
   CHECK(scene.solid_tile(142, 8) && !scene.solid_tile(120, 8));   // cornisa de salida; el hueco es agua
   CHECK(scene.solid_px(200.f + 4.f, 136.f + 4.f));             // puerta cerrada
   CHECK(scene.tile(29, 17, map::Layer::META) == 2);             // zona de agua
-  CHECK(scene.tile(235, 18, map::Layer::META) == game::Sim::kMetaGoal);
+  CHECK(scene.tile(275, 18, map::Layer::META) == game::Sim::kMetaGoal);
+  CHECK(scene.tile(235, 18, map::Layer::META) == 0);             // ni en la sala 4
+  // Sala 5: puerta al piso desde la sala 4, techo con hueco, pinchos arriba y abajo.
+  CHECK(scene.solid_tile(239, 16) && !scene.solid_tile(239, 18));
+  CHECK(scene.solid_tile(250, 2) && !scene.solid_tile(256, 2) && !scene.solid_tile(267, 1));
+  CHECK(scene.solid_tile(268, 2));
+  CHECK(scene.tile(260, 1, map::Layer::META) == game::Sim::kMetaHazard);
+  CHECK(scene.tile(247, 19, map::Layer::META) == game::Sim::kMetaHazard);
+  CHECK(scene.tile(270, 19, map::Layer::META) == game::Sim::kMetaHazard);
+  CHECK(scene.tile(271, 19, map::Layer::META) == 0);
   CHECK(scene.tile(145, 6, map::Layer::META) == 0);             // la meta ya no está en el chunk 3
   // Sala 4: hueco hacia la sala 4 sobre la repisa, repisa de entrada, pilar, pinchos.
   CHECK(!scene.solid_tile(199, 7) && scene.solid_tile(199, 8) && scene.solid_tile(199, 15));
@@ -118,7 +164,9 @@ int main(int argc, char** argv) {
   CHECK(sim.water()[1].x() == 808.f && sim.water()[1].rest_y() == 136.f);
   CHECK(sim.rope_points() == 17);
   CHECK(!sim.finished());
-  CHECK(sim.mover_count() == 2);
+  CHECK(sim.mover_count() == 3);
+  CHECK(sim.mover(2).x == 2048.f && sim.mover(2).y == 16.f);
+  CHECK(!sim.gravity_flipped());
   CHECK(sim.mover(0).x == 1648.f && sim.mover(0).y == 64.f && sim.mover(0).w == 24.f);
   CHECK(sim.mover(1).x == 1808.f && sim.mover(1).y == 64.f);
   auto& pts = sim.world().points();
@@ -130,15 +178,15 @@ int main(int argc, char** argv) {
     if (!s2.load(argv[1], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
     game::Sim sim2(s2);
     auto& p2 = sim2.world().points()[sim2.player_index()];
-    p2.pos = p2.prev = {1888.f, 152.f};
+    p2.pos = p2.prev = {2208.f, 152.f};
     sim2.step({});
     CHECK(sim2.finished());
-    // META sin entidad cerca: tile META 3 (234,17) centro = (1876, 140); dist a goal ≈ 17.
+    // META sin entidad cerca: tile META 3 (272,17) centro = (2180, 140); dist a goal ≈ 30.
     game::Scene s3;
     if (!s3.load(argv[1], err)) return 1;
     game::Sim sim3(s3);
     auto& p3 = sim3.world().points()[sim3.player_index()];
-    p3.pos = p3.prev = {1876.f, 140.f};
+    p3.pos = p3.prev = {2180.f, 140.f};
     sim3.step({});
     CHECK(sim3.finished());
   }
@@ -305,9 +353,12 @@ int main(int argc, char** argv) {
     CHECK(sim8.checkpoint() && sim8.checkpoint()->name == "ck_mover");
     CHECK(s8.chunk_x() == 5 && sim8.player().pos.y < 70.f);
     const int st = solve_room4(sim8);
-    std::printf("sala4 meta: pasos=%d x=%.1f y=%.1f muertes=%d\n", st, sim8.player().pos.x,
+    CHECK(st > 0 && sim8.deaths() == 0);
+    const int st5 = solve_room5(sim8);
+    std::printf("sala4+5 meta: pasos=%d+%d x=%.1f y=%.1f muertes=%d\n", st, st5, sim8.player().pos.x,
                 sim8.player().pos.y, sim8.deaths());
-    CHECK(st > 0 && sim8.finished() && sim8.collected() == 1 && sim8.deaths() == 0);
+    CHECK(st5 > 0 && sim8.finished() && sim8.collected() == 1 && sim8.deaths() == 0);
+    CHECK(!sim8.gravity_flipped());
     // R corto: el huevo se conserva; R largo: vuelve a 0/1.
     { Input rst; rst.restart = true; sim8.step(rst); }
     CHECK(!sim8.finished() && sim8.collected() == 1);
@@ -458,16 +509,40 @@ int main(int argc, char** argv) {
   CHECK(sim.mover(0).x == 1648.f && sim.mover(1).y == 64.f);
   for (int i = 0; i < 40; ++i) sim.step({});  // fin de la invulnerabilidad
   const int steps4 = solve_room4(sim);
-  std::printf("meta: pasos=%d x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n", steps4,
+  std::printf("sala 4 → ck_grav: pasos=%d x=%.1f y=%.1f\n", steps4, sim.player().pos.x, sim.player().pos.y);
+  CHECK(steps4 > 0 && sim.player().pos.x > 1910.f);
+  // Sala 5: caer al foso del piso sin invertir → muere, vuelve a ck_grav con gravedad normal.
+  {
+    const int d5 = sim.deaths();
+    for (int i = 0; i < 40; ++i) sim.step({});
+    auto& pp = sim.world().points()[sim.player_index()];
+    pp.pos = pp.prev = {2000.f, 150.f};  // sobre el foso (más allá del orbe)
+    for (int i = 0; i < 60 && sim.deaths() == d5; ++i) sim.step({});
+    CHECK(sim.deaths() == d5 + 1 && !sim.gravity_flipped());
+    CHECK(std::fabs(sim.player().pos.x - 1936.f) < 4.f);
+    // Invertido, chocar contra los pinchos del hueco del techo también mata, y el checkpoint
+    // (tomado con gravedad normal) reaparece normal.
+    for (int i = 0; i < 40; ++i) sim.step({});
+    sim.set_gravity_flipped(true);
+    // Bajo el hueco, lejos de plat_inv (que se mueve entre x 2048 y 2144).
+    const float hx = sim.mover(2).x < 2090.f ? 2134.f : 2056.f;
+    pp.pos = pp.prev = {hx, 30.f};
+    for (int i = 0; i < 60 && sim.deaths() == d5 + 1; ++i) sim.step({});
+    CHECK(sim.deaths() == d5 + 2 && !sim.gravity_flipped());
+    for (int i = 0; i < 40; ++i) sim.step({});
+  }
+  const int steps5 = solve_room5(sim);
+  std::printf("meta: pasos=%d x=%.1f y=%.1f chunk=%d finished=%d cam_x=%.1f\n", steps5,
               sim.player().pos.x, sim.player().pos.y, scene.chunk_x(), int(sim.finished()),
               scene.cam_x());
-  CHECK(steps4 > 0);
-  CHECK(scene.chunk_x() == 5);
-  CHECK(sim.player().pos.x > 1832.f);
+  CHECK(steps5 > 0);
+  CHECK(scene.chunk_x() == 6);
+  CHECK(sim.player().pos.x > 2168.f);
   CHECK(sim.finished());
-  CHECK(sim.deaths() == d_room4 + 1);
+  CHECK(!sim.gravity_flipped() && sim.flips() >= 2);
+  CHECK(sim.deaths() == d_room4 + 3);
   for (int i = 0; i < 60; ++i) sim.step({});
-  CHECK(scene.cam_x() >= 1580.f);
+  CHECK(scene.cam_x() >= 1900.f);
   CHECK(sim.finished());  // se mantiene
   CHECK(sim.finish_t() >= 0.999f);  // 60 pasos ≥ 0.75 s de fade
   CHECK(sim.collected() == 1);  // la repisa de la sala 3 pasa por el huevo (la meta no lo exige: sim2)
@@ -482,14 +557,15 @@ int main(int argc, char** argv) {
     (void)py;
   }
 
-  // R corto: vuelve al último checkpoint (ck_mover, puerta sigue abierta). R largo: spawn limpio.
-  CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_mover");
+  // R corto: vuelve al último checkpoint (ck_grav, puerta sigue abierta). R largo: spawn limpio.
+  CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_grav");
   { Input rst; rst.restart = true; sim.step(rst); }
   CHECK(!sim.finished());
   CHECK(sim.finish_t() == 0.f);
   CHECK(!sim.on_rope());
-  CHECK(std::fabs(sim.player().pos.x - 1620.f) < 4.f);
-  CHECK(std::fabs(sim.player().pos.y - 56.f) < 10.f);
+  CHECK(std::fabs(sim.player().pos.x - 1936.f) < 4.f);
+  CHECK(std::fabs(sim.player().pos.y - 152.f) < 10.f);
+  CHECK(!sim.gravity_flipped());
   CHECK(scene.find_type("door")->active);
   CHECK(sim.checkpoint_index() >= 0);
   { Input full; full.restart_full = true; sim.step(full); }
