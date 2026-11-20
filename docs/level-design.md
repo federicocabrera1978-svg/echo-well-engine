@@ -122,6 +122,8 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | `collectible` | Huevo, alcance `Sim::kCollectReach` (12 px) al centro del player. Sobrevive a morir y a R corto; R largo lo restablece. El HUD muestra n/total. |
 | `mover` | Plataforma sólida de `w`×`h` **tiles** que recorre waypoints en ping-pong, a `speed` px/s (default 40) con `pause` s en cada extremo (default 0.5). `(x, y)` es la esquina **sup. izq.** (px) y el primer waypoint. El segundo sale de `to_x`/`to_y`, o una ruta más larga con `path: "x y x y ..."` (hasta 8 puntos en total, sin comas). `tile` es el id fuente del atlas (default 6, metal). Se dibuja con el atlas, con autotile 4 vecinos dentro del rect. El player parado encima viaja con ella (carry). No se atraviesa desde arriba, de costado ni desde abajo. **Aplastamiento:** la plataforma empuja; si después de empujar el player queda metido en un tile sólido o en otra plataforma, muere y reaparece en el checkpoint. `reset()` (R largo) y `respawn()` (R corto o muerte) la devuelven al primer waypoint. La cuerda colisiona contra ella; el agua no se toca. |
 
+| `gravity_flip` | Orbe que **invierte la gravedad del player** al tocarlo (centro a ≤ `Sim::kFlipReach`, 10 px). Cada toque alterna normal ↔ invertida; el orbe se rearma cuando el player se aleja más de `Sim::kFlipRearm` (18 px), así que quedarse encima no lo repite. Con gravedad invertida el player cae hacia arriba, el techo funciona como piso (salto, `grounded`, carry de un `mover` por su cara de abajo, aplastamiento contra el piso) y se dibuja con los pies arriba. Ver “Gravedad invertida” abajo. |
+
 Ejemplo:
 
 ```yaml
@@ -146,6 +148,27 @@ de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
   Se agarra con C / Shift (o LB / Y), alcance `Sim::kGrabRange` (10 px). Colgado: ←/→
   balancean, ↑/↓ trepan, salto suelta con impulso. El nodo agarrado usa el radio del
   player (`kPlayerRadius` 4) para no atravesar paredes.
+
+## Gravedad invertida
+
+- Solo se invierte la gravedad **del player** (`Point::gscale = -1`). Las cuerdas siguen
+  colgando hacia abajo y el agua no se mueve.
+- **Salto / nado:** empujan contra la gravedad del player (invertido, hacia +Y). La altura
+  del salto es la misma (~44 px).
+- **Movers:** invertido, el player se apoya en la cara de **abajo** de una plataforma y
+  viaja con ella; si la plataforma lo aprieta contra un sólido, muere igual que siempre.
+- **Cuerda:** se agarra igual. Colgado, manda la cuerda; al soltar (o saltar, que empuja
+  hacia +Y) vuelve a caer hacia el techo. Ojo: la punta de una cuerda frena al player que
+  sube por debajo.
+- **Agua:** el empuje va siempre **contra** la gravedad del player; invertido, el agua lo
+  hunde hacia el fondo de la pileta (es su “arriba”). Mejor no mezclar agua con gravedad
+  invertida en una sala.
+- **Checkpoint:** guarda la gravedad que tenías al tocarlo. Morir o R corto reaparece con
+  esa gravedad; sin checkpoint (spawn) y con R largo, gravedad normal y orbes como al inicio.
+- Diseño: ubicá el orbe donde el player llega caminando y dejá un techo sólido encima
+  (fuera del mapa cuenta como sólido, así que el borde superior también sirve). Un `checkpoint` en el techo se toma con el centro a ≤ 20 px: ponelo a
+  `y = techo + 4`.
+- Mapa de prueba: `assets/maps/src/gravity.yaml` (`gravity_test`).
 
 ## Compilar y probar
 

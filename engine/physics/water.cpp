@@ -58,7 +58,8 @@ void WaterBody::interact(World& world) {
     const float top = p.pos.y - p.radius, bot = p.pos.y + p.radius;
     if (bot <= surf || top >= bottom()) continue;
     const float sub = std::clamp((bot - surf) / (2.f * p.radius), 0.f, 1.f);  // fracción sumergida
-    p.force.y -= buoyancy * sub / p.inv_mass;  // empuje (Arquímedes simplificado)
+    // Empuje (Arquímedes simplificado), siempre contra la gravedad del punto.
+    p.force.y -= buoyancy * sub / p.inv_mass * (p.gscale < 0 ? -1.f : 1.f);
     Vec2 v = p.velocity();
     // Salpicadura solo al cruzar la superficie (evita realimentación cuerpo↔resorte);
     // estela suave al moverse en horizontal cerca de la superficie.

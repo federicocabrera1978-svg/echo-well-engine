@@ -1,0 +1,32 @@
+# Mapa de prueba para la gravedad invertida (no es una sala de slice).
+# Techo sólido (y < 24) y piso (y ≥ 160). Orbes gravity_flip en el piso y en el techo,
+# checkpoint en el techo, plataforma horizontal en el aire (carry por abajo), un pisón
+# vertical que baja hasta 4 px del piso (aplastamiento), una cuerda y una pileta.
+name: gravity
+size_chunks: [1, 1]
+rects:
+  - {layer: COL, x: 0, y: 0, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 0, w: 40, h: 3, tile: 15}
+  - {layer: COL, x: 0, y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 40, h: 3, tile: 17}
+  - {layer: COL, x: 0, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 0, y: 0, w: 1, h: 23, tile: 15}
+  - {layer: COL, x: 39, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 39, y: 0, w: 1, h: 23, tile: 15}
+  # pileta (x 120–168) con bordes
+  - {layer: COL, x: 14, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 14, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: COL, x: 21, y: 17, w: 1, h: 3, tile: 1}
+  - {layer: VIS, x: 21, y: 17, w: 1, h: 3, tile: 17}
+  - {layer: META, x: 15, y: 17, w: 6, h: 3, tile: 2}
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+  - {name: flip_floor, type: gravity_flip, x: 64, y: 152}
+  - {name: flip_ceil, type: gravity_flip, x: 104, y: 28}
+  - {name: ck_ceil, type: checkpoint, x: 180, y: 28}
+  - {name: under, type: mover, x: 200, y: 96, w: 3, h: 1, to_x: 240, to_y: 96, speed: 40, pause: 0}
+  - {name: press, type: mover, x: 280, y: 40, w: 2, h: 1, to_x: 280, to_y: 148, speed: 60, pause: 0.5}
+ropes:
+  - {x: 236, y: 24, segments: 8, seg_len: 6}
+water:
+  - {x: 120, y: 136, w: 48, h: 24, stiffness: 0.02, damping: 0.04}
