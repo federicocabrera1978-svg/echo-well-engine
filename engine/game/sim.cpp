@@ -342,7 +342,7 @@ void Sim::check_checkpoints() {
     if (ents[i].type != "checkpoint") continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
-    if (ckpt_ == int(i)) { ckpt_flip_ = flip_; return; }
+    if (ckpt_ == int(i)) return;  // la gravedad se guarda solo al activarlo
     if (ckpt_ >= 0) scene_.set_active(std::size_t(ckpt_), false);
     ckpt_ = int(i);
     ckpt_flip_ = flip_;
