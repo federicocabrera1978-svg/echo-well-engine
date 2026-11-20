@@ -206,6 +206,8 @@ void main() {
       if (r == 1 && u_has_save == 0) col *= 0.45;  // sin partida guardada: apagado
       c = mix(c, col, g);
     }
+    // Versión (fila 11 de u_txt) abajo a la derecha de la caja.
+    c = mix(c, vec3(0.50, 0.50, 0.56), txt_glyph(11, px - vec2(204.0, 150.0), 1.0));
     // Barrita de volumen bajo el ítem VOL.
     {
       float bx = 112.0, by = 60.0 + 3.0 * 15.0 + 11.0, bw = 80.0, bh = 2.0;

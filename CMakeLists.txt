@@ -273,7 +273,8 @@ if(EW_BUILD_ENGINE)
   target_compile_definitions(echo_engine PRIVATE
     EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
     EW_DEFAULT_MAP="${EW_SLICE_MAP}"
-    EW_DEFAULT_ATLAS="${EW_DEFAULT_ATLAS}")
+    EW_DEFAULT_ATLAS="${EW_DEFAULT_ATLAS}"
+    EW_VERSION="${PROJECT_VERSION}")
   target_link_libraries(echo_engine PRIVATE echo_render echo_game echo_audio glfw)
   add_dependencies(echo_engine ew_maps)
   # device.cpp siempre (stubs si EW_AUDIO=OFF). miniaudio no se vendoriza (~4 MiB);
@@ -323,6 +324,8 @@ if(EW_BUILD_ENGINE)
 endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png DESTINATION assets/atlas)
-install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} DESTINATION assets/maps/bin)
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP}
+        DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/qa-checklist.md DESTINATION docs)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/DIST.txt DESTINATION .)
