@@ -238,6 +238,12 @@ bloques de `hello.yaml` / `slice.yaml`.
   círculo del player mide 8 px y se cae por un hueco de 8). El foso de pinchos (`META` 4)
   cubre todo el piso; el ascensor baja hasta 16 px sobre el piso seguro. `slice_test`
   resuelve la sala con un control que espera a cada plataforma (`solve_room4`).
+- **Gravedad invertida (sala 5 de `slice`).** El checkpoint va **antes** del orbe y a más
+  de 20 px de él (guarda la gravedad del momento en que se activa). El orbe del piso está
+  antes del foso: el player “cae” al techo y se mueve ~55 px mientras sube, así que el
+  techo tiene que seguir sólido ese tramo. El hueco del techo lleva `META` 4 arriba y una
+  plataforma con la cara de abajo a ras del techo (`y` = fondo del techo − 8). El orbe
+  del techo va **después** del foso del piso. `slice_test` la resuelve con `solve_room5`.
 - **El secreto es opcional.** Un `collectible` se esconde al costado o “para atrás”
   (agua baja, puertas en la pileta). El HUD n/total informa; no bloquees el `goal`.
 - **Diseñá para la cámara.** Los seams son cada 320 px. Un salto que empieza en un chunk
