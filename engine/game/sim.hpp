@@ -45,6 +45,16 @@ class Sim {
   static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
   static constexpr float kFlipReach = 10.f;       // px: tocar un orbe gravity_flip lo dispara
   static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
+  // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
+  static constexpr float kBossW = 24.f, kBossH = 16.f;
+  static constexpr int kBossHits = 3;              // pisotones para vencerlo
+  static constexpr float kBossRange = 64.f;        // px a cada lado de su posición inicial
+  static constexpr float kBossSpeed = 36.f;        // px/s caminando (+kBossSpeedPerHit por golpe)
+  static constexpr float kBossSpeedPerHit = 14.f;
+  static constexpr float kBossWalkSec = 1.6f;      // camina, después avisa y salta
+  static constexpr float kBossTellSec = 0.5f;      // quieto (aviso) antes del salto
+  static constexpr float kBossHopSpeed = 200.f;    // px/s inicial del salto (gravedad 600)
+  static constexpr float kBossHurtSec = 1.0f;      // tras un golpe: no daña ni recibe daño
 
   // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
@@ -96,6 +106,27 @@ class Sim {
   int invuln() const { return invuln_; }
   int mover_count() const { return int(movers_.size()); }
   const Mover& mover(int i) const { return movers_[std::size_t(i)]; }
+  // Boss: patrón determinista (caminar → aviso → salto, en loop; más rápido con cada golpe).
+  // Se le pega cayéndole encima (pisotón: el player se mueve hacia su "abajo" y viene del
+  // lado de su "arriba"; con gravedad invertida, desde abajo). Tocarlo de otra forma mata.
+  // Al vencerlo, Entity::active = true y se abren sus puertas linkeadas; mientras haya un
+  // boss vivo la meta no cuenta. respawn() lo cura (si no estaba vencido); reset() todo.
+  struct Boss {
+    float x = 0, y = 0;   // centro de los pies (px)
+    int hits = 0;
+    float hurt = 0;       // s de invulnerabilidad restante
+    bool defeated = false;
+    int phase = 0;        // 0 camina, 1 aviso, 2 salto
+    float t = 0;          // s en la fase actual
+    int dir = -1;         // sentido de la caminata
+    float vy = 0;         // px/s (salto)
+    float home_x = 0, home_y = 0;
+    std::size_t ent = 0;  // índice en Scene::entities()
+    float speed() const { return kBossSpeed + kBossSpeedPerHit * float(hits); }
+  };
+  int boss_count() const { return int(bosses_.size()); }
+  const Boss& boss(int i) const { return bosses_[std::size_t(i)]; }
+  bool bosses_defeated() const;  // true si no hay boss vivo
   // Índice de la plataforma que está cargando al player, o -1.
   int ridden() const { return ridden_; }
   // Gravedad del player: false = normal (cae hacia +Y), true = invertida (cae hacia -Y).
@@ -144,6 +175,10 @@ class Sim {
   bool ckpt_flip_ = false;  // gravedad al tomar el último checkpoint
   int flips_ = 0;
   std::vector<uint8_t> flip_armed_;  // por entidad: orbe gravity_flip listo para disparar
+  std::vector<Boss> bosses_;
+  void reset_bosses(bool keep_defeated);
+  void advance_bosses();
+  void collide_bosses();
   void check_gravity_flips();
   void rearm_flips();
   void build();

@@ -1,0 +1,23 @@
+# Mapa de prueba para el boss (no es una sala de slice). Arena de 1 chunk: checkpoint a la
+# izquierda, boss en el medio (patrulla x 112–240), puerta linkeada al boss y meta detrás.
+name: boss
+size_chunks: [1, 1]
+rects:
+  - {layer: COL, x: 0, y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 40, h: 3, tile: 17}
+  - {layer: COL, x: 0, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 0, y: 0, w: 1, h: 23, tile: 15}
+  - {layer: COL, x: 39, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 39, y: 0, w: 1, h: 23, tile: 15}
+  # pared con la puerta (tile 35): sólida arriba, la puerta tapa las filas 17–19
+  - {layer: COL, x: 35, y: 0, w: 1, h: 17, tile: 1}
+  - {layer: VIS, x: 35, y: 0, w: 1, h: 17, tile: 15}
+  - {layer: META, x: 36, y: 17, w: 3, h: 3, tile: 3}
+entities:
+  - {name: spawn, type: player_spawn, x: 24, y: 152}
+  - {name: ck_arena, type: checkpoint, x: 48, y: 152}
+  - {name: boss, type: boss, x: 176, y: 160}
+  - {name: door_exit, type: door, x: 280, y: 136}
+  - {name: goal, type: goal, x: 300, y: 152}
+links:
+  - {from: boss, to: door_exit}

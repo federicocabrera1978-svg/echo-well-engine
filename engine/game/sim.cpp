@@ -68,6 +68,63 @@ void Sim::build() {
     movers_.push_back(std::move(m));
   }
   rearm_flips();
+  bosses_.clear();
+  const auto& es = scene_.entities();
+  for (std::size_t i = 0; i < es.size(); ++i) {
+    if (es[i].type != "boss") continue;
+    Boss b;
+    b.home_x = es[i].x;
+    b.home_y = es[i].y;
+    b.ent = i;
+    bosses_.push_back(b);
+  }
+  reset_bosses(false);
+}
+
+void Sim::reset_bosses(bool keep_defeated) {
+  for (auto& b : bosses_) {
+    if (keep_defeated && b.defeated) continue;
+    b.x = b.home_x;
+    b.y = b.home_y;
+    b.hits = 0;
+    b.hurt = 0;
+    b.defeated = false;
+    b.phase = 0;
+    b.t = 0;
+    b.dir = -1;
+    b.vy = 0;
+  }
+}
+
+bool Sim::bosses_defeated() const {
+  for (const auto& b : bosses_)
+    if (!b.defeated) return false;
+  return true;
+}
+
+void Sim::advance_bosses() {
+  for (auto& b : bosses_) {
+    if (b.defeated) continue;
+    if (b.hurt > 0) b.hurt = std::max(0.f, b.hurt - kDt);
+    const float lo = b.home_x - kBossRange, hi = b.home_x + kBossRange;
+    auto walk = [&](float v) {
+      b.x += float(b.dir) * v * kDt;
+      if (b.x > hi) { b.x = hi; b.dir = -1; }
+      if (b.x < lo) { b.x = lo; b.dir = 1; }
+    };
+    b.t += kDt;
+    if (b.phase == 0) {
+      walk(b.speed());
+      if (b.t >= kBossWalkSec) { b.phase = 1; b.t = 0; }
+    } else if (b.phase == 1) {
+      if (b.t >= kBossTellSec) { b.phase = 2; b.t = 0; b.vy = -kBossHopSpeed; }
+    } else {
+      walk(b.speed() * 1.5f);
+      b.vy += 600.f * kDt;
+      b.y += b.vy * kDt;
+      if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; }
+    }
+  }
 }
 
 void Sim::set_gravity_flipped(bool f) {
@@ -151,6 +208,7 @@ void Sim::respawn() {
   regrab_cd_ = 0;
   climb_acc_ = 0;
   reset_movers();
+  reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
   for (std::size_t k = 0; k < scene_.entities().size(); ++k)
     if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, flip_);
@@ -204,6 +262,7 @@ void Sim::step(const Input& in) {
     apply_flood();
     for (auto& w : water_) { w.interact(world_); w.step(); }
     advance_movers();
+    advance_bosses();
     world_.step(kDt, solid_fn_);
     collide_movers();
     const auto& p = world_.points()[player_];
@@ -266,6 +325,7 @@ void Sim::step(const Input& in) {
   apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
   advance_movers();
+  advance_bosses();
   carry_player();
   world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
@@ -291,6 +351,7 @@ void Sim::step(const Input& in) {
   check_gravity_flips();
   check_checkpoints();
   check_collectibles();
+  collide_bosses();
   check_hazards();
   check_goal();
 }
@@ -322,7 +383,7 @@ void Sim::check_collectibles() {
 }
 
 void Sim::check_goal() {
-  if (finished_) return;
+  if (finished_ || !bosses_defeated()) return;  // con un boss vivo la meta está cerrada
   const auto& p = player();
   for (const auto& e : scene_.entities()) {
     if (e.type != "goal") continue;
@@ -530,6 +591,45 @@ void Sim::collide_movers() {
     }
   for (const auto& m : movers_) {
     if (circle_hits_aabb(pl.pos, rad, m.x, m.y, m.x + m.w, m.y + m.h, eps)) { kill(); return; }
+  }
+}
+
+}  // namespace ew::game
+
+namespace ew::game {
+
+void Sim::collide_bosses() {
+  if (bosses_.empty() || finished_) return;
+  auto& pts = world_.points();
+  auto& pl = pts[player_];
+  const float r = pl.radius, d = down();
+  for (auto& b : bosses_) {
+    if (b.defeated) continue;
+    const float l = b.x - kBossW * 0.5f, rt = b.x + kBossW * 0.5f, top = b.y - kBossH, bot = b.y;
+    const ew::physics::Vec2 c{std::clamp(pl.pos.x, l, rt), std::clamp(pl.pos.y, top, bot)};
+    if (ew::physics::length(pl.pos - c) >= r) continue;
+    if (b.hurt > 0) continue;  // recién golpeado: se lo puede atravesar
+    // Pisotón: el player va hacia su "abajo" y su centro está del lado de su "arriba" del boss.
+    const float vy = pl.velocity().y;
+    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 3.f) : (vy < 0.f && pl.pos.y >= bot - 3.f);
+    if (from_above) {
+      ++b.hits;
+      b.hurt = kBossHurtSec;
+      sfx_ |= 16u;  // kSfxSwitch (golpe)
+      // Rebote: fuera de la caja y con impulso contra su gravedad.
+      if (held_) release();
+      pl.pos.y = d > 0 ? top - r : bot + r;
+      pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.9f * kDt});
+      if (b.hits >= kBossHits) {
+        b.defeated = true;
+        scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
+        sfx_ |= 4u;  // kSfxCheckpoint (fanfarria corta)
+      }
+      return;
+    }
+    if (invuln_ > 0) continue;
+    kill();
+    return;
   }
 }
 
