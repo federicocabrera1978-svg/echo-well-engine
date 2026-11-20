@@ -8,6 +8,11 @@
 //   u8 flags (bit0 gravedad invertida, bit1 mute; el resto debe ser 0)
 //   f32 volume (0..1, finito)
 //   u16 entity_count (≤ kMaxEntities), u8 active[(entity_count + 7) / 8] (bit i = entidad i activa)
+// Payload v2 = v1 + controles: u8 n (= kBindCount), n × (u16 key0, u16 key1, u8 pad0, u8 pad1)
+//   (0xFFFF / 0xFF = sin asignar; tiene que pasar Bindings::valid()). v1 se sigue leyendo
+//   (controles por defecto); siempre se escribe v2.
+#include "game/bindings.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -17,7 +22,7 @@ namespace ew::game {
 
 class Sim;
 
-inline constexpr uint16_t kSaveVersion = 1;
+inline constexpr uint16_t kSaveVersion = 2;  // escribe v2, lee v1 y v2
 inline constexpr std::size_t kSaveMaxMapName = 64;
 inline constexpr std::size_t kSaveMaxEntities = 4096;
 inline constexpr std::size_t kSaveMaxBytes = 4096;  // un save válido nunca pasa de esto
@@ -32,6 +37,7 @@ struct SaveData {
   bool muted = false;
   float volume = 0.8f;
   std::vector<uint8_t> active;     // Entity::active por entidad (0/1)
+  Bindings bind = Bindings::defaults();  // controles (v2)
 };
 
 std::vector<uint8_t> encode_save(const SaveData& d);
