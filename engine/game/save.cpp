@@ -72,6 +72,12 @@ std::vector<uint8_t> encode_save(const SaveData& d) {
   for (std::size_t k = 0; k < ne; ++k)
     if (d.active[k]) bits[k / 8] = uint8_t(bits[k / 8] | (1u << (k % 8)));
   pl.insert(pl.end(), bits.begin(), bits.end());
+  const Bindings b = d.bind.valid() ? d.bind : Bindings::defaults();
+  put_u8(pl, uint8_t(kBindCount));
+  for (int a = 0; a < kBindCount; ++a) {
+    for (int16_t k : b.key[std::size_t(a)]) put_u16(pl, uint16_t(k));
+    for (int8_t p : b.pad[std::size_t(a)]) put_u8(pl, uint8_t(p));
+  }
 
   std::vector<uint8_t> out = {'E', 'W', 'S', 'V'};
   put_u16(out, kSaveVersion);
@@ -92,7 +98,7 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
   const uint16_t ver = h.u16();
   const uint16_t rsv = h.u16();
   const uint32_t psz = h.u32();
-  if (ver != kSaveVersion) return SaveError::BadVersion;
+  if (ver != 1 && ver != kSaveVersion) return SaveError::BadVersion;
   if (rsv != 0) return SaveError::BadField;
   if (psz != size - kHdr - kCrc) return SaveError::BadSize;
   Reader c{data, size};
@@ -128,6 +134,17 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
   // Bits de relleno del último byte en 0 (canónico).
   if (ne % 8 && (r.p[r.i + nb - 1] >> (ne % 8))) return SaveError::BadField;
   r.i += nb;
+  if (ver >= 2) {
+    const uint8_t n = r.u8();
+    if (!r.ok) return SaveError::BadSize;
+    if (n != kBindCount) return SaveError::BadField;
+    for (int a = 0; a < kBindCount; ++a) {
+      for (auto& k : d.bind.key[std::size_t(a)]) k = int16_t(r.u16());
+      for (auto& p : d.bind.pad[std::size_t(a)]) p = int8_t(r.u8());
+    }
+    if (!r.ok) return SaveError::BadSize;
+    if (!d.bind.valid()) return SaveError::BadField;
+  }
   if (r.i != psz) return SaveError::BadSize;  // sin bytes de más
   out = std::move(d);
   return SaveError::None;

@@ -37,6 +37,10 @@ struct FrameView {
   float pause_vol = 0.8f;
   int pause_mute = 0;
   int pause_has_save = 0;                    // CONTINUAR habilitado
+  int ctl = 0;                               // página CONTROLES
+  int ctl_sel = 0;                           // fila de u_txt resaltada
+  int ctl_wait = 0;                          // esperando tecla/botón
+  std::array<int32_t, 96> ctl_txt{};         // game::pack_text(controls_text(menu))
   // HUD de collectibles (light pass): ícono de huevo + "n/total" arriba a la izquierda.
   // total == 0 → no se dibuja. flash 0..1 = destello al agarrar uno.
   int items = 0, items_total = 0;

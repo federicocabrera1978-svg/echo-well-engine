@@ -1,6 +1,6 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
 //   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave]
-// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, continuar partida, reiniciar, volumen, salir). Autoguardado en el directorio de datos del usuario (ver game/save.hpp). --demo = input automático.
+// Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, continuar partida, reiniciar, volumen, controles, salir). Las teclas y botones de juego se remapean en CONTROLES (game/bindings.hpp) y se guardan con la partida. Autoguardado en el directorio de datos del usuario (ver game/save.hpp). --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
@@ -14,6 +14,7 @@
 #include "core/paths.hpp"
 #include "game/gamepad.hpp"
 #include "game/menu.hpp"
+#include "game/menu_text.hpp"
 #include "game/save.hpp"
 #include "audio/device.hpp"
 #include "audio/sfx.hpp"
@@ -123,6 +124,8 @@ void push_hazards(FrameView& v, ew::game::Scene& s) {
 }
 }  // namespace
 
+static int g_last_key = -1;  // última tecla apretada (callback GLFW), para remapear
+
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
   bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false;
@@ -209,6 +212,8 @@ int main(int argc, char** argv) {
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
   int last_items = 0;
+  uint32_t pad_prev = 0;
+  glfwSetKeyCallback(win, [](GLFWwindow*, int k, int, int action, int) { if (action == GLFW_PRESS) g_last_key = k; });
 
   // Partida guardada (un slot). Sin guardado con --nosave, --demo o --start, ni con --frames
   // salvo que EW_SAVE_DIR esté definido (corridas deterministas / de prueba). Se autoguarda
@@ -230,9 +235,14 @@ int main(int argc, char** argv) {
     if (e == ew::game::SaveError::None && save_matches(loaded)) {
       menu.set_has_save(true);
       menu.set_audio(loaded.volume, loaded.muted);
+      menu.set_bindings(loaded.bind);
       menu.open_at(ew::game::PauseMenu::kContinuar);
       save_armed = false;
       std::printf("echo_engine: partida guardada en %s — CONTINUAR en el menú\n", save_path.c_str());
+    } else if (e == ew::game::SaveError::None) {  // save de otro mapa: solo audio + controles
+      menu.set_audio(loaded.volume, loaded.muted);
+      menu.set_bindings(loaded.bind);
+      std::printf("echo_engine: save de otro mapa (se usan volumen y controles)\n");
     } else if (e != ew::game::SaveError::Io) {
       std::printf("echo_engine: save ignorado (%s)\n", e == ew::game::SaveError::None ? "otro mapa" : ew::game::save_error_str(e));
     } else {
@@ -253,6 +263,7 @@ int main(int argc, char** argv) {
   auto write_save = [&](ew::game::SaveData d) {
     d.volume = menu.volume_setting();
     d.muted = menu.muted();
+    d.bind = menu.bindings();
     if (ew::game::write_save_file(save_path, d) == ew::game::SaveError::None) {
       menu.set_has_save(true);
     } else {
@@ -264,20 +275,26 @@ int main(int argc, char** argv) {
     glfwPollEvents();
     auto key = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
     ew::game::Input in;
-    in.move_x = float((key(GLFW_KEY_RIGHT) || key(GLFW_KEY_D)) - (key(GLFW_KEY_LEFT) || key(GLFW_KEY_A)));
+    // Teclas de juego según los controles (remapeables en el menú).
+    const auto& bind = menu.bindings();
+    auto act = [&](int a) {
+      return bind.key_down(a, [](int k, void* w) { return glfwGetKey(static_cast<GLFWwindow*>(w), k) == GLFW_PRESS; }, win);
+    };
+    using namespace ew::game;
+    in.move_x = float(int(act(kBindRight)) - int(act(kBindLeft)));
     const bool hanging = sim.on_rope();
-    // Colgado, ↑/↓ trepan (no saltan ni activan switch).
-    if (hanging) in.climb = float((key(GLFW_KEY_DOWN) || key(GLFW_KEY_S)) - (key(GLFW_KEY_UP) || key(GLFW_KEY_W)));
-    const bool jump_down = key(GLFW_KEY_SPACE) || key(GLFW_KEY_Z) || (!hanging && key(GLFW_KEY_UP));
+    // Colgado, arriba/abajo trepan (no saltan ni activan switch).
+    if (hanging) in.climb = float(int(act(kBindDown)) - int(act(kBindUp)));
+    const bool jump_down = act(kBindJump) || (!hanging && act(kBindUp));
     in.jump = jump_down && !jump_was_down;
     jump_was_down = jump_down;
-    const bool act_down = key(GLFW_KEY_E) || key(GLFW_KEY_X) || (!hanging && key(GLFW_KEY_DOWN));
+    const bool act_down = act(kBindAct) || (!hanging && act(kBindDown));
     in.interact = act_down && !act_was_down;
     act_was_down = act_down;
-    const bool grab_down = key(GLFW_KEY_C) || key(GLFW_KEY_LEFT_SHIFT) || key(GLFW_KEY_RIGHT_SHIFT);
+    const bool grab_down = act(kBindGrab);
     in.grab = grab_down && !grab_was_down;
     grab_was_down = grab_down;
-    const bool r_down = key(GLFW_KEY_R);
+    const bool r_down = act(kBindRestart);
     const double now_in = glfwGetTime();
     if (r_down) {
       if (r_down_since < 0) r_down_since = now_in;
@@ -291,6 +308,7 @@ int main(int argc, char** argv) {
       r_full_sent = false;
     }
     r_was_down = r_down;
+    uint32_t pad_buttons = 0;
     bool pad_start = false, pad_a = false, pad_b = false, pad_du = false, pad_dd = false, pad_dl = false, pad_dr = false;
     // Gamepad (primer mando reconocido). Se combina con el teclado; --demo lo ignora.
     if (!demo && !nogamepad) {
@@ -316,6 +334,9 @@ int main(int argc, char** argv) {
         raw.dl = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] == GLFW_PRESS;
         raw.dr = st.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS;
         pad_du = raw.du; pad_dd = raw.dd; pad_dl = raw.dl; pad_dr = raw.dr;
+        for (int bt = 0; bt <= GLFW_GAMEPAD_BUTTON_LAST; ++bt)
+          if (st.buttons[bt] == GLFW_PRESS) raw.buttons |= 1u << unsigned(bt);
+        pad_buttons = raw.buttons;
         found = true;
         break;
       }
@@ -323,7 +344,7 @@ int main(int argc, char** argv) {
       static bool pad_announced = false;
       if (found) {
         if (!pad_announced) { std::printf("echo_engine: gamepad\n"); pad_announced = true; }
-        ew::game::apply_pad(raw, in, hanging, pad_edges, now_in);
+        ew::game::apply_pad(raw, in, hanging, pad_edges, now_in, ew::game::Sim::kRestartFullHold, &bind);
       }
     }
     if (demo) {  // camina ida y vuelta y salta cada ~1.5 s
@@ -338,8 +359,14 @@ int main(int argc, char** argv) {
       mi.toggle = (esc_down && !esc_was) || (pad_start && !start_was);
       esc_was = esc_down;
       start_was = pad_start;
-      if (menu.open() && pad_b && !m_b_was) mi.toggle = true;  // B cierra
+      if (menu.open() && !menu.waiting() && pad_b && !m_b_was) mi.toggle = true;  // B cierra / vuelve
       m_b_was = pad_b;
+      if (menu.waiting()) {  // remapeo: la tecla / el botón recién apretado
+        if (g_last_key != GLFW_KEY_ESCAPE) mi.key = g_last_key;
+        const uint32_t fresh = pad_buttons & ~pad_prev;
+        for (int bt = 0; bt <= GLFW_GAMEPAD_BUTTON_LAST && mi.key < 0; ++bt)
+          if ((fresh >> unsigned(bt)) & 1u) { mi.pad_button = bt; break; }
+      }
       const bool up = key(GLFW_KEY_UP) || key(GLFW_KEY_W) || pad_du;
       const bool dn = key(GLFW_KEY_DOWN) || key(GLFW_KEY_S) || pad_dd;
       const bool lt = key(GLFW_KEY_LEFT) || key(GLFW_KEY_A) || pad_dl;
@@ -354,6 +381,8 @@ int main(int argc, char** argv) {
       }
       m_up_was = up; m_dn_was = dn; m_lt_was = lt; m_rt_was = rt; m_ok_was = ok;
     }
+    g_last_key = -1;
+    pad_prev = pad_buttons;
     const auto mact = menu.handle(mi);
     if (mact == ew::game::MenuAction::Quit) glfwSetWindowShouldClose(win, GLFW_TRUE);
     if (mact == ew::game::MenuAction::Continue && !save_path.empty()) {
@@ -362,6 +391,7 @@ int main(int argc, char** argv) {
       if (e == ew::game::SaveError::None) e = ew::game::apply_save(sim, d);
       if (e == ew::game::SaveError::None) {
         menu.set_audio(d.volume, d.muted);
+        menu.set_bindings(d.bind);
         save_armed = true;
         last_key = save_key();
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim.checkpoint_index(),
@@ -417,11 +447,12 @@ int main(int argc, char** argv) {
     }
     if (!save_path.empty()) {  // autoguardado
       const SaveKey k = save_key();
-      if (!(k == last_key)) {
+      const bool bind_changed = menu.take_bindings_changed();
+      if (!(k == last_key) || bind_changed) {
         const bool progress = k.ck != last_key.ck || k.items != last_key.items || k.boss != last_key.boss;
         if (progress && (k.ck >= 0 || k.items > 0 || k.boss)) save_armed = true;  // jugando de verdad
         if (save_armed) write_save(ew::game::capture_save(sim));
-        else if (menu.has_save()) write_save(loaded);  // solo cambió el volumen: no pisar la partida
+        else if (menu.has_save()) write_save(loaded);  // solo volumen/controles: no pisar la partida
         last_key = k;
       }
     }
@@ -492,6 +523,12 @@ int main(int argc, char** argv) {
     v.pause_vol = menu.volume_setting();
     v.pause_mute = menu.muted() ? 1 : 0;
     v.pause_has_save = menu.has_save() ? 1 : 0;
+    if (menu.in_controls()) {
+      v.ctl = 1;
+      v.ctl_sel = menu.ctl_cursor() + 1;
+      v.ctl_wait = menu.waiting() ? 1 : 0;
+      v.ctl_txt = ew::game::pack_text(ew::game::controls_text(menu));
+    }
     v.items = sim.collected();
     v.items_total = sim.collectible_total();
     v.items_flash = float(sim.pickup_flash()) / float(ew::game::Sim::kPickupFlashFrames);

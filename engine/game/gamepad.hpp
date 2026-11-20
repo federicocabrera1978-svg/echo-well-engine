@@ -1,5 +1,6 @@
 #pragma once
 // Mapeo de gamepad → Input, sin GLFW (testeable). GLFW solo rellena PadRaw en echo_engine.
+#include "game/bindings.hpp"
 #include "game/sim.hpp"
 #include <algorithm>
 #include <cmath>
@@ -14,6 +15,7 @@ struct PadRaw {
   bool lb = false, rb = false;
   bool start = false;
   bool du = false, dd = false, dl = false, dr = false;
+  uint32_t buttons = 0;  // bit i = GLFW_GAMEPAD_BUTTON i (para controles remapeados)
 };
 
 struct PadEdges {
@@ -31,8 +33,9 @@ inline float pad_axis(float v, float dz = kPadDeadzone) {
 
 // Combina el pad sobre un Input ya lleno por teclado (se suman y se clampea).
 // `now` en segundos (glfwGetTime o reloj de test). Start = R (corto / largo).
+// Con `bind`, salto / acción / cuerda salen de los botones remapeados (PadRaw::buttons).
 inline void apply_pad(const PadRaw& p, Input& in, bool hanging, PadEdges& e, double now,
-                      float hold = Sim::kRestartFullHold) {
+                      float hold = Sim::kRestartFullHold, const Bindings* bind = nullptr) {
   float mx = pad_axis(p.lx);
   if (p.dr) mx = 1.f;
   else if (p.dl) mx = -1.f;
@@ -45,15 +48,15 @@ inline void apply_pad(const PadRaw& p, Input& in, bool hanging, PadEdges& e, dou
     in.climb = std::clamp(in.climb + cl, -1.f, 1.f);
   }
 
-  const bool jump_down = p.a || p.rb;
+  const bool jump_down = bind ? bind->pad_down(kBindJump, p.buttons) : (p.a || p.rb);
   if (jump_down && !e.jump) in.jump = true;
   e.jump = jump_down;
 
-  const bool act_down = p.x || p.b;
+  const bool act_down = bind ? bind->pad_down(kBindAct, p.buttons) : (p.x || p.b);
   if (act_down && !e.interact) in.interact = true;
   e.interact = act_down;
 
-  const bool grab_down = p.lb || p.y;
+  const bool grab_down = bind ? bind->pad_down(kBindGrab, p.buttons) : (p.lb || p.y);
   if (grab_down && !e.grab) in.grab = true;
   e.grab = grab_down;
 

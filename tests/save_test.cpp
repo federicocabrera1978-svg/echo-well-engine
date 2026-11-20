@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
     CHECK(dec(big, o) == SaveError::TooBig);
     auto b = bytes; b[0] = 'X';
     CHECK(dec(b, o) == SaveError::BadMagic);
-    b = bytes; b[4] = 99; reseal(b);
+    b = bytes; b[4] = 99; reseal(b);  // versión futura
     CHECK(dec(b, o) == SaveError::BadVersion);
     b = bytes; b[6] = 1; reseal(b);
     CHECK(dec(b, o) == SaveError::BadField);
@@ -178,9 +178,37 @@ int main(int argc, char** argv) {
     CHECK(dec(b, o) != SaveError::None);
     b = bytes; b[pl + 1] = 0x01; reseal(b);  // nombre no imprimible
     CHECK(dec(b, o) == SaveError::BadField);
-    SaveData pad = r;  // bits de relleno ≠ 0
-    b = game::encode_save(pad);
-    if (pad.active.size() % 8) { b[b.size() - 5] |= 0x80; reseal(b); CHECK(dec(b, o) == SaveError::BadField); }
+    const std::size_t off_bits = off_vol + 4 + 2, nb = (r.active.size() + 7) / 8;
+    if (r.active.size() % 8) {  // bits de relleno ≠ 0
+      b = bytes; b[off_bits + nb - 1] |= 0x80; reseal(b);
+      CHECK(dec(b, o) == SaveError::BadField);
+    }
+    // --- controles (v2) ---
+    const std::size_t off_bind = off_bits + nb;
+    CHECK(bytes[off_bind] == game::kBindCount && bytes.size() == off_bind + 1 + game::kBindCount * 6 + 4);
+    b = bytes; b[off_bind] = 3; reseal(b);
+    CHECK(dec(b, o) == SaveError::BadField);
+    b = bytes; b[off_bind + 1 + 6] = b[off_bind + 1]; b[off_bind + 1 + 7] = b[off_bind + 2]; reseal(b);  // tecla repetida
+    CHECK(dec(b, o) == SaveError::BadField);
+    b = bytes; b[off_bind + 1] = 0x00; b[off_bind + 2] = 0x01; reseal(b);  // 256 = Esc: reservada
+    CHECK(dec(b, o) == SaveError::BadField);
+    b = bytes; b[off_bind + 1 + 4] = 7; reseal(b);  // botón en IZQUIERDA (no remapeable en pad)
+    CHECK(dec(b, o) == SaveError::BadField);
+    // Remapeo → round-trip.
+    SaveData cb = r;
+    CHECK(cb.bind.bind_key(game::kBindJump, 'K') && cb.bind.bind_pad(game::kBindGrab, game::pad::kA));
+    CHECK(cb.bind.valid());
+    CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind && !(o.bind == game::Bindings::defaults()));
+    // v1 (sin controles) se sigue leyendo, con controles por defecto.
+    b = game::encode_save(cb);
+    b.erase(b.begin() + std::ptrdiff_t(off_bind), b.begin() + std::ptrdiff_t(off_bind + 1 + game::kBindCount * 6));
+    b[4] = 1;
+    const uint32_t psz1 = uint32_t(b.size() - 16);
+    for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz1 >> (8 * i));
+    reseal(b);
+    CHECK(dec(b, o) == SaveError::None && o.bind == game::Bindings::defaults() && o.active == r.active);
+    b[4] = 3; reseal(b);
+    CHECK(dec(b, o) == SaveError::BadVersion);
     CHECK(std::string(game::save_error_str(SaveError::BadCrc)).size() > 0);
   }
 

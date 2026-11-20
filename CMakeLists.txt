@@ -208,6 +208,10 @@ target_link_libraries(save_test PRIVATE echo_game)
 add_dependencies(save_test ew_maps)
 add_test(NAME save_game COMMAND save_test ${EW_SLICE_MAP})
 
+add_executable(bindings_test tests/bindings_test.cpp)
+target_link_libraries(bindings_test PRIVATE echo_game)
+add_test(NAME controls_remap COMMAND bindings_test)
+
 add_executable(menu_test tests/menu_test.cpp)
 target_link_libraries(menu_test PRIVATE echo_game)
 add_test(NAME pause_menu COMMAND menu_test)
