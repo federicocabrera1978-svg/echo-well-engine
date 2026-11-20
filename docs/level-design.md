@@ -208,8 +208,13 @@ bloques de `hello.yaml` / `slice.yaml`.
   difícil, no después de morirte tres veces para llegar. En `slice`, `ck_ledge` está en la
   cornisa, justo antes del hueco con `META` 4.
 - **Enseñá y después combiná.** Un switch solo, después una cuerda sola, después agua que
-  sube. El secreto (el huevo de la sala 3) reusa mecánicas ya vistas, fuera del camino
-  crítico: la meta no lo exige.
+  sube. El huevo de la sala 3 reusa mecánicas ya vistas por un camino alternativo (pileta
+  baja + cuerda 2); la meta no lo exige.
+- **Plataformas sobre un foso (sala 4 de `slice`).** Checkpoint en la repisa de entrada,
+  y las plataformas arrancan **pegadas** a la repisa / pilar (sin hueco de 1 tile: el
+  círculo del player mide 8 px y se cae por un hueco de 8). El foso de pinchos (`META` 4)
+  cubre todo el piso; el ascensor baja hasta 16 px sobre el piso seguro. `slice_test`
+  resuelve la sala con un control que espera a cada plataforma (`solve_room4`).
 - **El secreto es opcional.** Un `collectible` se esconde al costado o “para atrás”
   (agua baja, puertas en la pileta). El HUD n/total informa; no bloquees el `goal`.
 - **Diseñá para la cámara.** Los seams son cada 320 px. Un salto que empieza en un chunk
