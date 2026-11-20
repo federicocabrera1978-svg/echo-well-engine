@@ -124,6 +124,8 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 
 | `gravity_flip` | Orbe que **invierte la gravedad del player** al tocarlo (centro a ≤ `Sim::kFlipReach`, 10 px). Cada toque alterna normal ↔ invertida; el orbe se rearma cuando el player se aleja más de `Sim::kFlipRearm` (18 px), así que quedarse encima no lo repite. Con gravedad invertida el player cae hacia arriba, el techo funciona como piso (salto, `grounded`, carry de un `mover` por su cara de abajo, aplastamiento contra el piso) y se dibuja con los pies arriba. Ver “Gravedad invertida” abajo. |
 
+| `boss` | Boss chiquito: caja de `Sim::kBossW`×`kBossH` (24×16 px); `(x, y)` es el **centro de los pies** (ponelo con `y` = superficie del piso). Patrón determinista en loop: camina `kBossWalkSec` (1.6 s) en ping-pong a ±`kBossRange` (64 px) de su posición, se queda quieto `kBossTellSec` (0.5 s, se ilumina: aviso) y salta (~33 px). Se vence con **3 pisotones** (`kBossHits`): caerle encima (moviéndose hacia abajo, centro por encima de su cabeza). Cada golpe lo hace más rápido y le da `kBossHurtSec` (1 s) de invulnerabilidad (parpadea; se lo puede atravesar). Tocarlo de cualquier otra forma **mata**. Con gravedad invertida el pisotón es desde abajo (en pleno salto). Al vencerlo se abren las puertas linkeadas (`links: - {from: boss, to: door}`) y, mientras haya un boss vivo, la meta **no cuenta**. Morir / R corto lo cura y lo devuelve a su lugar (si ya estaba vencido, queda vencido); R largo lo restablece entero. |
+
 Ejemplo:
 
 ```yaml
@@ -169,6 +171,17 @@ de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
   (fuera del mapa cuenta como sólido, así que el borde superior también sirve). Un `checkpoint` en el techo se toma con el centro a ≤ 20 px: ponelo a
   `y = techo + 4`.
 - Mapa de prueba: `assets/maps/src/gravity.yaml` (`gravity_test`).
+
+## Boss
+
+- Arena: dejá piso plano sin pinchos en toda la patrulla (`x ± 64` px) y un margen a
+  cada lado para que el player espere. El boss no choca contra tiles: no pongas paredes
+  dentro de la patrulla.
+- Checkpoint **antes** de la arena, fuera del alcance del boss.
+- La salida va detrás de una `door` linkeada al boss; la meta, detrás de la puerta.
+- Para pegarle: esperá a que camine hacia vos, saltá cuando esté a ~40 px y caele en la
+  cabeza. Mapa de prueba: `assets/maps/src/boss.yaml` (`boss_test`, que incluye una pelea
+  jugada con input).
 
 ## Compilar y probar
 

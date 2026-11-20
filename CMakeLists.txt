@@ -58,6 +58,9 @@ add_test(NAME ewmapc_mover
 add_test(NAME ewmapc_gravity
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/gravity.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/gravity.ewmap)
+add_test(NAME ewmapc_boss
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/boss.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
           --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2
@@ -78,6 +81,11 @@ add_test(NAME ewmap_load_gravity
           --name gravity --chunks 1 --ents 6 --ropes 1 --water 1 --movers 2
           --has player_spawn --has gravity_flip --has checkpoint --has mover)
 set_tests_properties(ewmap_load_gravity PROPERTIES DEPENDS ewmapc_gravity)
+add_test(NAME ewmap_load_boss
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/boss.ewmap
+          --name boss --chunks 1 --ents 5 --links 1
+          --has player_spawn --has boss --has door --has goal --has checkpoint)
+set_tests_properties(ewmap_load_boss PROPERTIES DEPENDS ewmapc_boss)
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)
 set_tests_properties(ewmap_load_room PROPERTIES DEPENDS ewmapc_room)
@@ -96,6 +104,7 @@ set(EW_SLICE_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/slice.ewmap)
 set(EW_ROOM_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/room.ewmap)
 set(EW_MOVER_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/mover.ewmap)
 set(EW_GRAVITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/gravity.ewmap)
+set(EW_BOSS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/boss.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -116,7 +125,11 @@ add_custom_command(OUTPUT ${EW_GRAVITY_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/gravity.yaml -o ${EW_GRAVITY_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/gravity.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP})
+add_custom_command(OUTPUT ${EW_BOSS_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml -o ${EW_BOSS_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -134,6 +147,10 @@ add_executable(gravity_test tests/gravity_test.cpp)
 target_link_libraries(gravity_test PRIVATE echo_game)
 add_dependencies(gravity_test ew_maps)
 add_test(NAME gravity_flip COMMAND gravity_test ${EW_GRAVITY_MAP})
+add_executable(boss_test tests/boss_test.cpp)
+target_link_libraries(boss_test PRIVATE echo_game)
+add_dependencies(boss_test ew_maps)
+add_test(NAME boss_fight COMMAND boss_test ${EW_BOSS_MAP})
 add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)

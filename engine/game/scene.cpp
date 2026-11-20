@@ -91,6 +91,11 @@ void Scene::set_active(std::size_t idx, bool on) {
 
 void Scene::set_switch(std::size_t idx, bool on) {
   if (idx >= entities_.size() || !is_switch_type(entities_[idx].type)) return;
+  set_linked(idx, on);
+}
+
+void Scene::set_linked(std::size_t idx, bool on) {
+  if (idx >= entities_.size()) return;
   entities_[idx].active = on;
   for (const auto& [from, to] : links_)
     if (from == idx && entities_[to].type == "door") entities_[to].active = on;

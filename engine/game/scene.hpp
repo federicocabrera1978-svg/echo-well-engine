@@ -41,6 +41,8 @@ class Scene {
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);
   void set_switch(std::size_t idx, bool on);
+  // Activa/desactiva cualquier entidad y sus puertas linkeadas (p. ej. un boss vencido).
+  void set_linked(std::size_t idx, bool on);
   void set_active(std::size_t idx, bool on);
   // Puerta cerrada en el tile (tx, ty)? Usa anim (sólida si anim < kDoorSolidUntil).
   // Consulta un cache de AABBs (sin comparar strings en el hot path de colisión).

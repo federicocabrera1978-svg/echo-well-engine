@@ -31,6 +31,8 @@ jobs:
           ./build/ewmap_smoke assets/maps/bin/mover.ewmap --name mover --chunks 1 --ents 3 --ropes 1 --water 1 --movers 2 --has player_spawn --has mover
           ./build/ewmapc --crc assets/maps/src/gravity.yaml -o assets/maps/bin/gravity.ewmap
           ./build/ewmap_smoke assets/maps/bin/gravity.ewmap --name gravity --chunks 1 --ents 6 --ropes 1 --water 1 --movers 2 --has player_spawn --has gravity_flip --has checkpoint --has mover
+          ./build/ewmapc --crc assets/maps/src/boss.yaml -o assets/maps/bin/boss.ewmap
+          ./build/ewmap_smoke assets/maps/bin/boss.ewmap --name boss --chunks 1 --ents 5 --links 1 --has player_spawn --has boss --has door --has goal --has checkpoint
 
   sanitizers:
     runs-on: ubuntu-latest

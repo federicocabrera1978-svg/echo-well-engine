@@ -359,6 +359,17 @@ int main(int argc, char** argv) {
     v.tiles_version = scene.chunk_version();
     push_entities(v, scene);
     push_movers(v, sim);
+    for (int bi = 0; bi < sim.boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
+      const auto& b = sim.boss(bi);
+      if (b.defeated) continue;
+      if (b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
+      const float tell = b.phase == 1 ? 1.f : 0.f;  // aviso antes del salto: más claro
+      const float cy = b.y - ew::game::Sim::kBossH * 0.5f;
+      push_marker(v, b.x - 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
+      push_marker(v, b.x + 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
+      push_marker(v, b.x, b.y - ew::game::Sim::kBossH, 3, 0, 1.0f, 0.85f, 0.2f);  // punto débil
+      push_marker(v, b.x + 5.f * float(b.dir), cy - 2.f, 1.5f, 0, 1.0f, 1.0f, 1.0f);  // ojo
+    }
     push_hazards(v, scene);
     if (sim.finished())
       if (const auto* g = scene.find_type("goal"))
