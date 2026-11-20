@@ -131,7 +131,11 @@ jobs:
           ls -la /tmp/ew-pack/echo-well /tmp/ew-pack/echo-well/assets/atlas /tmp/ew-pack/echo-well/assets/maps/bin /tmp/ew-pack/echo-well/assets/shaders
           test -f /tmp/ew-pack/echo-well/echo_engine
           test -f /tmp/ew-pack/echo-well/assets/atlas/tiles.png
-          test -f /tmp/ew-pack/echo-well/assets/maps/bin/slice.ewmap
+          for m in slice hello room mover gravity boss; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
+          test -f /tmp/ew-pack/echo-well/docs/qa-checklist.md
+          test -f /tmp/ew-pack/echo-well/DIST.txt
+          test -f /tmp/ew-pack/echo-well/assets/shaders/light.frag
+          /tmp/ew-pack/echo-well/echo_engine --version | grep -F "v0.1.0"
           LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" \
             /tmp/ew-pack/echo-well/echo_engine --frames 30 --demo --dump /tmp/ew-pack/frame.ppm --nosound --nogamepad \
             > /tmp/ew-pack/run.log 2>&1
@@ -170,7 +174,13 @@ jobs:
           Get-ChildItem -Recurse dist/echo-well | Select-Object FullName
           if (-not (Test-Path dist/echo-well/echo_engine.exe)) { throw "falta echo_engine.exe" }
           if (-not (Test-Path dist/echo-well/assets/atlas/tiles.png)) { throw "falta tiles.png" }
-          if (-not (Test-Path dist/echo-well/assets/maps/bin/slice.ewmap)) { throw "falta slice.ewmap" }
+          foreach ($m in 'slice','hello','room','mover','gravity','boss') {
+            if (-not (Test-Path "dist/echo-well/assets/maps/bin/$m.ewmap")) { throw "falta $m.ewmap" }
+          }
+          if (-not (Test-Path dist/echo-well/docs/qa-checklist.md)) { throw "falta docs/qa-checklist.md" }
+          if (-not (Test-Path dist/echo-well/DIST.txt)) { throw "falta DIST.txt" }
+          $v = & dist/echo-well/echo_engine.exe --version | Out-String
+          if ($v -notmatch 'v0\.1\.0') { throw "versión inesperada: $v" }
           if (-not (Test-Path dist/echo-well/assets/shaders/light.frag)) { throw "falta shaders" }
       - name: Zip
         shell: pwsh

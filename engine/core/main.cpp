@@ -1,10 +1,11 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave] [--version]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, continuar partida, reiniciar, volumen, controles, salir). Las teclas y botones de juego se remapean en CONTROLES (game/bindings.hpp) y se guardan con la partida. Autoguardado en el directorio de datos del usuario (ver game/save.hpp). --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -147,6 +148,7 @@ int main(int argc, char** argv) {
     else if (a == "--nosound") nosound = true;
     else if (a == "--nogamepad") nogamepad = true;
     else if (a == "--nosave") nosave = true;
+    else if (a == "--version") { std::printf("echo_engine v%s\n", EW_VERSION); return 0; }
     else if (a == "--start" && i + 2 < argc) { start_x = float(std::atof(argv[++i])); start_y = float(std::atof(argv[++i])); has_start = true; }
   }
   if (scale < 1) scale = 1;
@@ -171,6 +173,7 @@ int main(int argc, char** argv) {
     p.pos = p.prev = {start_x, start_y};
     scene.follow(start_x, start_y);
   }
+  std::printf("echo_engine v%s\n", EW_VERSION);
   std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
               scene.height_px(), scene.entities().size());
   if (scene.find_type("goal")) std::printf("echo_engine: hay una meta — llegá para completar el camino\n");
@@ -184,7 +187,7 @@ int main(int argc, char** argv) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
   GLFWwindow* win = glfwCreateWindow(ew::render::kInternalW * scale, ew::render::kInternalH * scale,
-                                     "Echo Well", nullptr, nullptr);
+                                     "Echo Well v" EW_VERSION, nullptr, nullptr);
   if (!win) { glfwTerminate(); return 1; }
   glfwMakeContextCurrent(win);
   glfwSwapInterval(1);
@@ -394,6 +397,7 @@ int main(int argc, char** argv) {
         menu.set_bindings(d.bind);
         save_armed = true;
         last_key = save_key();
+        last_items = sim.collected();  // el huevo cargado no se anuncia como recién agarrado
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim.checkpoint_index(),
                     sim.collected(), sim.collectible_total());
       } else {
@@ -413,7 +417,8 @@ int main(int argc, char** argv) {
     if (menu.open()) { acc = 0; last = now; }  // congelado: no acumular al reanudar
     else acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
-    const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart;
+    const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart ||
+                             mact == ew::game::MenuAction::Continue;
     for (int n = 0; !menu.open() && acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
       sim.step(in);
       in.jump = false;
@@ -442,7 +447,7 @@ int main(int argc, char** argv) {
     }
     if (did_restart && announced_goal && !sim.finished()) {
       announced_goal = false;
-      glfwSetWindowTitle(win, "Echo Well");
+      glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
       std::printf("echo_engine: reinicio\n");
     }
     if (!save_path.empty()) {  // autoguardado
@@ -523,6 +528,11 @@ int main(int argc, char** argv) {
     v.pause_vol = menu.volume_setting();
     v.pause_mute = menu.muted() ? 1 : 0;
     v.pause_has_save = menu.has_save() ? 1 : 0;
+    if (menu.open() && !menu.in_controls()) {  // versión abajo a la derecha del menú
+      std::array<std::string, ew::game::kTxtRows> t{};
+      t[ew::game::kTxtRows - 1] = "V" EW_VERSION;
+      v.ctl_txt = ew::game::pack_text(t);
+    }
     if (menu.in_controls()) {
       v.ctl = 1;
       v.ctl_sel = menu.ctl_cursor() + 1;
