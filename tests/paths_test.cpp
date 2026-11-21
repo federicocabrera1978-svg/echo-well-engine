@@ -25,7 +25,7 @@ int main() {
 
   // Preferencia: junto al "exe" (root) antes que cwd o compiled.
   const auto picked = pick_asset(tmp.string(), "assets/atlas/tiles.png", "/compiled/does-not-exist.png");
-  CHECK(picked == png.string());
+  CHECK(fs::path(picked) == png);
 
   // Si no está junto al exe, compiled (si existe).
   const auto compiled = tmp / "compiled.png";

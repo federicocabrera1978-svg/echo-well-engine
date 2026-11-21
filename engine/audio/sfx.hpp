@@ -7,7 +7,7 @@
 
 namespace ew::audio {
 
-enum class SfxId : uint8_t { Jump, Die, Checkpoint, Goal, Switch, Splash, Pickup, Ability, Count };
+enum class SfxId : uint8_t { Jump, Die, Checkpoint, Goal, Switch, Splash, Pickup, Ability, Dash, Break, Hit, Count };
 
 inline constexpr int kRate = 44100;
 inline constexpr int kMaxVoices = 8;
@@ -43,5 +43,8 @@ inline constexpr uint32_t kSfxSwitch = 1u << 4;
 inline constexpr uint32_t kSfxSplash = 1u << 5;
 inline constexpr uint32_t kSfxPickup = 1u << 6;
 inline constexpr uint32_t kSfxAbility = 1u << 7;
+inline constexpr uint32_t kSfxDash = 1u << 8;
+inline constexpr uint32_t kSfxBreak = 1u << 9;
+inline constexpr uint32_t kSfxHit = 1u << 10;
 
 }  // namespace ew::audio

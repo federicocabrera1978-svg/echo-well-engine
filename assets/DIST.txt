@@ -1,12 +1,13 @@
 Echo Well v0.1.0 — paquete de CI para QA (no es un release público ni una build de itch.io).
 
 Contenido:
-  echo_engine[.exe]   prototipo jugable (mapa slice por defecto)
+  echo_engine[.exe]   prototipo jugable (campaña completa: slice -> level2 -> level3)
   ewmapc[.exe]        compilador YAML → .ewmap
   ewmap_smoke[.exe]   verificación estructural de un .ewmap
   assets/shaders/     GLSL 330
   assets/atlas/tiles.png
-  assets/maps/bin/{slice,hello,room,mover,gravity,boss}.ewmap
+  assets/atlas/sprites.png
+  assets/maps/bin/{slice,level2,level3,hello,room,mover,gravity,boss,ability,dash}.ewmap
   README.md
   docs/qa-checklist.md  qué probar y cómo reportar bugs (empezá por acá)
 

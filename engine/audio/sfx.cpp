@@ -15,6 +15,9 @@ Spec spec(SfxId id) {
     case SfxId::Splash:     return {220.f,  0.12f, 0.22f, 2};
     case SfxId::Pickup:     return {1320.f, 0.30f, 0.30f, 1};
     case SfxId::Ability:    return {1046.f, 0.36f, 0.34f, 1};
+    case SfxId::Dash:       return {760.f,  0.11f, 0.33f, 3};
+    case SfxId::Break:      return {175.f,  0.22f, 0.38f, 2};
+    case SfxId::Hit:        return {420.f,  0.14f, 0.35f, 1};
     default:                return {440.f,  0.10f, 0.25f, 0};
   }
 }
@@ -57,6 +60,11 @@ void Mixer::render(float* out, int frames, int rate) {
       float s = std::sin(ph);
       if (v.kind == 1) s = 0.65f * s + 0.35f * std::sin(2.f * ph);
       if (v.kind == 2) s = s * 0.4f + ((v.t * 97.f) - std::floor(v.t * 97.f) - 0.5f) * 0.6f;
+      if (v.kind == 3) {
+        const float u = std::clamp(v.t / std::max(0.001f, v.dur), 0.f, 1.f);
+        const float sw = 6.28318530718f * (v.freq * (1.f - 0.45f * u)) * v.t;
+        s = 0.7f * std::sin(sw) + 0.3f * ((v.t * 149.f) - std::floor(v.t * 149.f) - 0.5f);
+      }
       acc += v.amp * env * s;
       v.t += dt;
       if (v.t >= v.dur) v.on = false;

@@ -1,8 +1,6 @@
 # Checklist de QA — Echo Well v0.1.0
 
-Versión de prueba para QA de la demo del nivel 1: **6 salas** en el mapa `slice`, de la
-salida a la meta. No es un release público. Los paquetes salen como *artifacts* del CI de
-GitHub Actions en `main`.
+Versión de prueba para QA de la campaña Metroidvania completa: **3 niveles interconectados** (`slice` → `level2` → `level3`), habilidades desbloqueables (**Doble Salto** y **Dash**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
 
 Antes de empezar, anotá la versión: `echo_engine --version` (tiene que decir `v0.1.0`).
 También aparece en el título de la ventana y abajo a la derecha del menú de pausa.
@@ -19,7 +17,7 @@ iniciar sesión en GitHub para descargarlos.
 
 Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `ewmapc`,
 `ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`, `assets/atlas/sprites.png`,
-`assets/maps/bin/{slice,level2,hello,room,mover,gravity,boss,ability}.ewmap`, `README.md`, `DIST.txt` y
+`assets/maps/bin/{slice,level2,level3,hello,room,mover,gravity,boss,ability,dash}.ewmap`, `README.md`, `DIST.txt` y
 `docs/qa-checklist.md` (este archivo).
 
 ### Linux (x86_64)
@@ -44,7 +42,7 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nogamepad` / `EW_NOGAMEPAD=1` | ignora el gamepad |
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
-| `--map assets/maps/bin/level2.ewmap` | carga directo el Nivel 2 "Las Catacumbas" (también `boss`, `ability`, `gravity`, `mover`, `room`) |
+| `--map assets/maps/bin/level2.ewmap` | carga directo el Nivel 2 "Las Catacumbas" (también `level3`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`) |
 | `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
 La consola (terminal en Linux; en Windows abrí `cmd` y corré `echo_engine.exe` desde ahí)
@@ -56,8 +54,9 @@ o cargada, meta.
 | Acción | Teclado | Gamepad |
 |---|---|---|
 | Caminar | ← → o A D | stick izquierdo o d-pad |
-| Saltar / nadar hacia arriba | Espacio, Z (también ↑ si no estás en la cuerda) | A, RB |
-| Activar switch | E, X (también ↓ si no estás en la cuerda) | X, B |
+| Saltar / nadar / Doble Salto aéreo | Espacio, Z (también ↑ si no estás en la cuerda) | A, RB |
+| Activar switch / diálogo | E, X (también ↓ si no estás en la cuerda) | X, B |
+| Embestida (Dash, al desbloquear reliquia) | E, X, K, Shift derecho (si no hay switch/diálogo cerca) | X, B |
 | Agarrar / soltar cuerda | C, Shift izquierdo | LB, Y |
 | Trepar (colgado) | ↑ ↓ o W S | stick o d-pad arriba/abajo |
 | Volver al último checkpoint | R corto (al soltar) | — (menú → REINICIO) |

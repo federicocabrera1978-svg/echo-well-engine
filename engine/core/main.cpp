@@ -652,6 +652,9 @@ int main(int argc, char** argv) {
       if (bits & kSfxSplash) device_play(SfxId::Splash);
       if (bits & kSfxPickup) device_play(SfxId::Pickup);
       if (bits & kSfxAbility) device_play(SfxId::Ability);
+      if (bits & kSfxDash) device_play(SfxId::Dash);
+      if (bits & kSfxBreak) device_play(SfxId::Break);
+      if (bits & kSfxHit) device_play(SfxId::Hit);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim->finished() && !announced_goal) {
