@@ -1,0 +1,5 @@
+# ewmapc debe rechazarlo: chunk fuera de size_chunks.
+name: out_of_range
+size_chunks: [2, 1]
+backdrops:
+  - {cx: 2, cy: 0, theme: pozo}

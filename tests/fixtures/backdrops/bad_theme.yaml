@@ -1,0 +1,5 @@
+# ewmapc debe rechazarlo: tema inexistente.
+name: bad_theme
+size_chunks: [1, 1]
+backdrops:
+  - {cx: 0, cy: 0, theme: lava}

@@ -99,6 +99,15 @@ jobs:
           assert len(b) == len(hdr) + 320 * 180 * 3, len(b)
           print("frame.ppm OK", len(b), "bytes")
           PY
+      - name: Fondos de las salas (capturas + chequeo vs fondo liso)
+        run: |
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1600x900x24" python3 tools/room_shots.py build fondos
+      - name: Upload capturas de fondos
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fondos-salas
+          path: fondos/sala*.ppm
+          if-no-files-found: error
       - name: Smoke partida guardada (menú abre en CONTINUAR)
         run: |
           mkdir -p savedir

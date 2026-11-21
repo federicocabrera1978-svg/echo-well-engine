@@ -1,0 +1,5 @@
+# ewmapc debe rechazarlo: seed fuera de u16.
+name: bad_seed
+size_chunks: [1, 1]
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo, seed: 70000}

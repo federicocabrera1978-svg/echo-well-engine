@@ -1,6 +1,7 @@
 // Scene: estado de juego sin GL. Envuelve MapLoader + ChunkCache y expone
 // colisión por tiles (capa COL), entidades, cámara y chunk activo.
 #pragma once
+#include "map/backdrop.hpp"
 #include "map/chunk_cache.hpp"
 #include "map/map_loader.hpp"
 
@@ -85,6 +86,11 @@ class Scene {
   static constexpr int kNbW = ew::map::kChunkW * 3, kNbH = ew::map::kChunkH * 3;
   static constexpr int kPackedCh = 3;  // COL, VIS, FG
   const std::array<uint8_t, std::size_t(kNbW) * kNbH * kPackedCh>& active_tiles() const { return packed_; }
+  // Fondos del vecindario 3×3 (fila mayor, [oy*3+ox], mismo origen que active_tiles()).
+  // Fuera del mapa o sin registro BACKDROP: cueva.
+  const std::array<ew::map::BackdropCell, 9>& active_backdrops() const { return nb_backdrops_; }
+  // Fondo de un chunk cualquiera (sin registro: cueva).
+  ew::map::BackdropCell backdrop(int cx, int cy) const { return ew::map::backdrop_at(map_.backdrops(), cx, cy); }
   float nb_origin_x() const { return float((cx_ - 1) * ew::map::kChunkW * ew::map::kTileSize); }
   float nb_origin_y() const { return float((cy_ - 1) * ew::map::kChunkH * ew::map::kTileSize); }
 
@@ -104,6 +110,7 @@ class Scene {
   int cx_ = -1, cy_ = -1;
   uint32_t chunk_ver_ = 0;
   std::array<uint8_t, std::size_t(kNbW) * kNbH * kPackedCh> packed_{};
+  std::array<ew::map::BackdropCell, 9> nb_backdrops_{};
 };
 
 }  // namespace ew::game
