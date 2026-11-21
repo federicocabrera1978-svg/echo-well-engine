@@ -21,6 +21,8 @@ uniform int u_mute;
 uniform int u_items;        // collectibles agarrados
 uniform int u_items_total;  // 0 = sin HUD
 uniform float u_items_flash; // 0..1 destello al agarrar
+uniform int u_abilities;       // bitmask de habilidades desbloqueadas
+uniform float u_ability_flash; // 0..1 destello al desbloquear
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
 float glyph5(int bits, vec2 p) {
@@ -97,6 +99,25 @@ vec3 hud_items(vec3 c, vec2 px) {
   return mix(c, mix(tc, vec3(1.0), flash * 0.5), g);
 }
 
+// Ícono discreto de habilidades desbloqueadas (debajo del HUD de huevos, o arriba si no hay huevos).
+vec3 hud_abilities(vec3 c, vec2 px) {
+  float top = u_items_total > 0 ? 17.0 : 3.0;
+  if (px.x >= 3.0 && px.x <= 17.0 && px.y >= top && px.y <= top + 11.0)
+    c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
+  if ((u_abilities & 1) != 0) {
+    ivec2 p = ivec2(floor(px - vec2(6.0, top + 2.0)));
+    if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 6) {
+      int dx = abs(p.x - 4);
+      bool icon = (p.y <= 3 && dx == p.y) || (p.y >= 3 && dx == (p.y - 3));
+      if (icon) {
+        float flash = clamp(u_ability_flash, 0.0, 1.0);
+        c = mix(vec3(0.45, 0.92, 1.0), vec3(1.0), flash * 0.65);
+      }
+    }
+  }
+  return c;
+}
+
 void main() {
   vec4 A = texture(u_albedo, v_uv);
   vec4 N = texture(u_normal, v_uv);
@@ -143,6 +164,7 @@ void main() {
   }
 
   if (u_items_total > 0) c = hud_items(c, px);
+  if (u_abilities != 0) c = hud_abilities(c, px);
 
   if (u_pause > 0 && u_ctl > 0) {
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);

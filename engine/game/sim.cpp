@@ -32,6 +32,12 @@ void Sim::build() {
   was_in_water_ = false;
   flip_ = ckpt_flip_ = false;
   flips_ = 0;
+  abilities_ = 0;
+  air_jumps_ = 0;
+  double_jump_flash_ = 0;
+  double_jump_x_ = 0;
+  double_jump_y_ = 0;
+  ability_flash_ = 0;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -127,6 +133,17 @@ void Sim::advance_bosses() {
   }
 }
 
+void Sim::grant_ability(uint32_t mask) { set_abilities(abilities_ | mask); }
+
+void Sim::set_abilities(uint32_t mask) {
+  const uint32_t next = mask & kAbilityAll;
+  const bool had = has_ability(kAbilityDoubleJump);
+  const bool has = (next & kAbilityDoubleJump) != 0;
+  abilities_ = next;
+  if (!has) air_jumps_ = 0;
+  else if (!had) air_jumps_ = 1;
+}
+
 void Sim::set_gravity_flipped(bool f) {
   flip_ = f;
   world_.points()[player_].gscale = f ? -1.f : 1.f;
@@ -185,14 +202,17 @@ void Sim::reset() {
   build();
 }
 
-void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active) {
+void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active, uint32_t abilities) {
   reset();
   const auto& ents = scene_.entities();
+  uint32_t ab = abilities & kAbilityAll;
   for (std::size_t i = 0; i < ents.size() && i < active.size(); ++i) {
     if (!active[i]) continue;
     scene_.set_active(i, true);
     if (ents[i].type == "door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
+    if (ents[i].type == "ability_double_jump") ab |= kAbilityDoubleJump;
   }
+  abilities_ = ab;
   for (auto& b : bosses_)
     if (b.ent < active.size() && active[b.ent]) b.defeated = true;
   ckpt_ = (checkpoint >= 0 && std::size_t(checkpoint) < ents.size() && ents[std::size_t(checkpoint)].type == "checkpoint")
@@ -233,8 +253,10 @@ void Sim::respawn() {
   finish_t_ = 0;
   invuln_ = kRespawnInvuln;
   grab_flash_ = 0;
+  double_jump_flash_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
+  air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
@@ -302,6 +324,8 @@ void Sim::step(const Input& in) {
   if (regrab_cd_ > 0) --regrab_cd_;
   if (grab_flash_ > 0) --grab_flash_;
   if (pickup_flash_ > 0) --pickup_flash_;
+  if (double_jump_flash_ > 0) --double_jump_flash_;
+  if (ability_flash_ > 0) --ability_flash_;
   // Agarrar: nodo más cercano dentro de kGrabRange.
   if (in.grab && !held_ && regrab_cd_ == 0) {
     int best = 0, best_r = 0;
@@ -316,8 +340,10 @@ void Sim::step(const Input& in) {
     release();
   }
 
+  bool rope_jumped = false;
   if (held_) {
-    // Colgado: ←/→ empujan el nodo (balanceo), ↑/↓ trepan, saltar suelta con impulso.
+    // Colgado: recarga doble salto; ←/→ empujan el nodo (balanceo), ↑/↓ trepan, saltar suelta con impulso.
+    if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
     auto& node = pts[held_index()];
     node.force += Vec2{std::clamp(in.move_x, -1.f, 1.f) * kSwingForce / kHeldInvMass, 0};
     const float seg = ropes_[std::size_t(held_rope_)].seg;
@@ -333,19 +359,30 @@ void Sim::step(const Input& in) {
       const float vy = d > 0 ? std::min(v.y, 0.f) : std::max(v.y, 0.f);
       pts[player_].set_velocity({v.x * 1.2f, vy - d * kJumpSpeed * 0.8f * kDt});
       sfx_ |= 1u;  // kSfxJump
+      rope_jumped = true;
     }
   }
 
   auto& pl = pts[player_];
   if (!held_) {
-    // Control: velocidad horizontal directa (respuesta arcade), salto si está apoyado.
+    // Control: velocidad horizontal directa (respuesta arcade), salto apoyado o doble salto aéreo.
     Vec2 v = pl.velocity();
     const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
     v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
     const bool swim = player_in_water();
-    if (in.jump && (pl.grounded || swim)) {
-      v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
-      sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
+    if (pl.grounded || swim) air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
+    if (in.jump && !rope_jumped) {
+      if (pl.grounded || swim) {
+        v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+        sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
+      } else if (has_ability(kAbilityDoubleJump) && air_jumps_ > 0) {
+        --air_jumps_;
+        v.y = -down() * kDoubleJumpSpeed * kDt;
+        double_jump_flash_ = kDoubleJumpFlashFrames;
+        double_jump_x_ = pl.pos.x;
+        double_jump_y_ = pl.pos.y + down() * kPlayerRadius;
+        sfx_ |= 1u;  // kSfxJump
+      }
     }
     pl.set_velocity(v);
     if (in.interact && scene_.interact(pl.pos.x, pl.pos.y) >= 0) sfx_ |= 16u;  // kSfxSwitch
@@ -371,14 +408,18 @@ void Sim::step(const Input& in) {
     p.prev = node.prev;
     p.grounded = false;
   }
+  if (!held_ && world_.points()[player_].grounded)
+    air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
   const bool in_w = player_in_water();
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
+  if (in_w && !held_ && has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
   was_in_water_ = in_w;
   check_gravity_flips();
   check_checkpoints();
   check_collectibles();
+  check_abilities();
   collide_bosses();
   check_hazards();
   check_goal();
@@ -407,6 +448,22 @@ void Sim::check_collectibles() {
     scene_.set_active(i, true);  // agarrado: persiste hasta reset()
     pickup_flash_ = kPickupFlashFrames;
     sfx_ |= 64u;  // kSfxPickup
+  }
+}
+
+void Sim::check_abilities() {
+  const auto& p = player();
+  const auto& ents = scene_.entities();
+  const float r2 = kAbilityReach * kAbilityReach;
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "ability_double_jump" || ents[i].active) continue;
+    const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
+    if (dx * dx + dy * dy > r2) continue;
+    scene_.set_active(i, true);  // desbloqueada: persiste hasta reset()
+    abilities_ |= kAbilityDoubleJump;
+    air_jumps_ = 1;
+    ability_flash_ = kAbilityFlashFrames;
+    sfx_ |= 128u;  // kSfxAbility
   }
 }
 
@@ -646,6 +703,7 @@ void Sim::collide_bosses() {
       sfx_ |= 16u;  // kSfxSwitch (golpe)
       // Rebote: fuera de la caja y con impulso contra su gravedad.
       if (held_) release();
+      if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
       pl.pos.y = d > 0 ? top - r : bot + r;
       pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.9f * kDt});
       if (b.hits >= kBossHits) {

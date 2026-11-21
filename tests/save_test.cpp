@@ -136,6 +136,9 @@ int main(int argc, char** argv) {
     bad = r;
     bad.checkpoint = egg;  // no es un checkpoint
     CHECK(game::apply_save(m, bad) == SaveError::Mismatch);
+    bad = r;
+    bad.abilities = 1u << 30;  // bit reservado / desconocido
+    CHECK(game::apply_save(m, bad) == SaveError::BadField);
     CHECK(m.checkpoint_index() == -1 && m.collected() == 0);
   }
 
@@ -183,9 +186,10 @@ int main(int argc, char** argv) {
       b = bytes; b[off_bits + nb - 1] |= 0x80; reseal(b);
       CHECK(dec(b, o) == SaveError::BadField);
     }
-    // --- controles (v2) ---
+    // --- controles (v2) + habilidades (v3) ---
     const std::size_t off_bind = off_bits + nb;
-    CHECK(bytes[off_bind] == game::kBindCount && bytes.size() == off_bind + 1 + game::kBindCount * 6 + 4);
+    const std::size_t off_ab = off_bind + 1 + game::kBindCount * 6;
+    CHECK(bytes[off_bind] == game::kBindCount && bytes.size() == off_ab + 4 + 4);
     b = bytes; b[off_bind] = 3; reseal(b);
     CHECK(dec(b, o) == SaveError::BadField);
     b = bytes; b[off_bind + 1 + 6] = b[off_bind + 1]; b[off_bind + 1 + 7] = b[off_bind + 2]; reseal(b);  // tecla repetida
@@ -194,20 +198,43 @@ int main(int argc, char** argv) {
     CHECK(dec(b, o) == SaveError::BadField);
     b = bytes; b[off_bind + 1 + 4] = 7; reseal(b);  // botón en IZQUIERDA (no remapeable en pad)
     CHECK(dec(b, o) == SaveError::BadField);
-    // Remapeo → round-trip.
+    b = bytes; b[off_ab + 3] = 0x80; reseal(b);  // bit de habilidad desconocido
+    CHECK(dec(b, o) == SaveError::BadField);
+    // Remapeo + habilidades → round-trip y apply_save.
     SaveData cb = r;
     CHECK(cb.bind.bind_key(game::kBindJump, 'K') && cb.bind.bind_pad(game::kBindGrab, game::pad::kA));
     CHECK(cb.bind.valid());
-    CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind && !(o.bind == game::Bindings::defaults()));
-    // v1 (sin controles) se sigue leyendo, con controles por defecto.
+    cb.abilities = game::kAbilityDoubleJump;
+    CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind &&
+          !(o.bind == game::Bindings::defaults()) && o.abilities == game::kAbilityDoubleJump);
+    {
+      game::Scene s4;
+      CHECK(s4.load(argv[1], err));
+      Sim ab_sim(s4);
+      CHECK(game::apply_save(ab_sim, o) == SaveError::None);
+      CHECK(ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 1);
+      game::Input full; full.restart_full = true;
+      ab_sim.step(full);
+      CHECK(!ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 0);
+    }
+    // v2 (sin habilidades) se sigue leyendo: preserva controles y abilities = 0.
     b = game::encode_save(cb);
-    b.erase(b.begin() + std::ptrdiff_t(off_bind), b.begin() + std::ptrdiff_t(off_bind + 1 + game::kBindCount * 6));
+    b.erase(b.begin() + std::ptrdiff_t(off_ab), b.begin() + std::ptrdiff_t(off_ab + 4));
+    b[4] = 2;
+    const uint32_t psz2 = uint32_t(b.size() - 16);
+    for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz2 >> (8 * i));
+    reseal(b);
+    CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind && o.abilities == 0 && o.active == r.active);
+    // v1 (sin controles ni habilidades) se sigue leyendo, con controles por defecto y abilities = 0.
+    b = game::encode_save(cb);
+    b.erase(b.begin() + std::ptrdiff_t(off_bind), b.begin() + std::ptrdiff_t(off_ab + 4));
     b[4] = 1;
     const uint32_t psz1 = uint32_t(b.size() - 16);
     for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz1 >> (8 * i));
     reseal(b);
-    CHECK(dec(b, o) == SaveError::None && o.bind == game::Bindings::defaults() && o.active == r.active);
-    b[4] = 3; reseal(b);
+    CHECK(dec(b, o) == SaveError::None && o.bind == game::Bindings::defaults() && o.abilities == 0 &&
+          o.active == r.active);
+    b[4] = 4; reseal(b);
     CHECK(dec(b, o) == SaveError::BadVersion);
     CHECK(std::string(game::save_error_str(SaveError::BadCrc)).size() > 0);
   }
