@@ -137,6 +137,9 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   UseProgram(light_prog_);
   Uniform1f(GetUniformLocation(light_prog_, "u_time"), t);
   Uniform1f(GetUniformLocation(light_prog_, "u_fade"), v.fade);
+  Uniform1i(GetUniformLocation(light_prog_, "u_end"), v.end_screen);
+  Uniform1i(GetUniformLocation(light_prog_, "u_end_sel"), v.end_sel);
+  Uniform1i(GetUniformLocation(light_prog_, "u_end_has_next"), v.end_has_next);
   Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
   Uniform1i(GetUniformLocation(light_prog_, "u_pause"), v.pause);
   Uniform1i(GetUniformLocation(light_prog_, "u_sel"), v.pause_sel);
@@ -146,7 +149,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl"), v.ctl);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_sel"), v.ctl_sel);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_wait"), v.ctl_wait);
-  if (v.pause) Uniform1iv(GetUniformLocation(light_prog_, "u_txt"), 96, v.ctl_txt.data());
+  if (v.pause || v.end_screen) Uniform1iv(GetUniformLocation(light_prog_, "u_txt"), 96, v.ctl_txt.data());
   Uniform1i(GetUniformLocation(light_prog_, "u_items"), v.items);
   Uniform1i(GetUniformLocation(light_prog_, "u_items_total"), v.items_total);
   Uniform1f(GetUniformLocation(light_prog_, "u_items_flash"), v.items_flash);

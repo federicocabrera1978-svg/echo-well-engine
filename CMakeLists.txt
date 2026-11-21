@@ -250,6 +250,11 @@ add_executable(menu_test tests/menu_test.cpp)
 target_link_libraries(menu_test PRIVATE echo_game)
 add_test(NAME pause_menu COMMAND menu_test)
 
+add_executable(end_screen_test tests/end_screen_test.cpp)
+target_link_libraries(end_screen_test PRIVATE echo_game)
+add_dependencies(end_screen_test ew_maps)
+add_test(NAME end_screen COMMAND end_screen_test ${EW_SLICE_MAP} ${EW_ABILITY_MAP})
+
 add_executable(paths_test tests/paths_test.cpp)
 target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 add_test(NAME asset_paths COMMAND paths_test)

@@ -11,8 +11,9 @@ namespace ew::game {
 
 inline constexpr int kTxtRows = 12, kTxtCols = 32, kTxtInts = kTxtRows * kTxtCols / 4;
 inline constexpr int kGlyphNone = 63;
-// Orden de la fuente de light.frag: A-Z, 0-9, '>', ' ', '-', '?', '/', '<', '.'.
-inline constexpr const char* kGlyphChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789> -?/<.";
+// Orden de la fuente de light.frag: A-Z, 0-9, '>', ' ', '-', '?', '/', '<', '.', ':', '!', ',', '''.
+inline constexpr const char* kGlyphChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789> -?/<.:!,'";
+inline constexpr int kGlyphCount = 47;
 
 inline int glyph_index(char c) {
   for (int i = 0; kGlyphChars[i]; ++i)

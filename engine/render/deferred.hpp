@@ -32,6 +32,9 @@ struct FrameView {
   std::array<float, kMaxWaterBodies * kMaxWaterCols> water_surface{};
   float light_x = 160, light_y = 90;         // luz principal (px mundo)
   float fade = 0;                            // 0..1 pantalla de meta (light pass)
+  int end_screen = 0;                        // 1 = pantalla de final interactiva (usa ctl_txt)
+  int end_sel = 0;                           // opción seleccionada 0..3
+  int end_has_next = 0;                      // 1 = hay siguiente nivel disponible
   int pause = 0;                             // 1 = menú de pausa (light pass)
   int pause_sel = 0;
   float pause_vol = 0.8f;
@@ -68,6 +71,8 @@ class DeferredRenderer {
   void shutdown();
   // Vuelca el target "lit" 320×180 a un PPM (debug / verificación headless).
   bool dump_ppm(const std::string& path) const;
+  // Fuerza re-subida de la textura de tiles en el próximo frame (p. ej. al cambiar de nivel).
+  void invalidate_tiles() { tiles_version_ = 0; }
   void render(float time_s, int fb_w, int fb_h, const FrameView& view);
 
  private:

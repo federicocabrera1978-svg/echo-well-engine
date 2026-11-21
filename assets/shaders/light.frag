@@ -1,6 +1,6 @@
 #version 330 core
 // Light pass: ambiente + luz puntual (sigue al player, con leve parpadeo) sobre el G-buffer.
-// Con u_fade > 0: pantalla de meta (oscurece, viñeta dorada, "META" + pista "R").
+// Con u_fade > 0: pantalla de final pixel-art (o fallback "META" + "R" si u_end == 0).
 // HUD (u_items_total > 0): huevo + "n/total" arriba a la izquierda, también sobre la meta.
 in vec2 v_uv;
 out vec4 o_color;
@@ -8,6 +8,9 @@ uniform sampler2D u_albedo;
 uniform sampler2D u_normal;
 uniform float u_time;
 uniform float u_fade;  // 0..1
+uniform int u_end;     // 1 = pantalla de final interactiva (usa u_txt)
+uniform int u_end_sel; // opción seleccionada 0..3
+uniform int u_end_has_next; // 1 = hay siguiente nivel
 uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
 uniform int u_sel;     // ítem seleccionado 0..4
@@ -36,8 +39,8 @@ const int DIG[10] = int[](15324974, 14815428, 32584238, 16267791, 8682793,
                           16268351, 15252526, 2167071, 15252014, 15235630);
 const int GSLASH = 1118480;
 
-// Fuente completa (menu_text.hpp: A-Z, 0-9, '>', ' ', '-', '?', '/', '<', '.').
-const int FONT[43] = int[](18415150, 16301615, 31491134, 16303663, 32554047, 1096767, 15266878, 18415153, 32641183, 6594844, 9604265, 32539681, 18405233, 18667121, 15255086, 1097263, 23385646, 9616943, 16267326, 4329631, 15255089, 4539953, 18732593, 18157905, 4329809, 32575775, 15324974, 14815428, 32584238, 16267791, 8682793, 16268351, 15252526, 2167071, 15252014, 15235630, 1154145, 0, 31744, 4207150, 1118480, 8521864, 4194304);
+// Fuente completa (menu_text.hpp: A-Z, 0-9, '>', ' ', '-', '?', '/', '<', '.', ':', '!', ',', ''' ).
+const int FONT[47] = int[](18415150, 16301615, 31491134, 16303663, 32554047, 1096767, 15266878, 18415153, 32641183, 6594844, 9604265, 32539681, 18405233, 18667121, 15255086, 1097263, 23385646, 9616943, 16267326, 4329631, 15255089, 4539953, 18732593, 18157905, 4329809, 32575775, 15324974, 14815428, 32584238, 16267791, 8682793, 16268351, 15252526, 2167071, 15252014, 15235630, 1154145, 0, 31744, 4207150, 1118480, 8521864, 4194304, 131200, 4198532, 2228224, 132);
 
 int txt_at(int r, int c) {
   int i = r * 32 + c;
@@ -50,8 +53,62 @@ float txt_glyph(int row, vec2 rel, float s) {
   int col = int(floor(rel.x / (6.0 * s)));
   if (col >= 32) return 0.0;
   int g = txt_at(row, col);
-  if (g >= 43) return 0.0;
+  if (g >= 47) return 0.0;
   return glyph5(FONT[g], (rel - vec2(float(col) * 6.0 * s, 0.0)) / s);
+}
+
+float bayer4(vec2 p) {
+  ivec2 i = ivec2(mod(p, 4.0));
+  int m[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+  return (float(m[i.y * 4 + i.x]) + 0.5) / 16.0;
+}
+
+// Pantalla de final pixel-art: viñeta con dither 4×4, marco doble dorado, stats y opciones.
+vec3 end_screen_page(vec3 c, vec2 px, float f) {
+  vec2 ip = floor(px);
+  vec2 mid = (px - vec2(160.0, 90.0)) / vec2(160.0, 90.0);
+  float vig = smoothstep(0.35, 1.30, length(mid));
+  float dither = step(bayer4(ip), clamp(vig * f * 0.85, 0.0, 1.0));
+  c *= 1.0 - 0.58 * f;
+  c = mix(c, vec3(0.06, 0.05, 0.04), f * (0.55 + 0.30 * dither));
+  c = mix(c, c * vec3(1.06, 0.86, 0.45), vig * f);
+
+  float a = smoothstep(0.20, 0.78, f);
+  if (a <= 0.0) return c;
+  vec3 pcol = c;
+  if (ip.x >= 34.0 && ip.x <= 285.0 && ip.y >= 14.0 && ip.y <= 165.0) {
+    bool outer_b = (ip.x == 34.0 || ip.x == 285.0 || ip.y == 14.0 || ip.y == 165.0);
+    bool inner_b = (ip.x == 36.0 || ip.x == 283.0 || ip.y == 16.0 || ip.y == 163.0) &&
+                   (ip.x >= 36.0 && ip.x <= 283.0 && ip.y >= 16.0 && ip.y <= 163.0);
+    pcol = mix(c, vec3(0.08, 0.08, 0.11), 0.94);
+    if (inner_b) pcol = vec3(0.30, 0.23, 0.12);
+    if (outer_b) pcol = vec3(0.85, 0.72, 0.36);
+    float d_tl = abs(ip.x - 39.0) + abs(ip.y - 19.0);
+    float d_tr = abs(ip.x - 280.0) + abs(ip.y - 19.0);
+    float d_bl = abs(ip.x - 39.0) + abs(ip.y - 160.0);
+    float d_br = abs(ip.x - 280.0) + abs(ip.y - 160.0);
+    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) pcol = vec3(0.95, 0.85, 0.48);
+    if (ip.y == 87.0 && ip.x >= 44.0 && ip.x <= 275.0) pcol = vec3(0.42, 0.34, 0.18);
+    if (abs(ip.x - 160.0) + abs(ip.y - 87.0) <= 2.0) pcol = vec3(0.90, 0.76, 0.38);
+    float sel_y = 95.0 + float(clamp(u_end_sel, 0, 3)) * 13.0;
+    if (ip.x >= 44.0 && ip.x <= 275.0 && ip.y >= sel_y - 2.0 && ip.y <= sel_y + 6.0)
+      pcol = mix(pcol, vec3(0.22, 0.19, 0.10), 0.55);
+  }
+  float title_g = txt_glyph(0, px - vec2(65.0, 22.0), 2.0);
+  pcol = mix(pcol, vec3(1.0, 0.90, 0.45) * (0.88 + 0.12 * sin(u_time * 3.5)), title_g);
+  pcol = mix(pcol, vec3(0.82, 0.74, 0.55), txt_glyph(1, px - vec2(46.0, 39.0), 1.0));
+  for (int r = 0; r < 3; ++r) {
+    float g = txt_glyph(2 + r, px - vec2(46.0, 51.0 + float(r) * 10.0), 1.0);
+    pcol = mix(pcol, vec3(0.78, 0.80, 0.85), g);
+  }
+  for (int r = 0; r < 4; ++r) {
+    float g = txt_glyph(6 + r, px - vec2(58.0, 95.0 + float(r) * 13.0), 1.0);
+    vec3 col = (r == u_end_sel) ? vec3(1.0, 0.95, 0.55) : vec3(0.75, 0.75, 0.80);
+    if (r == 0 && u_end_has_next == 0) col *= 0.45;
+    pcol = mix(pcol, col, g);
+  }
+  pcol = mix(pcol, vec3(0.55, 0.55, 0.62), txt_glyph(11, px - vec2(46.0, 152.0), 1.0));
+  return mix(c, pcol, a);
 }
 
 // Página CONTROLES: caja ancha, título, 10 filas (acciones, POR DEFECTO, VOLVER) y ayuda.
@@ -139,28 +196,31 @@ void main() {
 
   if (u_fade > 0.0) {
     float f = clamp(u_fade, 0.0, 1.0);
-    // Oscurece la escena y tiñe hacia un fondo cálido.
-    vec2 mid = (px - vec2(160.0, 90.0)) / vec2(160.0, 90.0);
-    float vig = smoothstep(0.4, 1.3, length(mid));
-    c = mix(c, vec3(0.08, 0.07, 0.05), f * 0.7);
-    c *= 1.0 - 0.55 * f;
-    c = mix(c, c * vec3(1.05, 0.85, 0.45), vig * f);
+    if (u_end > 0 && u_pause == 0) {
+      c = end_screen_page(c, px, f);
+    } else if (u_pause == 0) {
+      // Fallback: oscurece la escena y dibuja "META" + "R" cuando no hay EndScreen.
+      vec2 mid = (px - vec2(160.0, 90.0)) / vec2(160.0, 90.0);
+      float vig = smoothstep(0.4, 1.3, length(mid));
+      c = mix(c, vec3(0.08, 0.07, 0.05), f * 0.7);
+      c *= 1.0 - 0.55 * f;
+      c = mix(c, c * vec3(1.05, 0.85, 0.45), vig * f);
 
-    // "META" (escala 4 px) y "R" más chica abajo, aparecen al avanzar el fade.
-    float a = smoothstep(0.2, 0.7, f) * (0.8 + 0.2 * sin(u_time * 4.0));
-    const int GM = 22730741, GE = 32554047, GT = 4329631, GA = 18415150, GR = 9616943;
-    float s = 4.0;
-    vec2 o = vec2(160.0 - 12.0 * s, 52.0);  // 4 letras × (5+1) / 2
-    float g = 0.0;
-    int letters[4] = int[](GM, GE, GT, GA);
-    for (int i = 0; i < 4; ++i) {
-      vec2 p = (px - o - vec2(float(i) * 6.0 * s, 0.0)) / s;
-      g = max(g, glyph5(letters[i], p));
+      float a = smoothstep(0.2, 0.7, f) * (0.8 + 0.2 * sin(u_time * 4.0));
+      const int GM = 22730741, GE = 32554047, GT = 4329631, GA = 18415150, GR = 9616943;
+      float s = 4.0;
+      vec2 o = vec2(160.0 - 12.0 * s, 52.0);
+      float g = 0.0;
+      int letters[4] = int[](GM, GE, GT, GA);
+      for (int i = 0; i < 4; ++i) {
+        vec2 p = (px - o - vec2(float(i) * 6.0 * s, 0.0)) / s;
+        g = max(g, glyph5(letters[i], p));
+      }
+      float sr = 3.0;
+      vec2 orr = vec2(160.0 - 2.5 * sr, 52.0 + 6.0 * s + 6.0);
+      g = max(g, glyph5(GR, (px - orr) / sr));
+      c = mix(c, vec3(1.0, 0.9, 0.45), g * a);
     }
-    float sr = 3.0;
-    vec2 orr = vec2(160.0 - 2.5 * sr, 52.0 + 6.0 * s + 6.0);
-    g = max(g, glyph5(GR, (px - orr) / sr));
-    c = mix(c, vec3(1.0, 0.9, 0.45), g * a);
   }
 
   if (u_items_total > 0) c = hud_items(c, px);
