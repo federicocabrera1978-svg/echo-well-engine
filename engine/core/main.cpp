@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
   }
 
   int frames = 0, sim_steps = 0;
-  bool jump_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;
+  bool jump_was_down = false, jump_up_was_down = false, act_was_down = false, grab_was_down = false, r_was_down = false, r_full_sent = false, announced_goal = false;
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false, m_ok_was = false, m_b_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
@@ -399,6 +399,7 @@ int main(int argc, char** argv) {
     }
   };
   bool dash_was_down = false;
+  ew::game::Input latched_in;
   const double t_loop = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -414,9 +415,11 @@ int main(int argc, char** argv) {
     const bool hanging = sim->on_rope();
     // Colgado, arriba/abajo trepan (no saltan ni activan switch).
     if (hanging) in.climb = float(int(act(kBindDown)) - int(act(kBindUp)));
-    const bool jump_down = act(kBindJump) || (!hanging && act(kBindUp));
-    in.jump = jump_down && !jump_was_down;
-    jump_was_down = jump_down;
+    const bool j_key = act(kBindJump);
+    const bool u_key = !hanging && act(kBindUp);
+    in.jump = (j_key && !jump_was_down) || (u_key && !jump_up_was_down);
+    jump_was_down = j_key;
+    jump_up_was_down = u_key;
     const bool act_key = act(kBindAct);
     const bool dash_key = key(GLFW_KEY_K) || key(GLFW_KEY_RIGHT_SHIFT);
     const bool act_down = act_key || (!hanging && act(kBindDown));
@@ -619,8 +622,20 @@ int main(int argc, char** argv) {
 
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
     const double now = glfwGetTime();
-    if (menu.open() || dialogue.open()) { acc = 0; last = now; }  // congelado: no acumular al reanudar
-    else acc += max_frames ? ew::game::Sim::kDt : now - last;
+    if (menu.open() || dialogue.open() || end_screen.open()) {
+      acc = 0;
+      last = now;
+      latched_in = {};
+    } else {
+      acc += max_frames ? ew::game::Sim::kDt : now - last;
+      in.jump = in.jump || latched_in.jump;
+      in.interact = in.interact || latched_in.interact;
+      in.grab = in.grab || latched_in.grab;
+      in.dash = in.dash || latched_in.dash;
+      in.restart = in.restart || latched_in.restart;
+      in.restart_full = in.restart_full || latched_in.restart_full;
+      latched_in = in;
+    }
     last = now;
     const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart ||
                              mact == ew::game::MenuAction::Continue || eact == ew::game::EndAction::RestartLevel;
@@ -639,6 +654,7 @@ int main(int argc, char** argv) {
       in.dash = false;
       in.restart = false;
       in.restart_full = false;
+      latched_in = {};
       ++sim_steps;
     }
     if (!nosound) {
