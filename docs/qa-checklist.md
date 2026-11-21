@@ -44,7 +44,8 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nogamepad` / `EW_NOGAMEPAD=1` | ignora el gamepad |
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
-| `--map assets/maps/bin/boss.ewmap` | arena de prueba del boss (también `gravity`, `mover`, `room`) |
+| `--map assets/maps/bin/boss.ewmap` | arena de prueba del boss (también `ability`, `gravity`, `mover`, `room`) |
+| `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
 La consola (terminal en Linux; en Windows abrí `cmd` y corré `echo_engine.exe` desde ahí)
 muestra mensajes útiles para los reportes: mapa cargado, huevo agarrado, partida guardada
@@ -97,7 +98,10 @@ en verde al tomarlo.
 - [ ] **Fondos.** Cada pantalla tiene su fondo (pozo con luz y gotas, raíces, roca con
   brasas, cisterna, nichos con huevos, engranajes, arquitectura espejada, arena con antorchas).
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
-- [ ] **Meta.** Detrás de esa puerta: fade con **META**. Con el boss vivo la meta no cuenta.
+- [ ] **Meta y pantalla de final.** Detrás de esa puerta: se abre la pantalla de final pixel-art
+  (**NIVEL COMPLETADO**) con el resumen de huevos, muertes y habilidades, y las opciones
+  **SIGUIENTE NIVEL** (habilitada cuando existe el siguiente mapa de la campaña o se pasa `--next-map`),
+  **REINICIAR NIVEL**, **MENU DE PAUSA** y **SALIR**. Con el boss vivo la meta no cuenta.
   Después de la meta, R corto vuelve al checkpoint y R largo al inicio con el HUD en `0/1`.
 
 ## 4. Guardar partida

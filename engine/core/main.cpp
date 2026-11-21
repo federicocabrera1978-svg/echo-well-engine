@@ -9,8 +9,11 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <string>
 
+#include "game/campaign.hpp"
+#include "game/end_screen.hpp"
 #include "game/sim.hpp"
 #include "core/paths.hpp"
 #include "game/gamepad.hpp"
@@ -136,9 +139,9 @@ static int g_last_key = -1;  // última tecla apretada (callback GLFW), para rem
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false;
+  bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false, explicit_map = false;
   float start_x = 0, start_y = 0;
-  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path;
+  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, next_map_override;
   if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
   if (const char* e = std::getenv("EW_NOSOUND"); e && e[0] && e[0] != '0') nosound = true;
   if (const char* e = std::getenv("EW_NOGAMEPAD"); e && e[0] && e[0] != '0') nogamepad = true;
@@ -148,7 +151,8 @@ int main(int argc, char** argv) {
     if (a == "--scale" && i + 1 < argc) scale = std::atoi(argv[++i]);
     else if (a == "--frames" && i + 1 < argc) max_frames = std::atoi(argv[++i]);
     else if (a == "--shaders" && i + 1 < argc) shader_dir = argv[++i];
-    else if (a == "--map" && i + 1 < argc) map_path = argv[++i];
+    else if (a == "--map" && i + 1 < argc) { map_path = argv[++i]; explicit_map = true; }
+    else if (a == "--next-map" && i + 1 < argc) next_map_override = argv[++i];
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
     else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
     else if (a == "--demo") demo = true;
@@ -161,6 +165,7 @@ int main(int argc, char** argv) {
   if (scale < 1) scale = 1;
   // Assets portables: junto al ejecutable, cwd, o rutas de compile-time (dev).
   const std::string root = ew::core::exe_dir(argv[0]);
+  const std::string build_maps_dir = ew::core::parent_path(EW_DEFAULT_MAP);
   if (shader_dir == EW_SHADER_DIR) {
     const auto vert = ew::core::pick_asset(root, "assets/shaders/fullscreen.vert",
                                            std::string(EW_SHADER_DIR) + "/fullscreen.vert");
@@ -170,21 +175,22 @@ int main(int argc, char** argv) {
     map_path = ew::core::pick_asset(root, "assets/maps/bin/slice.ewmap", EW_DEFAULT_MAP);
   if (atlas_path.empty())
     atlas_path = ew::core::pick_asset(root, "assets/atlas/tiles.png", EW_DEFAULT_ATLAS);
+  const std::string initial_map_path = map_path;
 
-  ew::game::Scene scene;
+  auto scene = std::make_unique<ew::game::Scene>();
   std::string err;
-  if (!scene.load(map_path, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
-  ew::game::Sim sim(scene);
+  if (!scene->load(map_path, err)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
+  auto sim = std::make_unique<ew::game::Sim>(*scene);
   if (has_start) {  // --start X Y: aparece en otro punto (p. ej. probar el seam/otro chunk)
-    auto& p = sim.world().points()[sim.player_index()];
+    auto& p = sim->world().points()[sim->player_index()];
     p.pos = p.prev = {start_x, start_y};
-    scene.follow(start_x, start_y);
+    scene->follow(start_x, start_y);
   }
   std::printf("echo_engine v%s\n", EW_VERSION);
-  std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene.width_px(),
-              scene.height_px(), scene.entities().size());
-  if (scene.find_type("goal")) std::printf("echo_engine: hay una meta — llegá para completar el camino\n");
-  if (scene.find_type("checkpoint"))
+  std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene->width_px(),
+              scene->height_px(), scene->entities().size());
+  if (scene->find_type("goal")) std::printf("echo_engine: hay una meta — llegá para completar el camino\n");
+  if (scene->find_type("checkpoint"))
     std::printf("echo_engine: R corto vuelve al checkpoint, R largo (~0.8 s) al inicio\n");
 
   glfwSetErrorCallback([](int c, const char* d) { std::fprintf(stderr, "glfw %d: %s\n", c, d); });
@@ -221,15 +227,46 @@ int main(int argc, char** argv) {
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false, m_ok_was = false, m_b_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
+  ew::game::EndScreen end_screen;
   int last_items = 0;
   uint32_t last_abilities = 0;
   uint32_t pad_prev = 0;
   glfwSetKeyCallback(win, [](GLFWwindow*, int k, int, int action, int) { if (action == GLFW_PRESS) g_last_key = k; });
 
+  auto resolve_next_map = [&]() -> std::string {
+    if (!next_map_override.empty() && map_path == initial_map_path && ew::core::file_exists(next_map_override))
+      return next_map_override;
+    const auto next_name = ew::game::next_campaign_map(scene->map().string_at(1));
+    if (next_name.empty()) return {};
+    return ew::game::resolve_map_file(next_name, map_path, root, build_maps_dir);
+  };
+  auto load_level = [&](const std::string& path, uint32_t carry_abilities) -> bool {
+    auto next_scene = std::make_unique<ew::game::Scene>();
+    std::string lerr;
+    if (!next_scene->load(path, lerr)) {
+      std::fprintf(stderr, "echo_engine: %s\n", lerr.c_str());
+      return false;
+    }
+    auto next_sim = std::make_unique<ew::game::Sim>(*next_scene);
+    if (carry_abilities) next_sim->set_abilities(carry_abilities);
+    scene = std::move(next_scene);
+    sim = std::move(next_sim);
+    map_path = path;
+    renderer.invalidate_tiles();
+    announced_goal = false;
+    end_screen.close();
+    last_items = sim->collected();
+    last_abilities = sim->abilities();
+    glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
+    std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene->width_px(),
+                scene->height_px(), scene->entities().size());
+    return true;
+  };
+
   // Partida guardada (un slot). Sin guardado con --nosave, --demo o --start, ni con --frames
   // salvo que EW_SAVE_DIR esté definido (corridas deterministas / de prueba). Se autoguarda
-  // al progresar (checkpoint, huevo, boss) y al cambiar el volumen; si al arrancar hay
-  // save, el menú abre en CONTINUAR.
+  // al progresar (checkpoint, huevo, boss, cambio de nivel) y al cambiar el volumen; si al
+  // arrancar hay save (del mismo mapa o de otro mapa de la campaña), el menú abre en CONTINUAR.
   std::string save_path;
   const bool explicit_dir = std::getenv("EW_SAVE_DIR") != nullptr;  // NOLINT(concurrency-mt-unsafe)
   if (!nosave && !demo && !has_start && (!max_frames || explicit_dir)) {
@@ -237,20 +274,25 @@ int main(int argc, char** argv) {
     if (!dir.empty()) save_path = ew::core::join(dir, ew::game::kSaveFileName);
   }
   auto save_matches = [&](const ew::game::SaveData& d) {
-    return d.map == scene.map().string_at(1) && d.active.size() == scene.entities().size();
+    return d.map == scene->map().string_at(1) && d.active.size() == scene->entities().size();
+  };
+  auto can_continue_save = [&](const ew::game::SaveData& d) {
+    if (save_matches(d)) return true;
+    if (explicit_map) return false;
+    return !ew::game::resolve_map_file(d.map, map_path, root, build_maps_dir).empty();
   };
   ew::game::SaveData loaded;
   bool save_armed = true;  // false = hay un save sin continuar todavía: no pisarlo con un spawn limpio
   if (!save_path.empty()) {
     const auto e = ew::game::read_save_file(save_path, loaded);
-    if (e == ew::game::SaveError::None && save_matches(loaded)) {
+    if (e == ew::game::SaveError::None && can_continue_save(loaded)) {
       menu.set_has_save(true);
       menu.set_audio(loaded.volume, loaded.muted);
       menu.set_bindings(loaded.bind);
       menu.open_at(ew::game::PauseMenu::kContinuar);
       save_armed = false;
       std::printf("echo_engine: partida guardada en %s — CONTINUAR en el menú\n", save_path.c_str());
-    } else if (e == ew::game::SaveError::None) {  // save de otro mapa: solo audio + controles
+    } else if (e == ew::game::SaveError::None) {  // save de otro mapa no disponible: solo audio + controles
       menu.set_audio(loaded.volume, loaded.muted);
       menu.set_bindings(loaded.bind);
       std::printf("echo_engine: save de otro mapa (se usan volumen y controles)\n");
@@ -261,6 +303,7 @@ int main(int argc, char** argv) {
     }
   }
   struct SaveKey {
+    std::string map;
     int ck = -1, items = 0;
     uint32_t abilities = 0;
     bool boss = false, muted = false;
@@ -268,8 +311,9 @@ int main(int argc, char** argv) {
     bool operator==(const SaveKey&) const = default;
   };
   auto save_key = [&] {
-    return SaveKey{sim.checkpoint_index(), sim.collected(), sim.abilities(),
-                   sim.boss_count() > 0 && sim.bosses_defeated(), menu.muted(), menu.volume_setting()};
+    return SaveKey{std::string(scene->map().string_at(1)), sim->checkpoint_index(), sim->collected(),
+                   sim->abilities(), sim->boss_count() > 0 && sim->bosses_defeated(), menu.muted(),
+                   menu.volume_setting()};
   };
   SaveKey last_key = save_key();
   auto write_save = [&](ew::game::SaveData d) {
@@ -294,7 +338,7 @@ int main(int argc, char** argv) {
     };
     using namespace ew::game;
     in.move_x = float(int(act(kBindRight)) - int(act(kBindLeft)));
-    const bool hanging = sim.on_rope();
+    const bool hanging = sim->on_rope();
     // Colgado, arriba/abajo trepan (no saltan ni activan switch).
     if (hanging) in.climb = float(int(act(kBindDown)) - int(act(kBindUp)));
     const bool jump_down = act(kBindJump) || (!hanging && act(kBindUp));
@@ -364,34 +408,50 @@ int main(int argc, char** argv) {
       in.jump = sim_steps % 90 == 45;
       in.interact = sim_steps % 300 == 43;  // ~x=96: pasa por el switch y lo alterna
     }
-    // Menú de pausa (Esc / Start). En --demo no se abre (determinista).
-    ew::game::MenuInput mi;
+    // Menú de pausa (Esc / Start) y pantalla de final. En --demo no se abren (determinista).
+    ew::game::MenuInput mi, ei;
     if (!demo) {
       const bool esc_down = key(GLFW_KEY_ESCAPE);
-      mi.toggle = (esc_down && !esc_was) || (pad_start && !start_was);
+      bool nav_toggle = (esc_down && !esc_was) || (pad_start && !start_was);
       esc_was = esc_down;
       start_was = pad_start;
-      if (menu.open() && !menu.waiting() && pad_b && !m_b_was) mi.toggle = true;  // B cierra / vuelve
+      if (menu.open() && !menu.waiting() && pad_b && !m_b_was) nav_toggle = true;  // B cierra / vuelve
       m_b_was = pad_b;
-      if (menu.waiting()) {  // remapeo: la tecla / el botón recién apretado
-        if (g_last_key != GLFW_KEY_ESCAPE) mi.key = g_last_key;
-        const uint32_t fresh = pad_buttons & ~pad_prev;
-        for (int bt = 0; bt <= GLFW_GAMEPAD_BUTTON_LAST && mi.key < 0; ++bt)
-          if ((fresh >> unsigned(bt)) & 1u) { mi.pad_button = bt; break; }
-      }
       const bool up = key(GLFW_KEY_UP) || key(GLFW_KEY_W) || pad_du;
       const bool dn = key(GLFW_KEY_DOWN) || key(GLFW_KEY_S) || pad_dd;
       const bool lt = key(GLFW_KEY_LEFT) || key(GLFW_KEY_A) || pad_dl;
       const bool rt = key(GLFW_KEY_RIGHT) || key(GLFW_KEY_D) || pad_dr;
       const bool ok = key(GLFW_KEY_ENTER) || key(GLFW_KEY_SPACE) || key(GLFW_KEY_Z) || pad_a;
-      if (menu.open()) {
-        mi.up = up && !m_up_was;
-        mi.down = dn && !m_dn_was;
-        mi.left = lt && !m_lt_was;
-        mi.right = rt && !m_rt_was;
-        mi.confirm = ok && !m_ok_was;
-      }
+      const bool nav_up = up && !m_up_was;
+      const bool nav_dn = dn && !m_dn_was;
+      const bool nav_lt = lt && !m_lt_was;
+      const bool nav_rt = rt && !m_rt_was;
+      const bool nav_ok = ok && !m_ok_was;
       m_up_was = up; m_dn_was = dn; m_lt_was = lt; m_rt_was = rt; m_ok_was = ok;
+      if (menu.open()) {
+        mi.toggle = nav_toggle;
+        if (menu.waiting()) {  // remapeo: la tecla / el botón recién apretado
+          if (g_last_key != GLFW_KEY_ESCAPE) mi.key = g_last_key;
+          const uint32_t fresh = pad_buttons & ~pad_prev;
+          for (int bt = 0; bt <= GLFW_GAMEPAD_BUTTON_LAST && mi.key < 0; ++bt)
+            if ((fresh >> unsigned(bt)) & 1u) { mi.pad_button = bt; break; }
+        }
+        mi.up = nav_up;
+        mi.down = nav_dn;
+        mi.left = nav_lt;
+        mi.right = nav_rt;
+        mi.confirm = nav_ok;
+      } else if (end_screen.open()) {
+        if (nav_toggle) {
+          ei.toggle = true;
+        } else if (sim->finish_t() >= 0.5f) {
+          ei.up = nav_up;
+          ei.down = nav_dn;
+          ei.confirm = nav_ok;
+        }
+      } else {
+        mi.toggle = nav_toggle;
+      }
     }
     g_last_key = -1;
     pad_prev = pad_buttons;
@@ -400,24 +460,73 @@ int main(int argc, char** argv) {
     if (mact == ew::game::MenuAction::Continue && !save_path.empty()) {
       ew::game::SaveData d;
       auto e = ew::game::read_save_file(save_path, d);
-      if (e == ew::game::SaveError::None) e = ew::game::apply_save(sim, d);
+      if (e == ew::game::SaveError::None) {
+        if (d.map != scene->map().string_at(1)) {
+          const std::string target = ew::game::resolve_map_file(d.map, map_path, root, build_maps_dir);
+          if (target.empty()) {
+            e = ew::game::SaveError::Mismatch;
+          } else {
+            auto next_scene = std::make_unique<ew::game::Scene>();
+            std::string lerr;
+            if (!next_scene->load(target, lerr)) {
+              e = ew::game::SaveError::Io;
+            } else {
+              auto next_sim = std::make_unique<ew::game::Sim>(*next_scene);
+              e = ew::game::apply_save(*next_sim, d);
+              if (e == ew::game::SaveError::None) {
+                scene = std::move(next_scene);
+                sim = std::move(next_sim);
+                map_path = target;
+                renderer.invalidate_tiles();
+                announced_goal = false;
+                end_screen.close();
+                glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
+              }
+            }
+          }
+        } else {
+          e = ew::game::apply_save(*sim, d);
+        }
+      }
       if (e == ew::game::SaveError::None) {
         menu.set_audio(d.volume, d.muted);
         menu.set_bindings(d.bind);
         save_armed = true;
         last_key = save_key();
-        last_items = sim.collected();  // el huevo cargado no se anuncia como recién agarrado
-        last_abilities = sim.abilities();
-        std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim.checkpoint_index(),
-                    sim.collected(), sim.collectible_total());
+        last_items = sim->collected();  // el huevo cargado no se anuncia como recién agarrado
+        last_abilities = sim->abilities();
+        end_screen.close();
+        std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim->checkpoint_index(),
+                    sim->collected(), sim->collectible_total());
       } else {
         std::fprintf(stderr, "echo_engine: no se pudo cargar la partida (%s)\n", ew::game::save_error_str(e));
       }
     }
     if (mact == ew::game::MenuAction::Restart) {
       ew::game::Input rst; rst.restart = true;
-      sim.step(rst);
+      sim->step(rst);
       ++sim_steps;
+    }
+    const auto eact = end_screen.handle(ei);
+    if (eact == ew::game::EndAction::Quit) glfwSetWindowShouldClose(win, GLFW_TRUE);
+    if (eact == ew::game::EndAction::OpenMenu) menu.open_at(ew::game::PauseMenu::kSeguir);
+    if (eact == ew::game::EndAction::RestartLevel) {
+      sim->reset();
+      end_screen.close();
+      announced_goal = false;
+      glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
+      std::printf("echo_engine: reinicio\n");
+    }
+    if (eact == ew::game::EndAction::NextLevel) {
+      const std::string next_p = resolve_next_map();
+      const uint32_t carry = sim->abilities();
+      if (!next_p.empty() && load_level(next_p, carry)) {
+        if (!save_path.empty()) {
+          save_armed = true;
+          write_save(ew::game::capture_save(*sim));
+        }
+        last_key = save_key();
+      }
     }
     mixer.set_gain(menu.volume_setting());
     mixer.set_mute(menu.muted());
@@ -428,9 +537,9 @@ int main(int argc, char** argv) {
     else acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
     const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart ||
-                             mact == ew::game::MenuAction::Continue;
+                             mact == ew::game::MenuAction::Continue || eact == ew::game::EndAction::RestartLevel;
     for (int n = 0; !menu.open() && acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
-      sim.step(in);
+      sim->step(in);
       in.jump = false;
       in.interact = false;
       in.grab = false;
@@ -439,7 +548,7 @@ int main(int argc, char** argv) {
       ++sim_steps;
     }
     if (!nosound) {
-      const uint32_t bits = sim.take_sfx();
+      const uint32_t bits = sim->take_sfx();
       using namespace ew::audio;
       if (bits & kSfxJump) device_play(SfxId::Jump);
       if (bits & kSfxDie) device_play(SfxId::Die);
@@ -451,12 +560,21 @@ int main(int argc, char** argv) {
       if (bits & kSfxAbility) device_play(SfxId::Ability);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
-    if (sim.finished() && !announced_goal) {
+    if (sim->finished() && !announced_goal) {
+      ew::game::EndStats st;
+      st.title = ew::game::level_title(scene->map().string_at(1));
+      st.items = sim->collected();
+      st.items_total = sim->collectible_total();
+      st.deaths = sim->deaths();
+      st.abilities = sim->abilities();
+      st.has_next = !resolve_next_map().empty();
+      end_screen.open(st);
       std::printf("echo_engine: ¡meta! camino completado  (R corto: checkpoint, R largo: inicio)\n");
       announced_goal = true;
       glfwSetWindowTitle(win, "Echo Well — ¡meta!  [R] checkpoint, hold inicio");
     }
-    if (did_restart && announced_goal && !sim.finished()) {
+    if (!sim->finished() && end_screen.open()) end_screen.close();
+    if (did_restart && announced_goal && !sim->finished()) {
       announced_goal = false;
       glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
       std::printf("echo_engine: reinicio\n");
@@ -465,31 +583,31 @@ int main(int argc, char** argv) {
       const SaveKey k = save_key();
       const bool bind_changed = menu.take_bindings_changed();
       if (!(k == last_key) || bind_changed) {
-        const bool progress = k.ck != last_key.ck || k.items != last_key.items ||
+        const bool progress = k.map != last_key.map || k.ck != last_key.ck || k.items != last_key.items ||
                               k.abilities != last_key.abilities || k.boss != last_key.boss;
         if (progress && (k.ck >= 0 || k.items > 0 || k.abilities != 0 || k.boss)) save_armed = true;  // jugando de verdad
-        if (save_armed) write_save(ew::game::capture_save(sim));
+        if (save_armed) write_save(ew::game::capture_save(*sim));
         else if (menu.has_save()) write_save(loaded);  // solo volumen/controles: no pisar la partida
         last_key = k;
       }
     }
-    const auto& pl = sim.player();
+    const auto& pl = sim->player();
     const float px = pl.pos.x, py = pl.pos.y;
 
     FrameView v;
-    v.cam_x = std::round(scene.cam_x()); v.cam_y = std::round(scene.cam_y());  // pixel-perfect
-    v.chunk_x_px = scene.nb_origin_x();  // vecindario 3×3 alrededor del chunk activo
-    v.chunk_y_px = scene.nb_origin_y();
-    v.tiles = scene.active_tiles().data();
-    v.tiles_version = scene.chunk_version();
+    v.cam_x = std::round(scene->cam_x()); v.cam_y = std::round(scene->cam_y());  // pixel-perfect
+    v.chunk_x_px = scene->nb_origin_x();  // vecindario 3×3 alrededor del chunk activo
+    v.chunk_y_px = scene->nb_origin_y();
+    v.tiles = scene->active_tiles().data();
+    v.tiles_version = scene->chunk_version();
     for (std::size_t i = 0; i < 9; ++i) {  // fondos del vecindario 3×3 (sección BACKDROP)
-      v.bg_theme[i] = scene.active_backdrops()[i].theme;
-      v.bg_seed[i] = scene.active_backdrops()[i].seed;
+      v.bg_theme[i] = scene->active_backdrops()[i].theme;
+      v.bg_seed[i] = scene->active_backdrops()[i].seed;
     }
-    push_entities(v, scene, float(now));
-    push_movers(v, sim);
-    for (int bi = 0; bi < sim.boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
-      const auto& b = sim.boss(bi);
+    push_entities(v, *scene, float(now));
+    push_movers(v, *sim);
+    for (int bi = 0; bi < sim->boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
+      const auto& b = sim->boss(bi);
       if (b.defeated) continue;
       if (b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
       const float tell = b.phase == 1 ? 1.f : 0.f;  // aviso antes del salto: más claro
@@ -499,39 +617,39 @@ int main(int argc, char** argv) {
       push_marker(v, b.x, b.y - ew::game::Sim::kBossH, 3, 0, 1.0f, 0.85f, 0.2f);  // punto débil
       push_marker(v, b.x + 5.f * float(b.dir), cy - 2.f, 1.5f, 0, 1.0f, 1.0f, 1.0f);  // ojo
     }
-    push_hazards(v, scene);
-    if (sim.finished())
-      if (const auto* g = scene.find_type("goal"))
+    push_hazards(v, *scene);
+    if (sim->finished())
+      if (const auto* g = scene->find_type("goal"))
         push_marker(v, g->x, g->y, 8, 0, 1.0f, 1.0f, 0.55f);
-    const auto& pts = sim.world().points();
-    for (int r = 0; r < sim.rope_count(); ++r)  // cuerdas Verlet (sección ROPE)
-      for (int i = 0; i < sim.rope_points(r); ++i) {
-        const auto& rp = pts[sim.rope_first(r) + uint32_t(i)];
-        const bool held = sim.on_rope() && sim.held_rope() == r && i == sim.rope_node();
+    const auto& pts = sim->world().points();
+    for (int r = 0; r < sim->rope_count(); ++r)  // cuerdas Verlet (sección ROPE)
+      for (int i = 0; i < sim->rope_points(r); ++i) {
+        const auto& rp = pts[sim->rope_first(r) + uint32_t(i)];
+        const bool held = sim->on_rope() && sim->held_rope() == r && i == sim->rope_node();
         const float rad = i == 0 ? 2.f : (held ? 2.5f : rp.radius);
         const float cr = held ? 1.0f : 0.75f, cg = held ? 0.85f : 0.6f, cb = held ? 0.4f : 0.4f;
         push_marker(v, rp.pos.x, rp.pos.y, rad, i == 0 ? 1 : 0, cr, cg, cb);
       }
-    if (sim.grab_flash() > 0 && sim.on_rope()) {  // anillo que se expande al agarrar
-      const auto& node = pts[sim.rope_first(sim.held_rope()) + uint32_t(sim.rope_node())];
-      const float f = float(sim.grab_flash()) / float(ew::game::Sim::kGrabFlashFrames);
+    if (sim->grab_flash() > 0 && sim->on_rope()) {  // anillo que se expande al agarrar
+      const auto& node = pts[sim->rope_first(sim->held_rope()) + uint32_t(sim->rope_node())];
+      const float f = float(sim->grab_flash()) / float(ew::game::Sim::kGrabFlashFrames);
       push_marker(v, node.pos.x, node.pos.y, 3.f + (1.f - f) * 10.f, 0, 1.0f, 0.9f * f, 0.35f * f);
     }
-    if (sim.double_jump_flash() > 0) {  // aro cian que se expande al activar doble salto en el aire
-      const float f = float(sim.double_jump_flash()) / float(ew::game::Sim::kDoubleJumpFlashFrames);
-      push_marker(v, sim.double_jump_x(), sim.double_jump_y(), 2.5f + (1.f - f) * 7.f, 0,
+    if (sim->double_jump_flash() > 0) {  // aro cian que se expande al activar doble salto en el aire
+      const float f = float(sim->double_jump_flash()) / float(ew::game::Sim::kDoubleJumpFlashFrames);
+      push_marker(v, sim->double_jump_x(), sim->double_jump_y(), 2.5f + (1.f - f) * 7.f, 0,
                   0.45f * f, 0.92f * f, 1.0f * f);
     }
     {  // player: cuerpo + "pies" del lado de su gravedad (invertida = pies arriba, tono lila)
-      const float d = sim.down();
-      const bool inv = sim.gravity_flipped();
+      const float d = sim->down();
+      const bool inv = sim->gravity_flipped();
       g_marker_reserve = 0;
       push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, inv ? 0.85f : 0.95f, inv ? 0.8f : 0.95f, inv ? 1.0f : 0.9f);
       push_marker(v, px, py + 3.f * d, 1.5f, 1, 0.35f, 0.3f, 0.45f);  // pies
       push_marker(v, px + 1.5f, py - 1.5f * d, 1.f, 0, 0.1f, 0.1f, 0.15f);  // ojo
       g_marker_reserve = 3;
     }
-    for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
+    for (const auto& w : sim->water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;
       if (w.x() + w.width() < v.cam_x || w.x() > v.cam_x + ew::render::kInternalW ||
           w.bottom() < v.cam_y || w.rest_y() - 32 > v.cam_y + ew::render::kInternalH) continue;
@@ -543,7 +661,7 @@ int main(int argc, char** argv) {
       for (int i = 0; i < n; ++i) v.water_surface[std::size_t(b * ew::render::kMaxWaterCols + i)] = w.surface_col(i);
     }
     v.light_x = px; v.light_y = py;
-    v.fade = sim.finish_t();
+    v.fade = sim->finish_t();
     v.pause = menu.open() ? 1 : 0;
     v.pause_sel = menu.cursor();
     v.pause_vol = menu.volume_setting();
@@ -560,21 +678,27 @@ int main(int argc, char** argv) {
       v.ctl_wait = menu.waiting() ? 1 : 0;
       v.ctl_txt = ew::game::pack_text(ew::game::controls_text(menu));
     }
-    v.items = sim.collected();
-    v.items_total = sim.collectible_total();
-    v.items_flash = float(sim.pickup_flash()) / float(ew::game::Sim::kPickupFlashFrames);
+    if (!menu.open() && end_screen.open()) {
+      v.end_screen = 1;
+      v.end_sel = end_screen.cursor();
+      v.end_has_next = end_screen.stats().has_next ? 1 : 0;
+      v.ctl_txt = ew::game::pack_text(ew::game::end_screen_text(end_screen));
+    }
+    v.items = sim->collected();
+    v.items_total = sim->collectible_total();
+    v.items_flash = float(sim->pickup_flash()) / float(ew::game::Sim::kPickupFlashFrames);
     if (v.items != last_items) {
       if (v.items > last_items) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
       last_items = v.items;
     }
-    const uint32_t ab = sim.abilities();
+    const uint32_t ab = sim->abilities();
     if (ab != last_abilities) {
       if ((ab & ew::game::kAbilityDoubleJump) && !(last_abilities & ew::game::kAbilityDoubleJump))
         std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
       last_abilities = ab;
     }
     v.abilities = int(ab);
-    v.ability_flash = float(sim.ability_flash()) / float(ew::game::Sim::kAbilityFlashFrames);
+    v.ability_flash = float(sim->ability_flash()) / float(ew::game::Sim::kAbilityFlashFrames);
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);
