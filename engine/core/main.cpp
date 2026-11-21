@@ -705,16 +705,34 @@ int main(int argc, char** argv) {
       push_marker(v, de.x, de.y - 12.f + std::round(std::sin(float(now) * 5.f)), 1.5f, 0, 1.0f, 0.88f, 0.35f);
     }
     push_movers(v, *sim);
-    for (int bi = 0; bi < sim->boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
+    for (int bi = 0; bi < sim->boss_count(); ++bi) {  // boss clásico o Wyrm dragón multipatrón
       const auto& b = sim->boss(bi);
       if (b.defeated) continue;
       if (b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
-      const float tell = b.phase == 1 ? 1.f : 0.f;  // aviso antes del salto: más claro
-      const float cy = b.y - ew::game::Sim::kBossH * 0.5f;
-      push_marker(v, b.x - 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
-      push_marker(v, b.x + 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
-      push_marker(v, b.x, b.y - ew::game::Sim::kBossH, 3, 0, 1.0f, 0.85f, 0.2f);  // punto débil
-      push_marker(v, b.x + 5.f * float(b.dir), cy - 2.f, 1.5f, 0, 1.0f, 1.0f, 1.0f);  // ojo
+      const float tell = b.phase == 1 ? 1.f : 0.f;  // aviso antes del ataque: más claro
+      if (b.dragon) {
+        const float flap = std::sin(float(now) * (b.phase == 2 ? 18.f : 6.f)) * 2.5f;
+        const float cy = b.y - ew::game::Sim::kDragonH * 0.5f;
+        const float cr = 0.68f + 0.30f * tell, cg = 0.12f + 0.25f * tell, cb = 0.16f + 0.08f * tell;
+        // Alas membranosas y torso escamado del Wyrm (caja 32×22 px)
+        push_marker(v, b.x - float(b.dir) * 8.f, cy - 4.f + flap, 5.5f, 1, 0.38f, 0.08f, 0.14f);
+        push_marker(v, b.x - 6.f, cy + 1.f, 8.f, 1, cr, cg, cb);
+        push_marker(v, b.x + 6.f, cy + 1.f, 8.f, 1, cr, cg, cb);
+        push_marker(v, b.x + float(b.dir) * 12.f, cy - 2.f, 5.f, 1, cr + 0.08f, cg + 0.06f, cb);
+        push_marker(v, b.x + float(b.dir) * 10.f, cy - 9.f, 2.f, 1, 0.85f, 0.72f, 0.45f);  // cuerno
+        push_marker(v, b.x, b.y - ew::game::Sim::kDragonH, 3.5f, 0, 1.0f, 0.88f, 0.25f);  // corona / punto débil
+        push_marker(v, b.x + float(b.dir) * 14.f, cy - 3.f, 1.5f, 0, 1.0f, 0.92f, 0.35f);  // ojo dracónico
+      } else {
+        const float cy = b.y - ew::game::Sim::kBossH * 0.5f;
+        push_marker(v, b.x - 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
+        push_marker(v, b.x + 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
+        push_marker(v, b.x, b.y - ew::game::Sim::kBossH, 3, 0, 1.0f, 0.85f, 0.2f);  // punto débil
+        push_marker(v, b.x + 5.f * float(b.dir), cy - 2.f, 1.5f, 0, 1.0f, 1.0f, 1.0f);  // ojo
+      }
+    }
+    for (const auto& fb : sim->fireballs()) {
+      push_marker(v, fb.x, fb.y, ew::game::Sim::kFireballRadius + 1.f, 0, 0.96f, 0.34f, 0.08f);
+      push_marker(v, fb.x, fb.y, 1.8f, 0, 1.0f, 0.92f, 0.45f);
     }
     push_hazards(v, *scene);
     if (sim->finished())

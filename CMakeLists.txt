@@ -70,6 +70,9 @@ add_test(NAME ewmapc_dash
 add_test(NAME ewmapc_level2
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap)
+add_test(NAME ewmapc_level3
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level3.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/level3.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
           --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --backdrops 0
@@ -111,6 +114,12 @@ add_test(NAME ewmap_load_level2
           --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
           --has mover --has gravity_flip --has boss --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level2 PROPERTIES DEPENDS ewmapc_level2)
+add_test(NAME ewmap_load_level3
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level3.ewmap
+          --name level3 --chunks 6 --ents 21 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4
+          --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
+          --has mover --has gravity_flip --has boss_dragon --has checkpoint --has goal --has npc --has lore)
+set_tests_properties(ewmap_load_level3 PROPERTIES DEPENDS ewmapc_level3)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
 add_test(NAME ewmapc_backdrop_ok
@@ -145,6 +154,7 @@ set(EW_BOSS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/boss.ewmap)
 set(EW_ABILITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/ability.ewmap)
 set(EW_DASH_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/dash.ewmap)
 set(EW_LEVEL2_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level2.ewmap)
+set(EW_LEVEL3_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level3.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -181,7 +191,11 @@ add_custom_command(OUTPUT ${EW_LEVEL2_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml -o ${EW_LEVEL2_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP})
+add_custom_command(OUTPUT ${EW_LEVEL3_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level3.yaml -o ${EW_LEVEL3_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level3.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -231,6 +245,10 @@ add_executable(level2_test tests/level2_test.cpp)
 target_link_libraries(level2_test PRIVATE echo_game)
 add_dependencies(level2_test ew_maps)
 add_test(NAME level2_path COMMAND level2_test ${EW_LEVEL2_MAP} ${EW_SLICE_MAP})
+add_executable(level3_test tests/level3_test.cpp)
+target_link_libraries(level3_test PRIVATE echo_game)
+add_dependencies(level3_test ew_maps)
+add_test(NAME level3_path COMMAND level3_test ${EW_LEVEL3_MAP} ${EW_LEVEL2_MAP})
 add_executable(backdrop_test tests/backdrop_test.cpp)
 target_link_libraries(backdrop_test PRIVATE echo_game)
 add_dependencies(backdrop_test ew_maps)
@@ -416,7 +434,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png
               ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/sprites.png
         DESTINATION assets/atlas)
-install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP}
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP}
         DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/qa-checklist.md DESTINATION docs)

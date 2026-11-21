@@ -98,10 +98,12 @@ int main(int argc, char** argv) {
   // --- 3) Campaña y resolución segura de archivos de mapa ---
   {
     CHECK(next_campaign_map("slice") == "level2");
-    CHECK(next_campaign_map("level2") == "");
+    CHECK(next_campaign_map("level2") == "level3");
+    CHECK(next_campaign_map("level3") == "");
     CHECK(next_campaign_map("otro") == "");
     CHECK(level_title("slice") == "NIVEL 1: EL POZO");
     CHECK(level_title("level2") == "NIVEL 2: LAS CATACUMBAS");
+    CHECK(level_title("level3") == "NIVEL 3: LA GUARIDA DEL WYRM");
     CHECK(level_title("mi_sala") == "MI SALA");
 
     CHECK(valid_map_name("slice") && valid_map_name("level_2-a"));

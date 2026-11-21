@@ -113,7 +113,11 @@ en verde al tomarlo.
   2. Avanzá al Hub `(1,0)`, bajá por el pozo vertical hasta caer al agua de `(1,1)` y caminá a la izquierda hasta `(0,1)` para tomar la reliquia cian de **Doble Salto** (aparece el ícono en el HUD).
   3. Volvé a `(1,1)`, subí con Doble Salto al Escalón 1 de la derecha, cruzá `(2,1)` sobre la plataforma móvil `plat_crypt` y en `(3,1)` activá `sw_sanctum` (abre la puerta alta del Hub); luego subí al altar con Doble Salto para agarrar `egg_catacomb_2` (`1/2`) y la reliquia ígnea **`rel_dash`** (`ability_dash`, aparece la flecha ardiente en el HUD junto al doble salto).
   4. Hacé backtracking a `(1,1)`, subí con Doble Salto por los Escalones 1 y 2 de vuelta al Hub `(1,0)` y regresá a `(0,0)` para subir a la repisa inicial y agarrar `egg_catacomb_1` (`2/2` en dorado).
-  5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá `door_hub_gallery` hacia `(2,0)` (gravedad invertida por el techo), rompé el muro agrietado **`wall_guardian`** embistiendo con **Dash** (`E`/`X`/`K`/`Shift der.`) al entrar a `(3,0)` y vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta (`HABILIDADES: DOBLE SALTO + DASH`).
+  5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá `door_hub_gallery` hacia `(2,0)` (gravedad invertida por el techo), rompé el muro agrietado **`wall_guardian`** embistiendo con **Dash** (`E`/`X`/`K`/`Shift der.`) al entrar a `(3,0)` y vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta (`HABILIDADES: DOBLE SALTO + DASH`), habilitando **SIGUIENTE NIVEL** hacia `level3`.
+- [ ] **Nivel 3 — La Guarida del Wyrm (`level3`, 3×2 salas finales):**
+  1. En `(0,0)`, recogé o conservá Doble Salto + Dash, rompé `wall_entry` embistiendo y saltá sobre el foso hacia `(1,0)`.
+  2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3` y rompé `wall_secret3` hacia `(0,1)` para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
+  3. Subí de vuelta a `(1,0)`, entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y alcanzar la meta final.
 
 ## 4. Guardar partida
 

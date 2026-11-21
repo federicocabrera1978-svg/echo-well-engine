@@ -14,9 +14,10 @@ struct LevelInfo {
   std::string_view next_map;
 };
 
-inline constexpr std::array<LevelInfo, 2> kCampaignLevels{{
+inline constexpr std::array<LevelInfo, 3> kCampaignLevels{{
     {"slice", "NIVEL 1: EL POZO", "level2"},
-    {"level2", "NIVEL 2: LAS CATACUMBAS", ""},
+    {"level2", "NIVEL 2: LAS CATACUMBAS", "level3"},
+    {"level3", "NIVEL 3: LA GUARIDA DEL WYRM", ""},
 }};
 
 // Valida nombre lógico de mapa (evita traversal o separadores cuando viene de save.ewsv).
