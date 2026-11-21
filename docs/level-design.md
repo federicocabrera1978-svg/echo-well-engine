@@ -73,7 +73,7 @@ Solo estos ids tienen significado en el runtime (o en un editor). No inventes ot
 |---|---|
 | 2 | Agua (solo documentación / edición; el runtime usa la sección `WATER`) |
 | 3 | Zona de meta (`Sim::kMetaGoal`), además de la entidad `goal` (alcance 16 px) |
-| 4 | Peligro / pinchos (`Sim::kMetaHazard`): muerte y reaparición en el checkpoint |
+| 4 | Peligro / pinchos (`Sim::kMetaHazard`): muerte y reaparición en el checkpoint; el renderer los dibuja como púas metálicas pixel-art con punta carmesí |
 
 Al diseñar un foso de pinchos, hacé la zona **más ancha** que el hueco: al caer, el player
 sigue avanzando en horizontal (~50 px en una caída de un piso). Si la zona es estrecha,
@@ -216,6 +216,10 @@ backdrops:
 | `invertido` | arquitectura espejada techo/piso, franja de estrellas, polvo que cae hacia arriba | slice chunk 6 (sala 5), `gravity` |
 | `arena` | arcada de coliseo en dos pisos, sello con el ojo de la bestia, antorchas | slice chunk 7 (sala 6, boss), `boss` |
 | `vacio` | el fondo liso de antes (azul casi negro) | para comparar o salas "en blanco" |
+| `cripta` | arcos góticos de pizarra, estandartes y braseros violetas | `level2` chunk `(0,0)` (entrada a Las Catacumbas) |
+| `guarida` | estrato basáltico oscuro, grietas de magma tenue y costillar fósil de dragón | `level2` chunk `(3,0)` (guarida del boss dracónico) |
+| `santuario` | pilastras de mármol oscuro, vitral ojival y runas arcanas tenues | `level2` chunk `(3,1)` (altar del huevo y santuario) |
+| `abismo` | bruma violácea, agujas de obsidiana en techo/suelo y ojos lejanos en la penumbra | `level2` chunk `(1,0)` (hub vertical profundo) |
 
 - Sección binaria `BACKDROP` (id 9), **opcional**: un mapa sin `backdrops` compila byte a byte
   igual que antes, y un loader viejo ignora la sección (ver [ewmap.md](ewmap.md)).

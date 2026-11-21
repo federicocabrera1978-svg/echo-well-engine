@@ -22,11 +22,16 @@ enum class BackdropTheme : uint16_t {
   Invertido = 7,   // arquitectura espejada techo/piso, polvo que cae hacia arriba
   Arena = 8,       // arcos de coliseo, sello de la bestia, antorchas
   Vacio = 9,       // fondo liso (como antes de los backdrops)
+  Cripta = 10,     // arcos góticos con relieves alados, osarios y fuegos fatuos
+  Guarida = 11,    // caverna dracónica con silueta de dragón, escamas y brasas tenues
+  Santuario = 12,  // templo dracónico con vitral/runa de dragón y columnas altas
+  Abismo = 13,     // contrafuertes hacia la penumbra, cadenas y ojos dracónicos
 };
-inline constexpr uint16_t kBackdropCount = 10;
+inline constexpr uint16_t kBackdropCount = 14;
 
 inline constexpr std::array<std::string_view, kBackdropCount> kBackdropNames{
-    "cueva", "pozo", "raices", "grieta", "cisterna", "nido", "engranajes", "invertido", "arena", "vacio"};
+    "cueva", "pozo", "raices", "grieta", "cisterna", "nido", "engranajes", "invertido", "arena", "vacio",
+    "cripta", "guarida", "santuario", "abismo"};
 
 // Nombre YAML → id (-1 si no existe).
 constexpr int backdrop_from_name(std::string_view n) {

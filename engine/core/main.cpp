@@ -142,21 +142,46 @@ void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
   }
 }
 
-// Pinchos (META 4) visibles alrededor de la cámara.
+void push_hazard_span(FrameView& v, float x0, float y0, float w, float dir) {
+  if (v.hazard_count >= ew::render::kMaxHazards || w <= 0.f) return;
+  const int i = v.hazard_count++;
+  v.hazards[std::size_t(i * 4 + 0)] = x0;
+  v.hazards[std::size_t(i * 4 + 1)] = y0;
+  v.hazards[std::size_t(i * 4 + 2)] = w;
+  v.hazards[std::size_t(i * 4 + 3)] = dir;
+}
+
+// Pinchos (META 4) visibles alrededor de la cámara como tramos horizontales pixel-art.
 void push_hazards(FrameView& v, ew::game::Scene& s) {
   const float ts = float(ew::map::kTileSize);
   const int x0 = int(std::floor(s.cam_x() / ts)), y0 = int(std::floor(s.cam_y() / ts));
   const int x1 = x0 + ew::game::kViewW / ew::map::kTileSize + 2;
   const int y1 = y0 + ew::game::kViewH / ew::map::kTileSize + 2;
-  for (int ty = y0; ty <= y1; ++ty)
+  auto is_haz = [&](int tx, int ty) { return s.tile(tx, ty, ew::map::Layer::META) == ew::game::Sim::kMetaHazard; };
+  for (int ty = y0; ty <= y1; ++ty) {
+    int run_dir = 0, run_start = 0;
+    auto flush = [&](int tx_end) {
+      if (run_dir != 0)
+        push_hazard_span(v, float(run_start) * ts, float(ty) * ts, float(tx_end - run_start) * ts, float(run_dir));
+      run_dir = 0;
+    };
     for (int tx = x0; tx <= x1; ++tx) {
-      if (s.tile(tx, ty, ew::map::Layer::META) != ew::game::Sim::kMetaHazard) continue;
-      // Un marcador por columna (el tile de arriba del foso): un foso de 2 filas no gasta el doble.
-      if (s.tile(tx, ty - 1, ew::map::Layer::META) == ew::game::Sim::kMetaHazard) continue;
-      const float x = float(tx) * ts + 4.f, y = float(ty) * ts + 6.f;
-      push_marker(v, x, y, 3, 1, 0.95f, 0.2f, 0.15f);
-      push_marker(v, x, y - 3, 2, 0, 0.95f, 0.45f, 0.2f);
+      int dir = 0;
+      if (is_haz(tx, ty)) {
+        const bool up_haz = is_haz(tx, ty - 1);
+        const bool dn_haz = is_haz(tx, ty + 1);
+        const bool dn_sol = s.solid_tile(tx, ty + 1);
+        const bool up_sol = s.solid_tile(tx, ty - 1);
+        if (!dn_haz && !dn_sol && (up_sol || up_haz)) dir = -1;
+        else if (!up_haz && !up_sol) dir = 1;
+      }
+      if (dir != run_dir) {
+        flush(tx);
+        if (dir != 0) { run_dir = dir; run_start = tx; }
+      }
     }
+    flush(x1 + 1);
+  }
 }
 }  // namespace
 
