@@ -107,10 +107,12 @@ rects:
   - {layer: VIS,  x: 119, y: 26, w: 1,   h: 6,  tile: 15}
 
   # --- Chunk (3,1): Santuario Profundo (tx = 120..159, ty = 23..45) ---
-  # Repisa de entrada desde (2,1) en ty = 35 (tx = 120..126), fosa del santuario en ty = 43 (y = 344)
-  # y altar alto en ty = 35 (tx = 138..154, tope y = 280 px = 64 px sobre el piso del santuario)
+  # Repisa de entrada desde (2,1) en ty = 35 (tx = 120..126), escalón de salida izquierda (tx = 127..129, ty = 39),
+  # fosa del santuario en ty = 43 (y = 344) y altar alto en ty = 35 (tx = 138..154, tope y = 280 px)
   - {layer: COL,  x: 120, y: 35, w: 7,   h: 8,  tile: 1}
   - {layer: VIS,  x: 120, y: 35, w: 7,   h: 8,  tile: 17}
+  - {layer: COL,  x: 127, y: 39, w: 3,   h: 4,  tile: 1}
+  - {layer: VIS,  x: 127, y: 39, w: 3,   h: 4,  tile: 17}
   - {layer: COL,  x: 138, y: 35, w: 16,  h: 1,  tile: 3}
   - {layer: VIS,  x: 138, y: 35, w: 16,  h: 1,  tile: 5}
   - {layer: VIS,  x: 144, y: 36, w: 2,   h: 7,  tile: 9}

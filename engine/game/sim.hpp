@@ -61,7 +61,7 @@ class Sim {
   static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
   static constexpr float kFlipReach = 10.f;       // px: tocar un orbe gravity_flip lo dispara
   static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
-  static constexpr float kDoubleJumpSpeed = 215.f;  // px/s (segundo salto en el aire)
+  static constexpr float kDoubleJumpSpeed = 245.f;  // px/s (segundo salto en el aire)
   static constexpr float kAbilityReach = 12.f;      // px: agarrar una reliquia de habilidad
   static constexpr float kDialogReach = 16.f;       // px: alcance para hablar/leer NPC o estela
   static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
