@@ -21,3 +21,7 @@ entities:
   - {name: goal, type: goal, x: 300, y: 152}
 links:
   - {from: boss, to: door_exit}
+
+# Fondo procedural de la pantalla (sección BACKDROP; ver docs/level-design.md, "Fondos").
+backdrops:
+  - {cx: 0, cy: 0, theme: arena}

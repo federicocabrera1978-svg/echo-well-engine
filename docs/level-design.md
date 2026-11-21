@@ -49,6 +49,8 @@ ropes:
   - {x: 128, y: 24, segments: 16, seg_len: 6}
 water:
   - {x: 160, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
+backdrops:                   # opcional: fondo procedural por chunk (ver "Fondos")
+  - {cx: 0, cy: 0, theme: pozo}
 ```
 
 Los `rects` posteriores **pisan** a los anteriores (así se abren huecos: primero el piso,
@@ -182,6 +184,46 @@ de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
 - Para pegarle: esperá a que camine hacia vos, saltá cuando esté a ~40 px y caele en la
   cabeza. Mapa de prueba: `assets/maps/src/boss.yaml` (`boss_test`, que incluye una pelea
   jugada con input).
+
+## Fondos (backdrops)
+
+Cada pantalla (chunk) puede tener un **fondo procedural** detrás de los tiles. No hay imágenes:
+lo dibuja el geometry pass (`assets/shaders/gbuffer_map.frag`) a partir de un tema y una seed, en
+px enteros (pixel art), con una capa lejana con parallax 0.35 (se nota al deslizar la cámara
+entre pantallas). El fondo recibe la luz del player a medias y tiene un ambiente frío propio, así
+la silueta de la sala se lee pero queda detrás del primer plano. Algunos temas tienen luz propia
+(gotas, esporas, luciérnagas, antorchas) que no depende del player.
+
+```yaml
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo}            # seed opcional (default cx*7 + cy*13)
+  - {cx: 1, cy: 0, theme: raices, seed: 5}
+```
+
+| tema | motivo | dónde se usa |
+|---|---|---|
+| `cueva` | piedra gris azulada irregular. **Default** de todo chunk sin registro y de los mapas viejos | `hello`, `room` |
+| `pozo` | pared curva de ladrillos, haz de luz desde la boca del pozo, gotas, musgo abajo | slice chunk 0 (sala 1, inicio y pileta) |
+| `raices` | tierra, raíces colgantes, troncos lejanos, esporas | slice chunk 1 (cuerda) |
+| `grieta` | roca rojiza partida con brasas tenues, estalactitas lejanas | slice chunk 2 (pozo de pinchos) |
+| `cisterna` | bloques grandes, caños con bridas, marcas del nivel del agua, verdín | slice chunk 3 (sala 2, agua que sube) |
+| `nido` | ladrillo cálido con nichos en arco y huevos con dibujo, luciérnagas | slice chunk 4 (sala 3, huevo) |
+| `engranajes` | paneles remachados, engranajes lejanos que giran, cadenas | slice chunk 5 (sala 4), `mover` |
+| `invertido` | arquitectura espejada techo/piso, franja de estrellas, polvo que cae hacia arriba | slice chunk 6 (sala 5), `gravity` |
+| `arena` | arcada de coliseo en dos pisos, sello con el ojo de la bestia, antorchas | slice chunk 7 (sala 6, boss), `boss` |
+| `vacio` | el fondo liso de antes (azul casi negro) | para comparar o salas "en blanco" |
+
+- Sección binaria `BACKDROP` (id 9), **opcional**: un mapa sin `backdrops` compila byte a byte
+  igual que antes, y un loader viejo ignora la sección (ver [ewmap.md](ewmap.md)).
+- `ewmapc` rechaza un tema desconocido, un chunk fuera de `size_chunks`, dos fondos para el
+  mismo chunk o una seed fuera de 0..65535. En runtime un id fuera de rango se dibuja como `cueva`.
+- Elegí el tema por lo que pasa en la sala y pensá en la lectura: el fondo es oscuro y de poco
+  contraste, pero evitá un tema rojizo (`grieta`, `arena`) justo detrás de pinchos rojos si
+  la sala depende de verlos de lejos. Los tiles `VIS` sin `COL` (columnas de decorado) se siguen
+  dibujando encima del fondo.
+- Para mirar los fondos: `tools/room_shots.py build out --png` (con display o `xvfb-run`) saca una
+  captura por sala de `slice` y la compara con la misma sala en `vacio`. CI lo corre en el job
+  `engine` y sube las capturas como artifact `fondos-salas`.
 
 ## Compilar y probar
 

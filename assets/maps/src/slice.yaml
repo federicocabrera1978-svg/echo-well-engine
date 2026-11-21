@@ -167,6 +167,18 @@ ropes:
   # cuerda 2 (chunk 4): por el hueco de la cornisa, a la izquierda de la pared (tile 170 = x 1360)
   - {x: 1352, y: 24, segments: 16, seg_len: 6}
 
+# Fondos procedurales por pantalla (sección BACKDROP; ver docs/level-design.md, "Fondos").
+# Temas: cueva (default), pozo, raices, grieta, cisterna, nido, engranajes, invertido, arena, vacio.
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo}        # sala 1: fondo del pozo, la pileta y el haz de luz
+  - {cx: 1, cy: 0, theme: raices}      # cuerda: raíces colgando sobre la pared alta
+  - {cx: 2, cy: 0, theme: grieta}      # pozo de pinchos: roca partida con brasas
+  - {cx: 3, cy: 0, theme: cisterna}    # pileta que sube: caños y marcas de nivel
+  - {cx: 4, cy: 0, theme: nido}        # sala del huevo: nichos con huevos
+  - {cx: 5, cy: 0, theme: engranajes}  # sala 4: plataformas móviles
+  - {cx: 6, cy: 0, theme: invertido}   # sala 5: gravedad invertida
+  - {cx: 7, cy: 0, theme: arena}       # sala 6: arena del boss
+
 water:
   # entre tiles 29 y 36 (paredes 28 y 37): 232–296 px, superficie y=136, fondo y=160
   - {x: 232, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}

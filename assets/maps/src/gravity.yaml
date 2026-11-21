@@ -30,3 +30,7 @@ ropes:
   - {x: 236, y: 24, segments: 8, seg_len: 6}
 water:
   - {x: 120, y: 136, w: 48, h: 24, stiffness: 0.02, damping: 0.04}
+
+# Fondo procedural de la pantalla (sección BACKDROP; ver docs/level-design.md, "Fondos").
+backdrops:
+  - {cx: 0, cy: 0, theme: invertido}

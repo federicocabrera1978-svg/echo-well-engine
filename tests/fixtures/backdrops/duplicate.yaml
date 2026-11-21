@@ -1,0 +1,6 @@
+# ewmapc debe rechazarlo: dos fondos para el mismo chunk.
+name: duplicate
+size_chunks: [1, 1]
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo}
+  - {cx: 0, cy: 0, theme: nido}

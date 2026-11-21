@@ -1,5 +1,6 @@
 // Fuzz target: MapLoader sobre bytes arbitrarios (.ewmap no confiable).
 // libFuzzer (clang -fsanitize=fuzzer) o driver standalone (fuzz_driver.cpp).
+#include "map/backdrop.hpp"
 #include "map/map_loader.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -19,6 +20,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   for (const auto& w : m.water()) sink += uint32_t(w.w);
   for (const auto& r : m.ropes()) sink += r.segments;
   for (const auto& mv : m.movers()) sink += mv.entity + mv.n_wp + mv.w_tiles;
+  for (const auto& b : m.backdrops()) sink += ew::map::backdrop_sanitize(b.theme) + b.seed;
+  sink += ew::map::backdrop_at(m.backdrops(), 0, 0).theme;
   sink += m.chunk_count();
   const auto& h = m.header();
   for (uint16_t cy = 0; cy < h.map_h_chunks && cy < 64; ++cy)

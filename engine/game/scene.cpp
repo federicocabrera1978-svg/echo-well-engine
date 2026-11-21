@@ -157,6 +157,7 @@ void Scene::rebuild_active() {
   for (int oy = 0; oy < 3; ++oy)
     for (int ox = 0; ox < 3; ++ox) {
       const int ncx = cx_ - 1 + ox, ncy = cy_ - 1 + oy;
+      nb_backdrops_[std::size_t(oy * 3 + ox)] = backdrop(ncx, ncy);
       if (ncx < 0 || ncy < 0 || ncx >= h.map_w_chunks || ncy >= h.map_h_chunks) continue;
       const ChunkData* c = cache_->acquire(uint16_t(ncx), uint16_t(ncy));
       if (!c) continue;

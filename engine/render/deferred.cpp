@@ -129,6 +129,8 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_mover_rect"), v.mover_count, v.mover_rect.data());
     Uniform1fv(GetUniformLocation(geom_prog_, "u_mover_fam"), v.mover_count, v.mover_fam.data());
   }
+  Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_theme"), 9, v.bg_theme.data());
+  Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_seed"), 9, v.bg_seed.data());
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // 2) Light pass -> lit target
   BindFramebuffer(GL_FRAMEBUFFER, lit_fbo_);

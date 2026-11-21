@@ -94,6 +94,9 @@ en verde al tomarlo.
 - [ ] **Sala 6 (boss).** Checkpoint `ck_boss` fuera de su alcance. El boss camina, se ilumina
   (aviso) y salta. Se le pega cayéndole encima: 3 pisotones. Cada golpe lo acelera y lo hace parpadear.
   Tocarlo de costado te mata y morir lo cura. Al vencerlo se abre la puerta de la derecha.
+- [ ] **Fondos.** Cada pantalla tiene su fondo (pozo con luz y gotas, raíces, roca con
+  brasas, cisterna, nichos con huevos, engranajes, arquitectura espejada, arena con antorchas).
+  Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
 - [ ] **Meta.** Detrás de esa puerta: fade con **META**. Con el boss vivo la meta no cuenta.
   Después de la meta, R corto vuelve al checkpoint y R largo al inicio con el HUD en `0/1`.
 

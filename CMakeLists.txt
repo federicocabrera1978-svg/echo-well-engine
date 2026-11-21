@@ -63,29 +63,41 @@ add_test(NAME ewmapc_boss
           -o ${CMAKE_CURRENT_BINARY_DIR}/boss.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
-          --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2
+          --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --backdrops 0
           --has player_spawn --has switch --has door)
 add_test(NAME ewmap_load_slice
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
           --name slice --chunks 8 --ents 21 --links 4 --water 2 --ropes 2 --movers 3 --has mover --has gravity_flip --has boss --has checkpoint --has flood_switch --has goal --has collectible
-          --has player_spawn --has switch --has door --has goal)
+          --has player_spawn --has switch --has door --has goal --backdrops 8)
 add_test(NAME ewmap_load_room
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap
           --name room --chunks 1 --ents 2 --has player_spawn --has goal)
 add_test(NAME ewmap_load_mover
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/mover.ewmap
-          --name mover --chunks 1 --ents 3 --ropes 1 --water 1 --movers 2
+          --name mover --chunks 1 --ents 3 --ropes 1 --water 1 --movers 2 --backdrops 1
           --has player_spawn --has mover)
 add_test(NAME ewmap_load_gravity
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/gravity.ewmap
-          --name gravity --chunks 1 --ents 6 --ropes 1 --water 1 --movers 2
+          --name gravity --chunks 1 --ents 6 --ropes 1 --water 1 --movers 2 --backdrops 1
           --has player_spawn --has gravity_flip --has checkpoint --has mover)
 set_tests_properties(ewmap_load_gravity PROPERTIES DEPENDS ewmapc_gravity)
 add_test(NAME ewmap_load_boss
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/boss.ewmap
           --name boss --chunks 1 --ents 5 --links 1
-          --has player_spawn --has boss --has door --has goal --has checkpoint)
+          --has player_spawn --has boss --has door --has goal --has checkpoint --backdrops 1)
 set_tests_properties(ewmap_load_boss PROPERTIES DEPENDS ewmapc_boss)
+# Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
+set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
+add_test(NAME ewmapc_backdrop_ok
+  COMMAND ewmapc --crc ${EW_BD_FIX}/ok.yaml -o ${CMAKE_CURRENT_BINARY_DIR}/backdrop_ok.ewmap)
+add_test(NAME ewmap_load_backdrop_ok
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/backdrop_ok.ewmap --name backdrop_ok --chunks 2 --ents 1 --backdrops 1)
+set_tests_properties(ewmap_load_backdrop_ok PROPERTIES DEPENDS ewmapc_backdrop_ok)
+foreach(bad bad_theme out_of_range duplicate bad_seed)
+  add_test(NAME ewmapc_backdrop_rejects_${bad}
+    COMMAND ewmapc --crc ${EW_BD_FIX}/${bad}.yaml -o ${CMAKE_CURRENT_BINARY_DIR}/backdrop_${bad}.ewmap)
+  set_tests_properties(ewmapc_backdrop_rejects_${bad} PROPERTIES WILL_FAIL TRUE)
+endforeach()
 set_tests_properties(ewmap_load_hello PROPERTIES DEPENDS ewmapc_hello)
 set_tests_properties(ewmap_load_slice PROPERTIES DEPENDS ewmapc_slice)
 set_tests_properties(ewmap_load_room PROPERTIES DEPENDS ewmapc_room)
@@ -167,6 +179,11 @@ add_executable(slice_test tests/slice_test.cpp)
 target_link_libraries(slice_test PRIVATE echo_game)
 add_dependencies(slice_test ew_maps)
 add_test(NAME slice_path COMMAND slice_test ${EW_SLICE_MAP})
+add_executable(backdrop_test tests/backdrop_test.cpp)
+target_link_libraries(backdrop_test PRIVATE echo_game)
+add_dependencies(backdrop_test ew_maps)
+add_test(NAME backdrops COMMAND backdrop_test ${EW_SLICE_MAP} ${EW_HELLO_MAP} ${CMAKE_CURRENT_BINARY_DIR}/backdrop_ok.ewmap)
+set_tests_properties(backdrops PROPERTIES DEPENDS ewmapc_backdrop_ok)
 add_executable(bench_test tests/bench_test.cpp)
 target_link_libraries(bench_test PRIVATE echo_game)
 add_test(NAME bench COMMAND bench_test ${EW_SLICE_MAP})

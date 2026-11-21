@@ -49,6 +49,10 @@ struct FrameView {
   int mover_count = 0;
   std::array<float, kMaxMovers * 4> mover_rect{};
   std::array<float, kMaxMovers> mover_fam{};
+  // Fondos (backdrops) del vecindario 3×3, [oy*3+ox] desde chunk_x_px/chunk_y_px:
+  // tema (ew::map::BackdropTheme) y seed. Default: cueva.
+  std::array<int, 9> bg_theme{};
+  std::array<int, 9> bg_seed{};
 };
 
 

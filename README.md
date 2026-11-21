@@ -119,10 +119,13 @@ Al tocar la meta, fade (~0.75 s) con **META**. **R** corto vuelve al último che
 - **`FG`** (primer plano): se empaqueta en el canal B de la textura del vecindario (`RGB8UI`) y el geometry pass la dibuja **sobre los actores** (depth 0.2, mismo atlas que `VIS`). `slice` trae una franja de decorado FG en el chunk 2; `slice_test` verifica el tile y el packed.
 - **`META`**: marcadores de zona. El runtime usa **id 3** como zona de meta (`Sim::kMetaGoal`), **id 4** como peligro / pinchos (`Sim::kMetaHazard`) y **id 2** documenta agua (el runtime usa la sección `WATER`). Ver [docs/ewmap.md](docs/ewmap.md).
 
+### Fondos por sala (backdrops)
+Cada pantalla tiene un fondo procedural propio, estilo Animal Well, dibujado en el geometry pass (sin imágenes ni dependencias): pozo con haz de luz y gotas, raíces, roca partida con brasas, cisterna con caños, nichos con huevos, engranajes que giran, arquitectura espejada para la gravedad invertida y la arena del boss con el ojo de la bestia y antorchas. Se eligen en el YAML (`backdrops: - {cx, cy, theme}`) y viajan en la sección opcional `BACKDROP`; los mapas sin la sección usan `cueva`. Detalle y lista de temas en [docs/level-design.md](docs/level-design.md#fondos-backdrops). `backdrop_test` (ctest) cubre la tabla de temas, el vecindario 3×3 y la retrocompatibilidad; `tools/room_shots.py` saca una captura por sala (CI: artifact `fondos-salas`).
+
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
 - Tile 8×8 px, chunk 40×23 tiles; capas `COL`, `VIS`, `FG`, `META`.
-- Secciones: `TILE=1`, `ENT=2`, `LINK=3`, `WATER=4`, `STRTAB=5`, `CRC=6`.
+- Secciones: `TILE=1`, `ENT=2`, `LINK=3`, `WATER=4`, `STRTAB=5`, `CRC=6`, `ROPE=7`, `MOVER=8`, `BACKDROP=9` (las tres últimas, opcionales).
 - Chunks raw en v1 (flag `compressed_chunks` reservado). CRC opcional; en CI siempre activo.
 
 Detalle completo en [docs/ewmap.md](docs/ewmap.md).
@@ -133,7 +136,7 @@ Detalle completo en [docs/ewmap.md](docs/ewmap.md).
 # ewmapc: assets/maps/src/hello.yaml -> assets/maps/bin/hello.ewmap (7728 bytes, 1 chunks, 3 entities, crc)
 ```
 `ewmapc` valida su propia salida con `MapLoader` antes de escribirla.
-`ewmap_smoke FILE` carga cualquier `.ewmap` y verifica estructura (geometría, chunks, entidades, links, agua, cuerdas, plataformas móviles, CRC, cache). Flags opcionales: `--name`, `--chunks`, `--ents`, `--links`, `--water`, `--ropes`, `--movers`, `--has TYPE` (se puede repetir). CI y ctest lo corren sobre `hello`, `slice`, `room` y `mover`.
+`ewmap_smoke FILE` carga cualquier `.ewmap` y verifica estructura (geometría, chunks, entidades, links, agua, cuerdas, plataformas móviles, CRC, cache). Flags opcionales: `--name`, `--chunks`, `--ents`, `--links`, `--water`, `--ropes`, `--movers`, `--backdrops`, `--has TYPE` (se puede repetir). CI y ctest lo corren sobre `hello`, `slice`, `room` y `mover`.
 
 ## Cargar un mapa (C++)
 ```cpp

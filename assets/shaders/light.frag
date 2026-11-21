@@ -98,15 +98,23 @@ vec3 hud_items(vec3 c, vec2 px) {
 }
 
 void main() {
-  vec3 albedo = texture(u_albedo, v_uv).rgb;
-  vec3 n = texture(u_normal, v_uv).xyz * 2.0 - 1.0;
+  vec4 A = texture(u_albedo, v_uv);
+  vec4 N = texture(u_normal, v_uv);
+  vec3 albedo = A.rgb;
+  vec3 n = N.xyz * 2.0 - 1.0;
+  float lr = A.a;          // 1 = escena, 0 = fondo (backdrop)
+  float emit = 1.0 - N.a;  // luz propia del fondo
   vec2 px = vec2(v_uv.x * 320.0, (1.0 - v_uv.y) * 180.0);
   vec2 lp = u_light + vec2(0.0, -10.0 + sin(u_time * 3.0));
   vec3 L = vec3((lp - px) * vec2(1.0, -1.0), 24.0);  // a espacio y-arriba de las normales
   float d = length(L);
   float att = 1.0 / (1.0 + 0.0008 * d * d);
   float diff = max(dot(n, normalize(L)), 0.0);
-  vec3 c = albedo * (vec3(0.12) + vec3(1.0, 0.85, 0.6) * diff * att * 2.6);
+  // Fondo: ambiente frío más alto (se lee la silueta de la sala) y la luz del player lo
+  // roza a medias, así queda detrás del primer plano. Escena: igual que antes.
+  vec3 amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.12), lr);
+  vec3 c = albedo * (amb + vec3(1.0, 0.85, 0.6) * diff * att * 2.6 * mix(0.45, 1.0, lr));
+  c += albedo * emit * 1.6;
 
   if (u_fade > 0.0) {
     float f = clamp(u_fade, 0.0, 1.0);

@@ -2,6 +2,8 @@
 #include "map/crc32.hpp"
 #include "map/ewmap_format.hpp"
 #include "map/autotile.hpp"
+#include "map/backdrop.hpp"
+#include <set>
 #include <cstring>
 #include <map>
 #include <sstream>
@@ -191,6 +193,30 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
       ropes.push_back({to_int(v, "x"), to_int(v, "y"), uint32_t(n), len});
     }
 
+  // Fondos por chunk (opcional): solo se escribe la sección si el YAML trae `backdrops`,
+  // así los mapas sin fondos quedan byte a byte iguales que antes.
+  std::vector<BackdropRecord> backdrops;
+  const bool has_backdrops = doc.lists.count("backdrops") > 0;
+  if (has_backdrops) {
+    std::set<std::pair<int, int>> seen;
+    for (auto& v : doc.lists.at("backdrops")) {
+      const int cx = to_int(v, "cx", -1), cy = to_int(v, "cy", 0);
+      if (cx < 0 || cy < 0 || cx >= w || cy >= h) { err = "backdrop cx/cy outside size_chunks"; return false; }
+      if (!seen.insert({cx, cy}).second) { err = "duplicate backdrop for chunk"; return false; }
+      const auto name = to_str(v, "theme");
+      const int theme = backdrop_from_name(name);
+      if (theme < 0) {
+        err = "unknown backdrop theme '" + name + "' (valid:";
+        for (auto n : kBackdropNames) err += " " + std::string(n);
+        err += ")";
+        return false;
+      }
+      const int seed = to_int(v, "seed", cx * 7 + cy * 13);
+      if (seed < 0 || seed > 65535) { err = "backdrop seed out of range [0, 65535]"; return false; }
+      backdrops.push_back({uint16_t(cx), uint16_t(cy), uint16_t(theme), uint16_t(seed)});
+    }
+  }
+
   std::vector<std::pair<SectionType, std::vector<std::byte>>> secs;
   secs.emplace_back(SectionType::TILE, tile.b);
   secs.emplace_back(SectionType::ENT, record_section(ents));
@@ -198,6 +224,7 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
   secs.emplace_back(SectionType::WATER, record_section(water));
   secs.emplace_back(SectionType::ROPE, record_section(ropes));
   secs.emplace_back(SectionType::MOVER, record_section(movers));
+  if (has_backdrops) secs.emplace_back(SectionType::BACKDROP, record_section(backdrops));
   {
     std::vector<std::byte> s(st.data.size());
     std::memcpy(s.data(), st.data.data(), s.size());

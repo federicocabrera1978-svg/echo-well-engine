@@ -470,6 +470,10 @@ int main(int argc, char** argv) {
     v.chunk_y_px = scene.nb_origin_y();
     v.tiles = scene.active_tiles().data();
     v.tiles_version = scene.chunk_version();
+    for (std::size_t i = 0; i < 9; ++i) {  // fondos del vecindario 3×3 (sección BACKDROP)
+      v.bg_theme[i] = scene.active_backdrops()[i].theme;
+      v.bg_seed[i] = scene.active_backdrops()[i].seed;
+    }
     push_entities(v, scene);
     push_movers(v, sim);
     for (int bi = 0; bi < sim.boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba

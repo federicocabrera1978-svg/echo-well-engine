@@ -1,0 +1,11 @@
+# Mínimo válido: 2 chunks, uno con fondo explícito (seed fija) y otro sin registro (cueva).
+name: backdrop_ok
+size_chunks: [2, 1]
+fill:
+  VIS: 0
+rects:
+  - {layer: COL, x: 0, y: 20, w: 80, h: 3, tile: 1}
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+backdrops:
+  - {cx: 1, cy: 0, theme: invertido, seed: 42}
