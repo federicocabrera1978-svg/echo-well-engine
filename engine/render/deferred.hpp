@@ -61,6 +61,9 @@ struct FrameView {
   // HUD de habilidades (light pass): bitmask kAbility* + destello 0..1 al desbloquear.
   int abilities = 0;
   float ability_flash = 0;
+  // Mini-mapa exploratorio (light pass): grilla de chunks, chunk activo y bitmask visitado.
+  int map_w = 0, map_h = 0, cur_cx = 0, cur_cy = 0;
+  uint32_t visited_mask = 0;
   // Plataformas móviles: rect (x, y, w, h) en px mundo + familia de atlas (1..15).
   int mover_count = 0;
   std::array<float, kMaxMovers * 4> mover_rect{};

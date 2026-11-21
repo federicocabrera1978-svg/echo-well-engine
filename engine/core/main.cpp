@@ -662,6 +662,9 @@ int main(int argc, char** argv) {
       st.deaths = sim->deaths();
       st.abilities = sim->abilities();
       st.has_next = !resolve_next_map().empty();
+      const auto mname = scene->map().string_at(1);
+      st.elapsed_sec = sim->elapsed_sec();
+      st.campaign_done = !st.has_next && ew::game::find_campaign_level(mname) != nullptr;
       end_screen.open(st);
       std::printf("echo_engine: ¡meta! camino completado  (R corto: checkpoint, R largo: inicio)\n");
       announced_goal = true;
@@ -733,6 +736,15 @@ int main(int argc, char** argv) {
     for (const auto& fb : sim->fireballs()) {
       push_marker(v, fb.x, fb.y, ew::game::Sim::kFireballRadius + 1.f, 0, 0.96f, 0.34f, 0.08f);
       push_marker(v, fb.x, fb.y, 1.8f, 0, 1.0f, 0.92f, 0.45f);
+    }
+    for (int ii = 0; ii < sim->imp_count(); ++ii) {  // diablillos menores (caen con pisotón o Dash)
+      const auto& im = sim->imp(ii);
+      if (im.defeated) continue;
+      const float bob = std::sin(float(now) * 8.f + float(ii)) * 0.6f;
+      push_marker(v, im.x, im.y - 5.f + bob, 4.5f, 1, 0.32f, 0.14f, 0.24f);
+      push_marker(v, im.x - 2.f, im.y - 9.5f + bob, 1.2f, 1, 0.55f, 0.28f, 0.32f);
+      push_marker(v, im.x + 2.f, im.y - 9.5f + bob, 1.2f, 1, 0.55f, 0.28f, 0.32f);
+      push_marker(v, im.x + float(im.dir) * 2.f, im.y - 5.5f + bob, 1.2f, 0, 1.0f, 0.42f, 0.15f);
     }
     push_hazards(v, *scene);
     if (sim->finished())
@@ -841,6 +853,11 @@ int main(int argc, char** argv) {
     }
     v.abilities = int(ab);
     v.ability_flash = float(sim->ability_flash()) / float(ew::game::Sim::kAbilityFlashFrames);
+    v.map_w = scene->map().header().map_w_chunks;
+    v.map_h = scene->map().header().map_h_chunks;
+    v.cur_cx = scene->chunk_x();
+    v.cur_cy = scene->chunk_y();
+    v.visited_mask = uint32_t(scene->visited_chunks() & 0xFFFFFFFFu);
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);

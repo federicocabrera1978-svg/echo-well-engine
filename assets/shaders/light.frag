@@ -28,6 +28,8 @@ uniform int u_items_total;  // 0 = sin HUD
 uniform float u_items_flash; // 0..1 destello al agarrar
 uniform int u_abilities;       // bitmask de habilidades desbloqueadas
 uniform float u_ability_flash; // 0..1 destello al desbloquear
+uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
+uniform int u_map_vis;         // bitmask de chunks visitados
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
 float glyph5(int bits, vec2 p) {
@@ -103,6 +105,7 @@ vec3 end_screen_page(vec3 c, vec2 px, float f) {
     float g = txt_glyph(2 + r, px - vec2(46.0, 51.0 + float(r) * 10.0), 1.0);
     pcol = mix(pcol, vec3(0.78, 0.80, 0.85), g);
   }
+  pcol = mix(pcol, vec3(0.96, 0.88, 0.52), txt_glyph(5, px - vec2(46.0, 79.0), 1.0));
   for (int r = 0; r < 4; ++r) {
     float g = txt_glyph(6 + r, px - vec2(58.0, 95.0 + float(r) * 13.0), 1.0);
     vec3 col = (r == u_end_sel) ? vec3(1.0, 0.95, 0.55) : vec3(0.75, 0.75, 0.80);
@@ -216,6 +219,37 @@ vec3 hud_abilities(vec3 c, vec2 px) {
   return c;
 }
 
+// Mini-mapa exploratorio en esquina superior derecha (y <= 14 px para mapas de hasta 2 filas).
+vec3 hud_minimap(vec3 c, vec2 px) {
+  int w = clamp(int(u_map_grid.x + 0.5), 1, 8), h = clamp(int(u_map_grid.y + 0.5), 1, 4);
+  int cur_x = int(floor(u_map_grid.z + 0.5)), cur_y = int(floor(u_map_grid.w + 0.5));
+  if (w * h <= 1) return c;
+  float bw = float(w) * 5.0 + 3.0, bh = float(h) * 4.0 + 3.0;
+  vec2 org = vec2(317.0 - bw, 3.0);
+  if (px.x >= org.x && px.x <= org.x + bw && px.y >= org.y && px.y <= org.y + bh) {
+    c = mix(c, vec3(0.03, 0.03, 0.05), 0.62);
+    vec2 rel = px - org - vec2(2.0, 2.0);
+    if (rel.x >= 0.0 && rel.y >= 0.0) {
+      int gx = int(floor(rel.x / 5.0)), gy = int(floor(rel.y / 4.0));
+      vec2 cell = rel - vec2(float(gx) * 5.0, float(gy) * 4.0);
+      if (gx < w && gy < h && cell.x < 4.0 && cell.y < 3.0) {
+        int bit = gy * w + gx;
+        bool vis = (bit < 31) && ((uint(u_map_vis) >> uint(bit)) & 1u) != 0u;
+        bool cur = (gx == cur_x && gy == cur_y);
+        if (cur) {
+          float p = 0.85 + 0.15 * sin(u_time * 5.0);
+          c = vec3(1.0, 0.88, 0.36) * p;
+        } else if (vis) {
+          c = vec3(0.32, 0.44, 0.56);
+        } else {
+          c = vec3(0.11, 0.12, 0.17);
+        }
+      }
+    }
+  }
+  return c;
+}
+
 void main() {
   vec4 A = texture(u_albedo, v_uv);
   vec4 N = texture(u_normal, v_uv);
@@ -266,6 +300,7 @@ void main() {
 
   if (u_items_total > 0) c = hud_items(c, px);
   if (u_abilities != 0) c = hud_abilities(c, px);
+  if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0) c = hud_minimap(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0) c = dialogue_box(c, px);
 
   if (u_pause > 0 && u_ctl > 0) {

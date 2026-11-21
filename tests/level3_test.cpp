@@ -176,8 +176,19 @@ int main(int argc, char** argv) {
   CHECK(wall_sec->active && !scene.door_blocks(39, 40));
   CHECK(scene.chunk_x() == 0 && scene.chunk_y() == 1);
 
-  // Activar sw_seal3 (abre door_wyrm_seal) y subir al altar de egg_wyrm_2 (2/2 huevos).
-  for (int i = 0; i < 120 && sim.player().pos.x > sw_seal->x + 2.f; ++i) sim.step({-1.f});
+  // Cruzar (0,1) derrotando a imp_santuario con Dash, activar sw_seal3 y subir al altar de egg_wyrm_2 (2/2 huevos).
+  for (int i = 0; i < 120 && (sim.imp(0).defeated ? std::fabs(sim.player().pos.x - sw_seal->x) > 4.f : sim.player().pos.x > sw_seal->x + 2.f); ++i) {
+    Input in;
+    in.move_x = (sim.player().pos.x > sw_seal->x) ? -1.f : 1.f;
+    if (!sim.imp(0).defeated && sim.dash_ready() &&
+        std::fabs(sim.imp(0).x - sim.player().pos.x) < 24.f)
+      in.dash = true;
+    sim.step(in);
+  }
+  for (int i = 0; i < 20 && !sim.player().grounded; ++i) sim.step({});
+  for (int i = 0; i < 40 && std::fabs(sim.player().pos.x - sw_seal->x) > 8.f; ++i)
+    sim.step({sim.player().pos.x < sw_seal->x ? 1.f : -1.f});
+  CHECK(sim.imp_count() == 1 && sim.imp(0).defeated);
   { Input act; act.interact = true; sim.step(act); }
   CHECK(sw_seal->active && door_seal->active);
   place(sim, 168.f, 340.f);

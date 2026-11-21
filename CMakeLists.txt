@@ -116,9 +116,9 @@ add_test(NAME ewmap_load_level2
 set_tests_properties(ewmap_load_level2 PROPERTIES DEPENDS ewmapc_level2)
 add_test(NAME ewmap_load_level3
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level3.ewmap
-          --name level3 --chunks 6 --ents 21 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4
+          --name level3 --chunks 6 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4
           --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
-          --has mover --has gravity_flip --has boss_dragon --has checkpoint --has goal --has npc --has lore)
+          --has mover --has gravity_flip --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level3 PROPERTIES DEPENDS ewmapc_level3)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
@@ -249,6 +249,10 @@ add_executable(level3_test tests/level3_test.cpp)
 target_link_libraries(level3_test PRIVATE echo_game)
 add_dependencies(level3_test ew_maps)
 add_test(NAME level3_path COMMAND level3_test ${EW_LEVEL3_MAP} ${EW_LEVEL2_MAP})
+add_executable(stage9_test tests/stage9_test.cpp)
+target_link_libraries(stage9_test PRIVATE echo_game)
+add_dependencies(stage9_test ew_maps)
+add_test(NAME minimap_imps_victory COMMAND stage9_test ${EW_SLICE_MAP} ${EW_LEVEL3_MAP})
 add_executable(backdrop_test tests/backdrop_test.cpp)
 target_link_libraries(backdrop_test PRIVATE echo_game)
 add_dependencies(backdrop_test ew_maps)

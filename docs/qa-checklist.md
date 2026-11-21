@@ -116,8 +116,8 @@ en verde al tomarlo.
   5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá `door_hub_gallery` hacia `(2,0)` (gravedad invertida por el techo), rompé el muro agrietado **`wall_guardian`** embistiendo con **Dash** (`E`/`X`/`K`/`Shift der.`) al entrar a `(3,0)` y vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta (`HABILIDADES: DOBLE SALTO + DASH`), habilitando **SIGUIENTE NIVEL** hacia `level3`.
 - [ ] **Nivel 3 — La Guarida del Wyrm (`level3`, 3×2 salas finales):**
   1. En `(0,0)`, recogé o conservá Doble Salto + Dash, rompé `wall_entry` embistiendo y saltá sobre el foso hacia `(1,0)`.
-  2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3` y rompé `wall_secret3` hacia `(0,1)` para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
-  3. Subí de vuelta a `(1,0)`, entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y alcanzar la meta final.
+  2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3`, rompé `wall_secret3` hacia `(0,1)`, derrotá al diablillo `imp_santuario` embistiendo con Dash o con pisotón para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
+  3. Subí de vuelta a `(1,0)`, observando en el **mini-mapa** arriba a la derecha cómo se ilumina cada sala visitada; entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y ver la pantalla de victoria final (**`VICTORIA: REINO DESPIERTO`** con tiempo y rango **S/A/B**).
 
 ## 4. Guardar partida
 

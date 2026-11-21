@@ -103,7 +103,8 @@ entities:
   - {name: flip_up3,       type: gravity_flip,        x: 496, y: 336}
   - {name: flip_down3,     type: gravity_flip,        x: 344, y: 212}
   - {name: wall_secret3,   type: break_wall,          x: 312, y: 320}
-  - {name: ck_santuario3,  type: checkpoint,          x: 272, y: 336}
+  - {name: ck_santuario3,  type: checkpoint,          x: 288, y: 336}
+  - {name: imp_santuario,  type: imp,                 x: 244, y: 344}
   - {name: sw_seal3,       type: switch,              x: 224, y: 336}
   - {name: lore_wyrm,      type: lore,                x: 184, y: 336}
   - {name: egg_wyrm_2,     type: collectible,         x: 88,  y: 272}

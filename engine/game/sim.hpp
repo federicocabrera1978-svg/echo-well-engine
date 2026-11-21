@@ -93,6 +93,9 @@ class Sim {
   static constexpr float kFireballRadius = 3.f;
   static constexpr float kFireballSpeed = 88.f;
   static constexpr float kFireballLife = 0.90f;
+  // Enemigo menor (type "imp"): patrulla terrestre, cae con pisotón o embestida (Dash).
+  static constexpr float kImpW = 10.f, kImpH = 10.f;
+  static constexpr float kImpRange = 32.f, kImpSpeed = 34.f;
 
   // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
@@ -170,9 +173,18 @@ class Sim {
   struct Fireball {
     float x = 0, y = 0, vx = 0, vy = 0, life = 0;
   };
+  struct Imp {
+    float x = 0, y = 0, home_x = 0, home_y = 0;
+    int dir = 1;
+    bool defeated = false;
+    std::size_t ent = 0;
+  };
   int boss_count() const { return int(bosses_.size()); }
   const Boss& boss(int i) const { return bosses_[std::size_t(i)]; }
   const std::vector<Fireball>& fireballs() const { return fireballs_; }
+  int imp_count() const { return int(imps_.size()); }
+  const Imp& imp(int i) const { return imps_[std::size_t(i)]; }
+  float elapsed_sec() const { return elapsed_sec_; }
   bool bosses_defeated() const;  // true si no hay boss vivo
   // Índice de la plataforma que está cargando al player, o -1.
   int ridden() const { return ridden_; }
@@ -269,8 +281,13 @@ class Sim {
   int anim_ticks_ = 0;
   int air_ticks_ = 0;
   int pending_dialog_ = -1;
+  float elapsed_sec_ = 0.f;
   std::vector<Boss> bosses_;
   std::vector<Fireball> fireballs_;
+  std::vector<Imp> imps_;
+  void reset_imps();
+  void advance_imps();
+  void collide_imps();
   void break_walls_on_dash();
   void update_player_anim(const Input& in);
   void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);
