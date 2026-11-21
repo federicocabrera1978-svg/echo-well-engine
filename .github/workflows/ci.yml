@@ -35,6 +35,8 @@ jobs:
           ./build/ewmap_smoke assets/maps/bin/boss.ewmap --name boss --chunks 1 --ents 5 --links 1 --has player_spawn --has boss --has door --has goal --has checkpoint
           ./build/ewmapc --crc assets/maps/src/ability.yaml -o assets/maps/bin/ability.ewmap
           ./build/ewmap_smoke assets/maps/bin/ability.ewmap --name ability --chunks 1 --ents 4 --ropes 1 --backdrops 1 --has player_spawn --has ability_double_jump --has checkpoint --has goal
+          ./build/ewmapc --crc assets/maps/src/level2.yaml -o assets/maps/bin/level2.ewmap
+          ./build/ewmap_smoke assets/maps/bin/level2.ewmap --name level2 --chunks 8 --ents 18 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --has player_spawn --has ability_double_jump --has collectible --has switch --has door --has mover --has gravity_flip --has boss --has checkpoint --has goal
 
   sanitizers:
     runs-on: ubuntu-latest
@@ -142,7 +144,7 @@ jobs:
           ls -la /tmp/ew-pack/echo-well /tmp/ew-pack/echo-well/assets/atlas /tmp/ew-pack/echo-well/assets/maps/bin /tmp/ew-pack/echo-well/assets/shaders
           test -f /tmp/ew-pack/echo-well/echo_engine
           test -f /tmp/ew-pack/echo-well/assets/atlas/tiles.png
-          for m in slice hello room mover gravity boss ability; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
+          for m in slice hello room mover gravity boss ability level2; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
           test -f /tmp/ew-pack/echo-well/docs/qa-checklist.md
           test -f /tmp/ew-pack/echo-well/DIST.txt
           test -f /tmp/ew-pack/echo-well/assets/shaders/light.frag
@@ -185,7 +187,7 @@ jobs:
           Get-ChildItem -Recurse dist/echo-well | Select-Object FullName
           if (-not (Test-Path dist/echo-well/echo_engine.exe)) { throw "falta echo_engine.exe" }
           if (-not (Test-Path dist/echo-well/assets/atlas/tiles.png)) { throw "falta tiles.png" }
-          foreach ($m in 'slice','hello','room','mover','gravity','boss','ability') {
+          foreach ($m in 'slice','hello','room','mover','gravity','boss','ability','level2') {
             if (-not (Test-Path "dist/echo-well/assets/maps/bin/$m.ewmap")) { throw "falta $m.ewmap" }
           }
           if (-not (Test-Path dist/echo-well/docs/qa-checklist.md)) { throw "falta docs/qa-checklist.md" }

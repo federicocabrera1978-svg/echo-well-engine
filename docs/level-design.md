@@ -307,6 +307,12 @@ bloques de `hello.yaml` / `slice.yaml`.
   `slice_test` la pelea con `solve_room6`.
 - **El secreto es opcional.** Un `collectible` se esconde al costado o “para atrás”
   (agua baja, puertas en la pileta). El HUD n/total informa; no bloquees el `goal`.
+- **Estructura metroidvania y backtracking (`level2.yaml`).** En mapas 2D de varias plantas
+  (como `level2`, 4×2 chunks), mostrá desde el inicio zonas altas o puertas cerradas que el
+  jugador todavía no puede alcanzar (un salto simple sube ~44 px; con **Doble Salto** llega a
+  ~82 px, así que una repisa a 56–64 px sobre el piso sirve como candado natural de habilidad).
+  Un pozo vertical con agua abajo permite bajar sin daño de caída y exige Doble Salto por
+  escalones intermedios para volver a subir (backtracking vertical).
 - **Diseñá para la cámara.** Los seams son cada 320 px. Un salto que empieza en un chunk
   y termina en el siguiente se siente distinto porque la cámara desliza. Dejá margen en
   los bordes (paredes, cornisas) para que el player no quede cortado.
