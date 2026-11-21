@@ -511,7 +511,7 @@ void Sim::step(const Input& in) {
       dash_cd_ = kDashCooldownFrames;
       dash_ready_ = false;
       dash_flash_ = kDashFlashFrames;
-      sfx_ |= 1u;
+      sfx_ |= 256u;  // kSfxDash
     }
 
     if (dash_ticks_ > 0) {
@@ -953,7 +953,7 @@ void Sim::break_walls_on_dash() {
       wall_break_flash_ = kWallBreakFlashFrames;
       wall_break_x_ = ents[i].x + wall_w * 0.5f;
       wall_break_y_ = ents[i].y + wall_h * 0.5f;
-      sfx_ |= 16u;
+      sfx_ |= 512u;  // kSfxBreak
     }
   }
 }
@@ -988,7 +988,7 @@ void Sim::collide_bosses() {
     if (from_above) {
       ++b.hits;
       b.hurt = kBossHurtSec;
-      sfx_ |= 16u;  // kSfxSwitch (golpe)
+      sfx_ |= 16u | 1024u;  // kSfxSwitch | kSfxHit (golpe)
       // Rebote: fuera de la caja y con impulso contra su gravedad.
       if (held_) release();
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
@@ -1032,7 +1032,7 @@ void Sim::collide_imps() {
     const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 4.f) : (vy < 0.f && pl.pos.y >= bot - 4.f);
     if (dash_ticks_ > 0 || from_above) {
       im.defeated = true;
-      sfx_ |= 16u;
+      sfx_ |= 1024u;  // kSfxHit
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
       if (has_ability(kAbilityDash)) dash_ready_ = true;
       if (dash_ticks_ == 0 && from_above) {
