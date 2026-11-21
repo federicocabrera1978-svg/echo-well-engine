@@ -20,6 +20,7 @@ inline constexpr uint32_t kLayerCount = 4;
 
 enum class SectionType : uint32_t {
   TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6, ROPE = 7, MOVER = 8, BACKDROP = 9,
+  DIALOG = 10,
 };
 
 enum HeaderFlags : uint32_t {
@@ -95,6 +96,22 @@ struct BackdropRecord {         // 8 bytes: fondo (backdrop) de un chunk / panta
   uint16_t theme;               // ew::map::BackdropTheme (ver map/backdrop.hpp); desconocido = cueva
   uint16_t seed;                // variación del dibujo procedural (mismo tema, otra disposición)
 };
+
+enum class DialogTrigger : uint16_t {
+  Interact  = 0,  // E / X / ↓ cerca de la entidad (npc / lore)
+  Pickup    = 1,  // automático al recoger la entidad (collectible / ability_*)
+  Proximity = 2,  // automático al acercarse por primera vez
+};
+inline constexpr uint16_t kDialogTriggerCount = 3;
+inline constexpr uint16_t kDialogFlagOnce = 1u << 0;
+
+struct DialogRecord {           // 16 bytes: diálogo asociado a una entidad
+  uint32_t entity;              // índice en ENT
+  uint32_t speaker_str;         // offset en STRTAB (hablante / título)
+  uint32_t text_str;            // offset en STRTAB (páginas separadas por '|', líneas por '/')
+  uint16_t trigger;             // DialogTrigger
+  uint16_t flags;               // kDialogFlagOnce, etc.
+};
 #pragma pack(pop)
 
 static_assert(sizeof(EwMapHeader) == 40);
@@ -106,6 +123,7 @@ static_assert(sizeof(WaterRecord) == 24);
 static_assert(sizeof(RopeRecord) == 16);
 static_assert(sizeof(MoverRecord) == 88);
 static_assert(sizeof(BackdropRecord) == 8);
+static_assert(sizeof(DialogRecord) == 16);
 
 inline constexpr std::size_t kChunkBytes =
     sizeof(ChunkHeader) + kLayerCount * kTilesPerChunk * sizeof(uint16_t); // 7368

@@ -73,8 +73,8 @@ add_test(NAME ewmap_load_hello
           --has player_spawn --has switch --has door)
 add_test(NAME ewmap_load_slice
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
-          --name slice --chunks 8 --ents 21 --links 4 --water 2 --ropes 2 --movers 3 --has mover --has gravity_flip --has boss --has checkpoint --has flood_switch --has goal --has collectible
-          --has player_spawn --has switch --has door --has goal --backdrops 8)
+          --name slice --chunks 8 --ents 22 --links 4 --water 2 --ropes 2 --movers 3 --has mover --has gravity_flip --has boss --has checkpoint --has flood_switch --has goal --has collectible
+          --has player_spawn --has switch --has door --has goal --has npc --backdrops 8 --dialogs 2)
 add_test(NAME ewmap_load_room
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap
           --name room --chunks 1 --ents 2 --has player_spawn --has goal)
@@ -99,9 +99,9 @@ add_test(NAME ewmap_load_ability
 set_tests_properties(ewmap_load_ability PROPERTIES DEPENDS ewmapc_ability)
 add_test(NAME ewmap_load_level2
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap
-          --name level2 --chunks 8 --ents 18 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8
+          --name level2 --chunks 8 --ents 20 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 5
           --has player_spawn --has ability_double_jump --has collectible --has switch --has door
-          --has mover --has gravity_flip --has boss --has checkpoint --has goal)
+          --has mover --has gravity_flip --has boss --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level2 PROPERTIES DEPENDS ewmapc_level2)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
@@ -281,6 +281,12 @@ add_executable(end_screen_test tests/end_screen_test.cpp)
 target_link_libraries(end_screen_test PRIVATE echo_game)
 add_dependencies(end_screen_test ew_maps)
 add_test(NAME end_screen COMMAND end_screen_test ${EW_SLICE_MAP} ${EW_ABILITY_MAP})
+
+add_executable(dialogue_test tests/dialogue_test.cpp tools/ewmapc/writer.cpp)
+target_include_directories(dialogue_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tools/ewmapc)
+target_link_libraries(dialogue_test PRIVATE echo_game ew_yaml_lite)
+add_dependencies(dialogue_test ew_maps)
+add_test(NAME dialogue_lore COMMAND dialogue_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_HELLO_MAP})
 
 add_executable(paths_test tests/paths_test.cpp)
 target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)

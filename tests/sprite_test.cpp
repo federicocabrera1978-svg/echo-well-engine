@@ -57,6 +57,8 @@ static bool verify_atlas_cells(const std::vector<uint8_t>& px) {
     if (!check_group(row, 0, 4)) return false;
   if (!check_group(int(SpriteRow::Items), 0, 4)) return false;  // huevo de dragón
   if (!check_group(int(SpriteRow::Items), 4, 8)) return false;  // reliquia alada
+  if (!check_group(int(SpriteRow::Npc), 0, 4)) return false;    // NPC Vigía / Cronista
+  if (!check_group(int(SpriteRow::Npc), 4, 8)) return false;    // Estela dracónica
   return true;
 }
 

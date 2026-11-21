@@ -131,6 +131,7 @@ rects:
 
 entities:
   - {name: spawn,        type: player_spawn, x: 32,   y: 152}
+  - {name: npc_vigia,    type: npc,          x: 64,   y: 152}
   - {name: switch_start, type: switch,       x: 96,   y: 152}
   - {name: door_start,   type: door,         x: 200,  y: 136}
   - {name: ck_ledge,     type: checkpoint,   x: 536,  y: 56}
@@ -184,3 +185,7 @@ water:
   - {x: 232, y: 136, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
   # pileta de inundación (tiles 101–140, x=808–1128)
   - {x: 808, y: 136, w: 320, h: 24, stiffness: 0.02, damping: 0.04}
+
+dialogs:
+  - {entity: npc_vigia, trigger: interact, speaker: "VIGIA DEL FAROL", text: "BAJO EL POZO DUERMEN HUEVOS/QUE LOS HOMBRES CREEN PIEDRA.|PERO SU CASCARA LATE TIBIA:/GUARDAN CRIAS DE DRAGON."}
+  - {entity: egg_well,  trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE", text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE LA LUZ DE TU FAROL./NO SON JOYAS: SON DRAGONES."}

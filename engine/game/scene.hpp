@@ -1,6 +1,7 @@
 // Scene: estado de juego sin GL. Envuelve MapLoader + ChunkCache y expone
 // colisión por tiles (capa COL), entidades, cámara y chunk activo.
 #pragma once
+#include "game/dialogue.hpp"
 #include "map/backdrop.hpp"
 #include "map/chunk_cache.hpp"
 #include "map/map_loader.hpp"
@@ -40,6 +41,8 @@ class Scene {
   const std::vector<Entity>& entities() const { return entities_; }
   // Acceso de escritura (p. ej. cargar partida: puertas abiertas sin animación).
   std::vector<Entity>& entities_mut() { doors_dirty_ = true; return entities_; }
+  const std::vector<Dialog>& dialogs() const { return dialogs_; }
+  std::vector<Dialog>& dialogs_mut() { return dialogs_; }
   // Switch → puerta (sección LINK). Toggle del switch más cercano dentro de kSwitchReach
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);
@@ -103,6 +106,7 @@ class Scene {
   ew::map::MapLoader map_;
   std::unique_ptr<ew::map::ChunkCache> cache_;
   std::vector<Entity> entities_;
+  std::vector<Dialog> dialogs_;
   std::vector<std::pair<uint32_t, uint32_t>> links_;
   int w_px_ = 0, h_px_ = 0;
   float cam_x_ = 0, cam_y_ = 0, tgt_x_ = 0, tgt_y_ = 0;

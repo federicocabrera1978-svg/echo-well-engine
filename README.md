@@ -142,7 +142,7 @@ Cada pantalla tiene un fondo procedural propio, estilo Animal Well, dibujado en 
 ## Formato `.ewmap` (resumen)
 - Magic `EWMP`, little-endian, secciones alineadas a 8 bytes, versión 1.0.
 - Tile 8×8 px, chunk 40×23 tiles; capas `COL`, `VIS`, `FG`, `META`.
-- Secciones: `TILE=1`, `ENT=2`, `LINK=3`, `WATER=4`, `STRTAB=5`, `CRC=6`, `ROPE=7`, `MOVER=8`, `BACKDROP=9` (las tres últimas, opcionales).
+- Secciones: `TILE=1`, `ENT=2`, `LINK=3`, `WATER=4`, `STRTAB=5`, `CRC=6`, `ROPE=7`, `MOVER=8`, `BACKDROP=9`, `DIALOG=10` (`ROPE`/`MOVER`/`BACKDROP`/`DIALOG` opcionales; los mapas anteriores siguen cargando sin cambios).
 - Chunks raw en v1 (flag `compressed_chunks` reservado). CRC opcional; en CI siempre activo.
 
 Detalle completo en [docs/ewmap.md](docs/ewmap.md).
@@ -190,7 +190,8 @@ carga `tests/fixtures/atlas_128.png` y el default del repo, comprueba el fallbac
 `echo_engine` carga **`assets/atlas/sprites.png`** (128×128 RGBA8, 8×8 celdas de 16×16 px; generado por [`tools/gen_sprites.py`](tools/gen_sprites.py) y auditable con `--check`; override por `--sprites FILE.png` o env `EW_SPRITES`).
 - **Protagonista (Explorador del Farol, 12×12 px en celda 16×16):** mantiene la colisión física de radio `4 px`, con animaciones deterministas por estado en `Sim::player_anim()` (`Idle`, `Walk`, `Jump`, `DoubleJump` con alas dracónicas cian, `Climb`, `Swim`), giro horizontal (`player_facing()`) e inversión vertical en gravedad invertida. El canal A guarda el relieve/altura para normales 3D en el G-buffer (`A > 240` aporta auto-emisión suave en ojo, farol y núcleo).
 - **Objetos animados (fila 6):** huevo de dragón con escamas y fisuras incandescentes (`collectible`, cols 0..3) y reliquia alada de Doble Salto (`ability_double_jump`, cols 4..7).
-- Módulo sin GL en `engine/render/sprite_atlas.{hpp,cpp}` con respaldo procedural idéntico al loader de tiles (`sprite_test`, `protagonist_sprite` y `sprites_gen_check` en ctest).
+- **Atlas de sprites (`assets/atlas/sprites.png`):** protagonist *Explorador del Farol* (filas `0..5`), huevos de dragón escamados + reliquia alada (fila `6`), y vigías/cronistas `npc` + estelas dracónicas `lore` (fila `7`).
+- **Diálogos e historia de los huevos de dragón (`engine/game/dialogue.hpp`, sección `.ewmap` `DIALOG = 10`):** al conversar con `npc`/`lore` (`E/X/↓`) o al recoger huevos y reliquias (`trigger: pickup`), se abre una caja de diálogo paginada (`|`, `/`) en `light.frag` revelando el origen de los huevos en `slice` y `level2` (testeado sin GL en `dialogue_test`).
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm --nosound`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 

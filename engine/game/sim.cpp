@@ -43,6 +43,7 @@ void Sim::build() {
   anim_frame_ = 0;
   anim_ticks_ = 0;
   air_ticks_ = 0;
+  pending_dialog_ = -1;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -220,6 +221,8 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
   abilities_ = ab;
   for (auto& b : bosses_)
     if (b.ent < active.size() && active[b.ent]) b.defeated = true;
+  for (auto& d : scene_.dialogs_mut())
+    if (d.once && d.entity < active.size() && active[d.entity]) d.triggered = true;
   ckpt_ = (checkpoint >= 0 && std::size_t(checkpoint) < ents.size() && ents[std::size_t(checkpoint)].type == "checkpoint")
               ? checkpoint : -1;
   ckpt_flip_ = ckpt_ >= 0 && flipped;
@@ -265,6 +268,7 @@ void Sim::respawn() {
   anim_frame_ = 0;
   anim_ticks_ = 0;
   air_ticks_ = 0;
+  pending_dialog_ = -1;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
@@ -395,7 +399,18 @@ void Sim::step(const Input& in) {
       }
     }
     pl.set_velocity(v);
-    if (in.interact && scene_.interact(pl.pos.x, pl.pos.y) >= 0) sfx_ |= 16u;  // kSfxSwitch
+    if (in.interact) {
+      if (scene_.interact(pl.pos.x, pl.pos.y) >= 0) {
+        sfx_ |= 16u;  // kSfxSwitch
+      } else if (const int dlg = nearby_interact_dialog(); dlg >= 0) {
+        auto& d = scene_.dialogs_mut()[std::size_t(dlg)];
+        d.triggered = true;
+        const auto& ent = scene_.entities()[d.entity];
+        if (ent.type == "npc" || ent.type == "lore") scene_.set_active(d.entity, true);
+        pending_dialog_ = dlg;
+        sfx_ |= 16u;
+      }
+    }
   }
   apply_flood();
   for (auto& w : water_) { w.interact(world_); w.step(); }
@@ -430,6 +445,7 @@ void Sim::step(const Input& in) {
   check_checkpoints();
   check_collectibles();
   check_abilities();
+  check_dialogs_proximity();
   collide_bosses();
   check_hazards();
   check_goal();
@@ -496,6 +512,7 @@ void Sim::check_collectibles() {
     scene_.set_active(i, true);  // agarrado: persiste hasta reset()
     pickup_flash_ = kPickupFlashFrames;
     sfx_ |= 64u;  // kSfxPickup
+    trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
   }
 }
 
@@ -512,6 +529,56 @@ void Sim::check_abilities() {
     air_jumps_ = 1;
     ability_flash_ = kAbilityFlashFrames;
     sfx_ |= 128u;  // kSfxAbility
+    trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
+  }
+}
+
+void Sim::trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig) {
+  auto& dlgs = scene_.dialogs_mut();
+  for (std::size_t k = 0; k < dlgs.size(); ++k) {
+    auto& d = dlgs[k];
+    if (d.entity != entity_idx || d.trigger != trig) continue;
+    if (d.once && d.triggered) continue;
+    d.triggered = true;
+    pending_dialog_ = int(k);
+    return;
+  }
+}
+
+int Sim::nearby_interact_dialog() const {
+  const auto& p = player().pos;
+  const auto& ents = scene_.entities();
+  const auto& dlgs = scene_.dialogs();
+  int best = -1;
+  float best_d2 = kDialogReach * kDialogReach;
+  for (std::size_t k = 0; k < dlgs.size(); ++k) {
+    const auto& d = dlgs[k];
+    if (d.trigger != ew::map::DialogTrigger::Interact) continue;
+    if (d.once && d.triggered) continue;
+    if (d.entity >= ents.size()) continue;
+    const auto& e = ents[d.entity];
+    const float dx = e.x - p.x, dy = e.y - p.y, d2 = dx * dx + dy * dy;
+    if (d2 <= best_d2) { best_d2 = d2; best = int(k); }
+  }
+  return best;
+}
+
+void Sim::check_dialogs_proximity() {
+  const auto& p = player().pos;
+  const auto& ents = scene_.entities();
+  auto& dlgs = scene_.dialogs_mut();
+  const float r2 = kDialogReach * kDialogReach;
+  for (std::size_t k = 0; k < dlgs.size(); ++k) {
+    auto& d = dlgs[k];
+    if (d.trigger != ew::map::DialogTrigger::Proximity || d.triggered) continue;
+    if (d.entity >= ents.size()) continue;
+    const auto& e = ents[d.entity];
+    const float dx = e.x - p.x, dy = e.y - p.y;
+    if (dx * dx + dy * dy <= r2) {
+      d.triggered = true;
+      pending_dialog_ = int(k);
+      return;
+    }
   }
 }
 

@@ -125,6 +125,53 @@ void draw_relic_frame(std::vector<uint8_t>& px, int col) {
   put_px(px, col, row, 8 - (col & 1), 8, (col & 2) ? kCore : kGem);
 }
 
+void draw_npc_frame(std::vector<uint8_t>& px, int col) {
+  constexpr Color kOutline{22, 16, 24, 145};
+  constexpr Color kRobeDark{86, 44, 40, 185};
+  constexpr Color kRobeMid{128, 66, 52, 212};
+  constexpr Color kGold{214, 162, 74, 232};
+  constexpr Color kBeard{212, 206, 194, 215};
+  constexpr Color kEye{255, 224, 130, 250};
+  constexpr Color kStaff{102, 74, 48, 200};
+  constexpr Color kOrb{255, 196, 82, 250};
+  constexpr Color kOrbHi{255, 246, 188, 255};
+  constexpr int row = int(SpriteRow::Npc);
+
+  const int bob = (col == 2) ? 1 : 0;
+  fill_rect(px, col, row, 4, 2 + bob, 5, 4, kOutline);
+  fill_rect(px, col, row, 5, 3 + bob, 3, 2, kRobeMid);
+  put_px(px, col, row, 5, 5 + bob, kEye);
+  fill_rect(px, col, row, 5, 5 + bob, 3, 2, kBeard);
+  put_px(px, col, row, 5, 5 + bob, kEye);
+  fill_rect(px, col, row, 4, 6 + bob, 5, 7 - bob, (col & 1) ? kRobeMid : kRobeDark);
+  fill_rect(px, col, row, 4, 7 + bob, 5, 1, kGold);
+  // Báculo del vigía a la izquierda (mirando hacia el jugador que entra desde la izq.)
+  fill_rect(px, col, row, 2, 5, 1, 9, kStaff);
+  put_px(px, col, row, 2, 4, (col & 1) ? kOrbHi : kOrb);
+  put_px(px, col, row, 2, 3, (col & 2) ? kOrbHi : kOrb);
+}
+
+void draw_lore_frame(std::vector<uint8_t>& px, int col) {
+  constexpr Color kOutline{18, 20, 30, 145};
+  constexpr Color kStoneDark{52, 56, 74, 188};
+  constexpr Color kStoneMid{78, 84, 108, 218};
+  constexpr Color kStoneHi{112, 118, 148, 232};
+  constexpr Color kRune{255, 174, 62, 248};
+  constexpr Color kRuneHi{255, 236, 152, 255};
+  constexpr int row = int(SpriteRow::Npc);
+
+  fill_rect(px, col, row, 4, 2, 8, 12, kOutline);
+  fill_rect(px, col, row, 5, 3, 6, 10, kStoneDark);
+  fill_rect(px, col, row, 5, 3, 5, 9, kStoneMid);
+  fill_rect(px, col, row, 5, 2, 6, 1, kStoneHi);
+  fill_rect(px, col, row, 3, 12, 10, 2, kStoneDark);
+  // Runas dracónicas animadas
+  put_px(px, col, row, 7, 5, (col & 1) ? kRuneHi : kRune);
+  put_px(px, col, row, 8, 6, (col & 2) ? kRuneHi : kRune);
+  put_px(px, col, row, 7, 8, (col == 2 || col == 3) ? kRuneHi : kRune);
+  put_px(px, col, row, 8, 9, kRune);
+}
+
 AtlasLoad procedural() { return {build_sprite_atlas(), AtlasSource::Procedural}; }
 
 AtlasLoad from_rgba(const uint8_t* img, int w, int h) {
@@ -143,6 +190,8 @@ std::vector<uint8_t> build_sprite_atlas() {
       draw_hero_pose(px, col, row);
   for (int col = 0; col < 4; ++col) draw_egg_frame(px, col);
   for (int col = 4; col < 8; ++col) draw_relic_frame(px, col);
+  for (int col = 0; col < 4; ++col) draw_npc_frame(px, col);
+  for (int col = 4; col < 8; ++col) draw_lore_frame(px, col);
   return px;
 }
 

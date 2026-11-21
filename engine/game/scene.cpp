@@ -22,6 +22,15 @@ bool Scene::load(const std::filesystem::path& path, std::string& err) {
   links_.clear();
   for (const auto& l : map_.links())
     if (l.from_entity < entities_.size() && l.to_entity < entities_.size()) links_.emplace_back(l.from_entity, l.to_entity);
+  dialogs_.clear();
+  for (const auto& d : map_.dialogs()) {
+    if (d.entity >= entities_.size() || d.trigger >= kDialogTriggerCount) continue;
+    const auto sp = map_.string_at(d.speaker_str);
+    const auto tx = map_.string_at(d.text_str);
+    if (sp.empty() || tx.empty()) continue;
+    dialogs_.push_back({std::size_t(d.entity), std::string(sp), std::string(tx), DialogTrigger(d.trigger),
+                        (d.flags & kDialogFlagOnce) != 0, false});
+  }
   cx_ = cy_ = -1;
   if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y); else follow(0, 0);
   doors_dirty_ = true;
@@ -78,6 +87,7 @@ void Scene::tick(float dt) {
 
 void Scene::reset_state() {
   for (auto& e : entities_) { e.active = false; e.anim = 0; }
+  for (auto& d : dialogs_) d.triggered = false;
   doors_dirty_ = true;
   off_x_ = off_y_ = 0;
   cx_ = cy_ = -1;

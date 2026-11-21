@@ -13,6 +13,7 @@
 #include <string>
 
 #include "game/campaign.hpp"
+#include "game/dialogue.hpp"
 #include "game/end_screen.hpp"
 #include "game/sim.hpp"
 #include "core/paths.hpp"
@@ -123,6 +124,12 @@ void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
       const float d = e.active ? -1.f : 1.f;
       push_marker(v, e.x, e.y, 5, 0, 0.6f, 0.35f, 1.0f);
       push_marker(v, e.x, e.y + 3.f * d, 2, 0, 0.95f, 0.9f, 1.0f);
+    } else if (e.type == "npc") {  // Vigía / Cronista del Farol (fila 7, cols 0..3)
+      push_sprite(v, std::round(e.x), std::round(e.y - 2.f), int(time_s * 4.f) & 3, 7, false, false, 1.f, 1.f, 1.f,
+                  0.06f);
+    } else if (e.type == "lore") {  // Estela dracónica con runas incandescentes (fila 7, cols 4..7)
+      push_sprite(v, std::round(e.x), std::round(e.y - 2.f), 4 + (int(time_s * 4.f) & 3), 7, false, false, 1.f, 1.f,
+                  1.f, 0.12f);
     } else if (e.type == "checkpoint") {  // totem: cian inactivo, verde si es el actual
       if (e.active) {
         push_marker(v, e.x, e.y, 5, 1, 0.3f, 1.0f, 0.55f);
@@ -251,6 +258,7 @@ int main(int argc, char** argv) {
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
   ew::game::EndScreen end_screen;
+  ew::game::DialogueBox dialogue;
   int last_items = 0;
   uint32_t last_abilities = 0;
   uint32_t pad_prev = 0;
@@ -278,6 +286,7 @@ int main(int argc, char** argv) {
     renderer.invalidate_tiles();
     announced_goal = false;
     end_screen.close();
+    dialogue.close();
     last_items = sim->collected();
     last_abilities = sim->abilities();
     glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
@@ -472,6 +481,12 @@ int main(int argc, char** argv) {
           ei.down = nav_dn;
           ei.confirm = nav_ok;
         }
+      } else if (dialogue.open()) {
+        if (nav_toggle) {
+          dialogue.close();
+        } else if (nav_ok || in.interact) {
+          dialogue.advance();
+        }
       } else {
         mi.toggle = nav_toggle;
       }
@@ -519,6 +534,7 @@ int main(int argc, char** argv) {
         last_items = sim->collected();  // el huevo cargado no se anuncia como recién agarrado
         last_abilities = sim->abilities();
         end_screen.close();
+        dialogue.close();
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim->checkpoint_index(),
                     sim->collected(), sim->collectible_total());
       } else {
@@ -536,6 +552,7 @@ int main(int argc, char** argv) {
     if (eact == ew::game::EndAction::RestartLevel) {
       sim->reset();
       end_screen.close();
+      dialogue.close();
       announced_goal = false;
       glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
       std::printf("echo_engine: reinicio\n");
@@ -556,13 +573,20 @@ int main(int argc, char** argv) {
 
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
     const double now = glfwGetTime();
-    if (menu.open()) { acc = 0; last = now; }  // congelado: no acumular al reanudar
+    if (menu.open() || dialogue.open()) { acc = 0; last = now; }  // congelado: no acumular al reanudar
     else acc += max_frames ? ew::game::Sim::kDt : now - last;
     last = now;
     const bool did_restart = in.restart || in.restart_full || mact == ew::game::MenuAction::Restart ||
                              mact == ew::game::MenuAction::Continue || eact == ew::game::EndAction::RestartLevel;
-    for (int n = 0; !menu.open() && acc >= ew::game::Sim::kDt && n < 5; ++n, acc -= ew::game::Sim::kDt) {
+    for (int n = 0; !menu.open() && !dialogue.open() && acc >= ew::game::Sim::kDt && n < 5;
+         ++n, acc -= ew::game::Sim::kDt) {
       sim->step(in);
+      if (!demo) {
+        if (const int dlg_id = sim->take_dialog(); dlg_id >= 0 && std::size_t(dlg_id) < scene->dialogs().size()) {
+          const auto& d = scene->dialogs()[std::size_t(dlg_id)];
+          dialogue.open(d.speaker, d.text);
+        }
+      }
       in.jump = false;
       in.interact = false;
       in.grab = false;
@@ -628,6 +652,11 @@ int main(int argc, char** argv) {
       v.bg_seed[i] = scene->active_backdrops()[i].seed;
     }
     push_entities(v, *scene, float(now));
+    if (const int nd = sim->nearby_interact_dialog();
+        nd >= 0 && !dialogue.open() && !menu.open() && !end_screen.open() && std::size_t(nd) < scene->dialogs().size()) {
+      const auto& de = scene->entities()[scene->dialogs()[std::size_t(nd)].entity];
+      push_marker(v, de.x, de.y - 12.f + std::round(std::sin(float(now) * 5.f)), 1.5f, 0, 1.0f, 0.88f, 0.35f);
+    }
     push_movers(v, *sim);
     for (int bi = 0; bi < sim->boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
       const auto& b = sim->boss(bi);
@@ -707,6 +736,10 @@ int main(int argc, char** argv) {
       v.end_sel = end_screen.cursor();
       v.end_has_next = end_screen.stats().has_next ? 1 : 0;
       v.ctl_txt = ew::game::pack_text(ew::game::end_screen_text(end_screen));
+    } else if (!menu.open() && dialogue.open()) {
+      v.dlg = 1;
+      v.dlg_more = dialogue.has_more() ? 1 : 0;
+      v.ctl_txt = ew::game::pack_text(ew::game::dialogue_text(dialogue));
     }
     v.items = sim->collected();
     v.items_total = sim->collectible_total();

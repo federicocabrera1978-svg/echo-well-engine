@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
     MapLoader m;
     CHECK(m.load_bytes(b) == MapError::None);
     CHECK(m.backdrops().empty());
-    CHECK(m.entities().size() == 21 && m.chunk_count() == 8);
+    CHECK(m.entities().size() == 22 && m.chunk_count() == 8);
   }
 
   // --- count corrupto (más registros que bytes) → vacío, sin leer fuera -----------
