@@ -16,8 +16,9 @@ engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS,
 engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles) + WaterBody (Hooke)
 engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
 assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
-assets/atlas/         tiles.png default (generado por tools/gen_atlas.py)
-tools/gen_atlas.py    script reproducible del atlas PNG
+assets/atlas/         tiles.png y sprites.png default (generados por tools/gen_atlas.py y gen_sprites.py)
+tools/gen_atlas.py    script reproducible del atlas de tiles PNG
+tools/gen_sprites.py  script reproducible del atlas de sprites PNG (Explorador del Farol)
 tests/               tests sin GL (ctest)
 engine/map/          echo_map: formato .ewmap, MapLoader, ChunkCache (LRU), CRC-32
 tools/ewmapc/        compilador YAML -> .ewmap (+ smoke test)
@@ -183,6 +184,13 @@ vecino. El shader `gbuffer_map.frag` deriva la normal de la altura y aplica el m
 Estilos por familia (`id/16 % 4`): liso, ladrillo, granulado, vetas. En el YAML, `autotile: false` lo apaga.
 Tests: `autotile_test`, `atlas_test` (`EW_ATLAS_PPM=atlas.ppm ./build/atlas_test` vuelca el atlas;
 carga `tests/fixtures/atlas_128.png` y el default del repo, comprueba el fallback). `atlas_gen_check` corre `gen_atlas.py --check`. `fuzz_atlas` cubre el loader con libFuzzer.
+
+## Atlas de sprites (protagonista y objetos)
+
+`echo_engine` carga **`assets/atlas/sprites.png`** (128×128 RGBA8, 8×8 celdas de 16×16 px; generado por [`tools/gen_sprites.py`](tools/gen_sprites.py) y auditable con `--check`; override por `--sprites FILE.png` o env `EW_SPRITES`).
+- **Protagonista (Explorador del Farol, 12×12 px en celda 16×16):** mantiene la colisión física de radio `4 px`, con animaciones deterministas por estado en `Sim::player_anim()` (`Idle`, `Walk`, `Jump`, `DoubleJump` con alas dracónicas cian, `Climb`, `Swim`), giro horizontal (`player_facing()`) e inversión vertical en gravedad invertida. El canal A guarda el relieve/altura para normales 3D en el G-buffer (`A > 240` aporta auto-emisión suave en ojo, farol y núcleo).
+- **Objetos animados (fila 6):** huevo de dragón con escamas y fisuras incandescentes (`collectible`, cols 0..3) y reliquia alada de Doble Salto (`ability_double_jump`, cols 4..7).
+- Módulo sin GL en `engine/render/sprite_atlas.{hpp,cpp}` con respaldo procedural idéntico al loader de tiles (`sprite_test`, `protagonist_sprite` y `sprites_gen_check` en ctest).
 
 El job `engine` de CI corre el prototipo headless (`xvfb-run`, `--frames 90 --demo --dump frame.ppm --nosound`) y sube el PPM 320×180 como artifact `engine-frame` (se puede abrir con cualquier visor; `EW_ATLAS_PPM` hace lo mismo con el atlas).
 

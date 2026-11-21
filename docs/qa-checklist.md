@@ -18,7 +18,7 @@ iniciar sesión en GitHub para descargarlos.
 | `echo-well-windows-x86_64` | zip con `echo-well/` |
 
 Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `ewmapc`,
-`ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`,
+`ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`, `assets/atlas/sprites.png`,
 `assets/maps/bin/{slice,level2,hello,room,mover,gravity,boss,ability}.ewmap`, `README.md`, `DIST.txt` y
 `docs/qa-checklist.md` (este archivo).
 
@@ -74,6 +74,7 @@ Para cada sala: llegá, morite a propósito en cada peligro y verificá que reap
 checkpoint correcto, con la cámara bien ubicada y sin quedar trabado. El checkpoint se marca
 en verde al tomarlo.
 
+- [ ] **Protagonista pixel-art (Explorador del Farol) y objetos.** Verificá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto, trepada en cuerda, nado y parpadeo post-respawn; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados y la reliquia como un emblema alado cian.
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
   arriba a la izquierda dice `0/1`. El switch abre la puerta y hay que nadar la pileta (el
   agua frena la caída y se nada hacia arriba). Una cuerda sube una pared que no se salta (la

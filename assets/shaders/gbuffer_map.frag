@@ -9,12 +9,16 @@ layout(location = 0) out vec4 o_albedo;
 layout(location = 1) out vec4 o_normal;
 uniform usampler2D u_tiles;
 uniform sampler2D u_atlas;  // 128×128 RGBA8: 16×16 tiles de 8×8, id = VIS; A = altura
+uniform sampler2D u_sprites; // 128×128 RGBA8: 8×8 celdas de 16×16, A = relieve (>0.94 auto-emisión)
 uniform float u_time;
 uniform vec2 u_cam;    // esquina superior izquierda de la vista (px mundo)
 uniform vec2 u_chunk;  // origen del vecindario 3×3 de chunks (120×69 tiles, px mundo)
 uniform int u_marker_count;
 uniform vec4 u_markers[48];        // x, y, radio, forma
 uniform vec3 u_marker_colors[48];
+uniform int u_sprite_count;
+uniform vec4 u_sprite_rect[16];    // (x, y, col_signed, row_signed)
+uniform vec4 u_sprite_tint[16];    // (r, g, b, emit_boost)
 uniform int u_water_count;         // cuerpos de agua (máx. 4)
 uniform int u_water_cols[4];
 uniform vec4 u_water_rect[4];      // x, y reposo, w, y fondo
@@ -357,6 +361,10 @@ vec4 atlas_texel(uint vis, ivec2 l) {
   return texelFetch(u_atlas, o + clamp(l, ivec2(0), ivec2(7)), 0);
 }
 float atlas_h(uint vis, ivec2 l) { return atlas_texel(vis, l).a; }
+vec4 sprite_texel(ivec2 cell, ivec2 l) {
+  if (l.x < 0 || l.y < 0 || l.x > 15 || l.y > 15) return vec4(0.0);
+  return texelFetch(u_sprites, cell * 16 + l, 0);
+}
 // Bisel de borde solo en lados sin vecino (máscara 4-bit: N=1 E=2 S=4 W=8).
 void autotile_bevel(inout vec3 n, uint vis, ivec2 l) {
   uint m = vis & 15u;
@@ -450,6 +458,42 @@ void main() {
       n = m.w < 0.5 && m.z > 1.5 ? normalize(vec3(d.x / m.z, -d.y / m.z, 1.0)) : vec3(0.0, 0.0, 1.0);
       depth = 0.3;
       emit = 0.0; lr = 1.0;
+    }
+  }
+  // Sprites pixel-art 16×16 (protagonista, huevos de dragón, reliquias) con normales por altura.
+  for (int i = 0; i < u_sprite_count; ++i) {
+    vec4 sr = u_sprite_rect[i];
+    vec2 rel = floor(world - sr.xy + vec2(8.0, 8.0));
+    if (rel.x >= 0.0 && rel.y >= 0.0 && rel.x < 16.0 && rel.y < 16.0) {
+      int raw_c = int(floor(abs(sr.z) + 0.5));
+      int raw_r = int(floor(abs(sr.w) + 0.5));
+      bool flip_x = sr.z < -0.5;
+      bool flip_y = sr.w < -0.5;
+      int col = clamp(flip_x ? raw_c - 1 : raw_c, 0, 7);
+      int row = clamp(flip_y ? raw_r - 1 : raw_r, 0, 7);
+      int lx = int(rel.x), ly = int(rel.y);
+      ivec2 sl = ivec2(flip_x ? 15 - lx : lx, flip_y ? 15 - ly : ly);
+      ivec2 cell = ivec2(col, row);
+      vec4 sp = sprite_texel(cell, sl);
+      if (sp.a > 0.002) {
+        vec4 tint = u_sprite_tint[i];
+        albedo = clamp(sp.rgb * tint.rgb, 0.0, 1.0);
+        float ar = sprite_texel(cell, sl + ivec2(1, 0)).a;
+        float al = sprite_texel(cell, sl - ivec2(1, 0)).a;
+        float ad = sprite_texel(cell, sl + ivec2(0, 1)).a;
+        float au = sprite_texel(cell, sl - ivec2(0, 1)).a;
+        ar = ar > 0.002 ? ar : sp.a * 0.4;
+        al = al > 0.002 ? al : sp.a * 0.4;
+        ad = ad > 0.002 ? ad : sp.a * 0.4;
+        au = au > 0.002 ? au : sp.a * 0.4;
+        float dx = (ar - al) * (flip_x ? -1.0 : 1.0);
+        float dy = (ad - au) * (flip_y ? -1.0 : 1.0);
+        n = normalize(vec3(-dx * 1.8, dy * 1.8, 1.0));
+        float self_emit = sp.a > 0.94 ? (sp.a - 0.94) * 12.0 : 0.0;
+        emit = clamp(self_emit + tint.a, 0.0, 1.0);
+        lr = 1.0;
+        depth = 0.28;
+      }
     }
   }
   // FG: primer plano, sobre los actores (depth 0.2). Mismo atlas que VIS; id = canal B.

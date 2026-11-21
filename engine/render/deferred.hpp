@@ -9,6 +9,7 @@ inline constexpr int kInternalW = 320;
 inline constexpr int kInternalH = 180;
 
 inline constexpr int kMaxMarkers = 48;
+inline constexpr int kMaxSprites = 16;
 inline constexpr int kMaxWaterCols = 64;
 inline constexpr int kMaxWaterBodies = 4;
 inline constexpr int kMaxMovers = 8;
@@ -24,6 +25,12 @@ struct FrameView {
   int marker_count = 0;
   std::array<float, kMaxMarkers * 4> markers{};
   std::array<float, kMaxMarkers * 3> marker_colors{};
+  // Sprites pixel-art (16×16 px): (x, y, col_signed, row_signed) + tinte (r, g, b, emit_boost).
+  // col_signed >= 0 → col 0..7 normal; col_signed < 0 → espejo horizontal de col = -col_signed - 1.
+  // row_signed >= 0 → row 0..7 normal; row_signed < 0 → espejo vertical de row = -row_signed - 1.
+  int sprite_count = 0;
+  std::array<float, kMaxSprites * 4> sprites{};
+  std::array<float, kMaxSprites * 4> sprite_tint{};
   // Agua: hasta kMaxWaterBodies cuerpos. Por cuerpo: rect (x, y_reposo, w, fondo),
   // n° de columnas y altura de superficie por columna (px mundo), stride kMaxWaterCols.
   int water_count = 0;
@@ -66,8 +73,9 @@ struct FrameView {
 // Pase de luz -> target "lit" 320x180 -> blit escalado entero (NEAREST) a pantalla.
 class DeferredRenderer {
  public:
-  // atlas_path vacío o inválido: atlas procedural. PNG 128×128 válido: lo usa (el engine pasa el default del repo).
-  bool init(const std::string& shader_dir, std::string& err, const std::string& atlas_path = {});
+  // atlas_path / sprite_atlas_path vacíos o inválidos: procedural. PNG 128×128 válido: los usa.
+  bool init(const std::string& shader_dir, std::string& err, const std::string& atlas_path = {},
+            const std::string& sprite_atlas_path = {});
   void shutdown();
   // Vuelca el target "lit" 320×180 a un PPM (debug / verificación headless).
   bool dump_ppm(const std::string& path) const;
@@ -78,7 +86,7 @@ class DeferredRenderer {
  private:
   GLuint gbuf_fbo_ = 0, albedo_ = 0, normal_ = 0, depth_ = 0;
   GLuint lit_fbo_ = 0, lit_tex_ = 0;
-  GLuint tiles_tex_ = 0, atlas_tex_ = 0; uint32_t tiles_version_ = 0;
+  GLuint tiles_tex_ = 0, atlas_tex_ = 0, sprite_tex_ = 0; uint32_t tiles_version_ = 0;
   GLuint vao_ = 0, geom_prog_ = 0, light_prog_ = 0;
 };
 }  // namespace ew::render

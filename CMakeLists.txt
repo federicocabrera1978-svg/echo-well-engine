@@ -226,20 +226,29 @@ add_executable(rope_wall_test tests/rope_wall_test.cpp)
 target_link_libraries(rope_wall_test PRIVATE echo_physics)
 add_test(NAME rope_wall COMMAND rope_wall_test)
 
-# --- echo_atlas: atlas de tiles procedural (sin GL, testeable en CI) --------
-add_library(echo_atlas engine/render/tile_atlas.cpp)
+# --- echo_atlas: atlas de tiles y sprites procedurales (sin GL, testeable en CI) --------
+add_library(echo_atlas engine/render/tile_atlas.cpp engine/render/sprite_atlas.cpp)
 target_include_directories(echo_atlas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine
                                       PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb)
 add_executable(atlas_test tests/atlas_test.cpp)
 target_link_libraries(atlas_test PRIVATE echo_atlas)
 add_test(NAME tile_atlas COMMAND atlas_test)
 set(EW_DEFAULT_ATLAS "${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png")
+set(EW_DEFAULT_SPRITES "${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/sprites.png")
 set_tests_properties(tile_atlas PROPERTIES
   ENVIRONMENT "EW_TEST_FIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures;EW_DEFAULT_ATLAS=${EW_DEFAULT_ATLAS}")
+add_executable(sprite_test tests/sprite_test.cpp)
+target_link_libraries(sprite_test PRIVATE echo_atlas echo_game)
+add_dependencies(sprite_test ew_maps)
+add_test(NAME protagonist_sprite COMMAND sprite_test ${EW_ABILITY_MAP})
+set_tests_properties(protagonist_sprite PROPERTIES
+  ENVIRONMENT "EW_TEST_FIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures;EW_DEFAULT_SPRITES=${EW_DEFAULT_SPRITES}")
 find_program(EW_PYTHON python3)
 if(EW_PYTHON)
   add_test(NAME atlas_gen_check
     COMMAND ${EW_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_atlas.py --check ${EW_DEFAULT_ATLAS})
+  add_test(NAME sprites_gen_check
+    COMMAND ${EW_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_sprites.py --check ${EW_DEFAULT_SPRITES})
 endif()
 add_executable(autotile_test tests/autotile_test.cpp)
 target_link_libraries(autotile_test PRIVATE echo_map)
@@ -331,6 +340,7 @@ if(EW_BUILD_ENGINE)
     EW_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
     EW_DEFAULT_MAP="${EW_SLICE_MAP}"
     EW_DEFAULT_ATLAS="${EW_DEFAULT_ATLAS}"
+    EW_DEFAULT_SPRITES="${EW_DEFAULT_SPRITES}"
     EW_VERSION="${PROJECT_VERSION}")
   target_link_libraries(echo_engine PRIVATE echo_render echo_game echo_audio glfw)
   add_dependencies(echo_engine ew_maps)
@@ -380,7 +390,9 @@ if(EW_BUILD_ENGINE)
   install(TARGETS echo_engine RUNTIME DESTINATION .)
 endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png DESTINATION assets/atlas)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png
+              ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/sprites.png
+        DESTINATION assets/atlas)
 install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_LEVEL2_MAP}
         DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
