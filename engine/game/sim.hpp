@@ -81,6 +81,18 @@ class Sim {
   static constexpr float kBossTellSec = 0.5f;      // quieto (aviso) antes del salto
   static constexpr float kBossHopSpeed = 200.f;    // px/s inicial del salto (gravedad 600)
   static constexpr float kBossHurtSec = 1.0f;      // tras un golpe: no daña ni recibe daño
+  // Boss dragón multipatrón (type "boss_dragon"): 4 golpes, vuelo + brasas + embestida.
+  static constexpr float kDragonW = 32.f, kDragonH = 22.f;
+  static constexpr int kDragonHits = 4;
+  static constexpr float kDragonRange = 84.f;
+  static constexpr float kDragonWalkSec = 1.3f;
+  static constexpr float kDragonTellSec = 0.55f;
+  static constexpr float kDragonHopSpeed = 240.f;
+  static constexpr float kDragonChargeSpeed = 145.f;
+  static constexpr float kDragonChargeSec = 0.70f;
+  static constexpr float kFireballRadius = 3.f;
+  static constexpr float kFireballSpeed = 88.f;
+  static constexpr float kFireballLife = 0.90f;
 
   // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
@@ -142,16 +154,25 @@ class Sim {
     int hits = 0;
     float hurt = 0;       // s de invulnerabilidad restante
     bool defeated = false;
-    int phase = 0;        // 0 camina, 1 aviso, 2 salto
+    int phase = 0;        // 0 camina, 1 aviso, 2 salto, 3 embestida (boss_dragon)
     float t = 0;          // s en la fase actual
     int dir = -1;         // sentido de la caminata
     float vy = 0;         // px/s (salto)
     float home_x = 0, home_y = 0;
     std::size_t ent = 0;  // índice en Scene::entities()
+    bool dragon = false;  // true si es "boss_dragon" multipatrón
+    int cycle = 0;
+    int max_hits() const { return dragon ? kDragonHits : kBossHits; }
+    float width() const { return dragon ? kDragonW : kBossW; }
+    float height() const { return dragon ? kDragonH : kBossH; }
     float speed() const { return kBossSpeed + kBossSpeedPerHit * float(hits); }
+  };
+  struct Fireball {
+    float x = 0, y = 0, vx = 0, vy = 0, life = 0;
   };
   int boss_count() const { return int(bosses_.size()); }
   const Boss& boss(int i) const { return bosses_[std::size_t(i)]; }
+  const std::vector<Fireball>& fireballs() const { return fireballs_; }
   bool bosses_defeated() const;  // true si no hay boss vivo
   // Índice de la plataforma que está cargando al player, o -1.
   int ridden() const { return ridden_; }
@@ -249,6 +270,7 @@ class Sim {
   int air_ticks_ = 0;
   int pending_dialog_ = -1;
   std::vector<Boss> bosses_;
+  std::vector<Fireball> fireballs_;
   void break_walls_on_dash();
   void update_player_anim(const Input& in);
   void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);

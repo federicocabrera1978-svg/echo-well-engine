@@ -312,9 +312,10 @@ int main(int argc, char** argv) {
   CHECK(sim.has_ability(game::kAbilityDoubleJump | game::kAbilityDash));
   CHECK(sim.deaths() == 0);
 
-  // --- Paso F: Vínculo de campaña slice -> level2 y guardado v3 de level2 ---
+  // --- Paso F: Vínculo de campaña slice -> level2 -> level3 y guardado v3 de level2 ---
   CHECK(game::next_campaign_map("slice") == "level2");
-  CHECK(game::next_campaign_map("level2").empty());
+  CHECK(game::next_campaign_map("level2") == "level3");
+  CHECK(game::next_campaign_map("level3").empty());
   if (argc >= 3) {
     const std::string resolved = game::resolve_map_file(game::next_campaign_map("slice"), argv[2], "");
     CHECK(!resolved.empty());
@@ -325,6 +326,10 @@ int main(int argc, char** argv) {
     end.open(st);
     CHECK(end.stats().has_next && end.cursor() == game::EndScreen::kNext);
     st.title = game::level_title("level2");
+    st.has_next = true;
+    end.open(st);
+    CHECK(end.stats().has_next && end.cursor() == game::EndScreen::kNext);
+    st.title = game::level_title("level3");
     st.has_next = false;
     end.open(st);
     CHECK(!end.stats().has_next && end.cursor() == game::EndScreen::kRestart);

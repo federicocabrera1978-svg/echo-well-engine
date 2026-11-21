@@ -89,19 +89,22 @@ void Sim::build() {
   }
   rearm_flips();
   bosses_.clear();
+  fireballs_.clear();
   const auto& es = scene_.entities();
   for (std::size_t i = 0; i < es.size(); ++i) {
-    if (es[i].type != "boss") continue;
+    if (es[i].type != "boss" && es[i].type != "boss_dragon") continue;
     Boss b;
     b.home_x = es[i].x;
     b.home_y = es[i].y;
     b.ent = i;
+    b.dragon = (es[i].type == "boss_dragon");
     bosses_.push_back(b);
   }
   reset_bosses(false);
 }
 
 void Sim::reset_bosses(bool keep_defeated) {
+  fireballs_.clear();
   for (auto& b : bosses_) {
     if (keep_defeated && b.defeated) continue;
     b.x = b.home_x;
@@ -113,6 +116,7 @@ void Sim::reset_bosses(bool keep_defeated) {
     b.t = 0;
     b.dir = -1;
     b.vy = 0;
+    b.cycle = 0;
   }
 }
 
@@ -126,23 +130,78 @@ void Sim::advance_bosses() {
   for (auto& b : bosses_) {
     if (b.defeated) continue;
     if (b.hurt > 0) b.hurt = std::max(0.f, b.hurt - kDt);
-    const float lo = b.home_x - kBossRange, hi = b.home_x + kBossRange;
+    const float range = b.dragon ? kDragonRange : kBossRange;
+    const float lo = b.home_x - range, hi = b.home_x + range;
     auto walk = [&](float v) {
       b.x += float(b.dir) * v * kDt;
       if (b.x > hi) { b.x = hi; b.dir = -1; }
       if (b.x < lo) { b.x = lo; b.dir = 1; }
     };
     b.t += kDt;
+    if (!b.dragon) {
+      if (b.phase == 0) {
+        walk(b.speed());
+        if (b.t >= kBossWalkSec) { b.phase = 1; b.t = 0; }
+      } else if (b.phase == 1) {
+        if (b.t >= kBossTellSec) { b.phase = 2; b.t = 0; b.vy = -kBossHopSpeed; }
+      } else {
+        walk(b.speed() * 1.5f);
+        b.vy += 600.f * kDt;
+        b.y += b.vy * kDt;
+        if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; }
+      }
+      continue;
+    }
+    // Dragón multipatrón: patrulla → aviso → alterna salto con bolas de fuego (par) y embestida rasa (impar).
     if (b.phase == 0) {
       walk(b.speed());
-      if (b.t >= kBossWalkSec) { b.phase = 1; b.t = 0; }
+      if (b.t >= kDragonWalkSec) { b.phase = 1; b.t = 0; }
     } else if (b.phase == 1) {
-      if (b.t >= kBossTellSec) { b.phase = 2; b.t = 0; b.vy = -kBossHopSpeed; }
-    } else {
-      walk(b.speed() * 1.5f);
+      if (b.t >= kDragonTellSec) {
+        b.dir = (player().pos.x >= b.x) ? 1 : -1;
+        b.t = 0;
+        if ((b.cycle % 2) == 0) {
+          b.phase = 2;
+          b.vy = -kDragonHopSpeed;
+          const float fy = b.y - kDragonH * 0.55f;
+          if (fireballs_.size() + 2 <= 8) {
+            fireballs_.push_back({b.x - 10.f, fy, -kFireballSpeed, 18.f, kFireballLife});
+            fireballs_.push_back({b.x + 10.f, fy, kFireballSpeed, 18.f, kFireballLife});
+          }
+        } else {
+          b.phase = 3;
+        }
+      }
+    } else if (b.phase == 2) {
+      walk(b.speed() * 1.45f);
       b.vy += 600.f * kDt;
       b.y += b.vy * kDt;
-      if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; }
+      if (b.y >= b.home_y) {
+        b.y = b.home_y;
+        b.vy = 0;
+        b.phase = 0;
+        b.t = 0;
+        ++b.cycle;
+      }
+    } else {
+      walk(kDragonChargeSpeed + float(b.hits) * 10.f);
+      if (b.t >= kDragonChargeSec) {
+        b.phase = 0;
+        b.t = 0;
+        ++b.cycle;
+      }
+    }
+  }
+  for (std::size_t i = 0; i < fireballs_.size();) {
+    auto& fb = fireballs_[i];
+    fb.x += fb.vx * kDt;
+    fb.y += fb.vy * kDt;
+    fb.life -= kDt;
+    if (fb.life <= 0.f || scene_.solid_px(fb.x, fb.y)) {
+      fireballs_[i] = fireballs_.back();
+      fireballs_.pop_back();
+    } else {
+      ++i;
     }
   }
 }
@@ -884,19 +943,28 @@ void Sim::break_walls_on_dash() {
 namespace ew::game {
 
 void Sim::collide_bosses() {
-  if (bosses_.empty() || finished_) return;
+  if ((bosses_.empty() && fireballs_.empty()) || finished_) return;
   auto& pts = world_.points();
   auto& pl = pts[player_];
   const float r = pl.radius, d = down();
+  // Bolas de fuego del Wyrm: hacen daño salvo durante invuln o i-frames de embestida (Dash).
+  if (invuln_ == 0 && dash_ticks_ == 0) {
+    const float hit_r = r + kFireballRadius;
+    for (const auto& fb : fireballs_) {
+      const float dx = fb.x - pl.pos.x, dy = fb.y - pl.pos.y;
+      if (dx * dx + dy * dy < hit_r * hit_r) { kill(); return; }
+    }
+  }
   for (auto& b : bosses_) {
     if (b.defeated) continue;
-    const float l = b.x - kBossW * 0.5f, rt = b.x + kBossW * 0.5f, top = b.y - kBossH, bot = b.y;
+    const float bw = b.width(), bh = b.height();
+    const float l = b.x - bw * 0.5f, rt = b.x + bw * 0.5f, top = b.y - bh, bot = b.y;
     const ew::physics::Vec2 c{std::clamp(pl.pos.x, l, rt), std::clamp(pl.pos.y, top, bot)};
     if (ew::physics::length(pl.pos - c) >= r) continue;
     if (b.hurt > 0) continue;  // recién golpeado: se lo puede atravesar
     // Pisotón: el player va hacia su "abajo" y su centro está del lado de su "arriba" del boss.
     const float vy = pl.velocity().y;
-    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 3.f) : (vy < 0.f && pl.pos.y >= bot - 3.f);
+    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 4.f) : (vy < 0.f && pl.pos.y >= bot - 4.f);
     if (from_above) {
       ++b.hits;
       b.hurt = kBossHurtSec;
@@ -904,10 +972,12 @@ void Sim::collide_bosses() {
       // Rebote: fuera de la caja y con impulso contra su gravedad.
       if (held_) release();
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+      if (has_ability(kAbilityDash)) dash_ready_ = true;
       pl.pos.y = d > 0 ? top - r : bot + r;
       pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.9f * kDt});
-      if (b.hits >= kBossHits) {
+      if (b.hits >= b.max_hits()) {
         b.defeated = true;
+        fireballs_.clear();
         scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
         sfx_ |= 4u;  // kSfxCheckpoint (fanfarria corta)
       }
