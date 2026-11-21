@@ -14,6 +14,7 @@ Layout (16×16 por celda, transparente en A=0, A=1..255 = relieve/altura, >240 =
   Fila 4: Climb      (cols 0..3) — Trepando cuerda (brazos y piernas alternados)
   Fila 5: Swim       (cols 0..3) — Nado horizontal con brazada y reflejos de agua
   Fila 6: Items      (cols 0..3 Huevo de Dragón con escamas, cols 4..7 Reliquia Alada)
+  Fila 7: Npc/Lore   (cols 0..3 Vigía/Cronista del Farol, cols 4..7 Estela dracónica con runas)
 
 Sin dependencias externas: PNG vía zlib (stdlib), filtro 0, IHDR/IDAT/IEND.
 """
@@ -68,6 +69,30 @@ RELIC_PAL: dict[str, tuple[int, int, int, int]] = {
     "w": (208, 246, 255, 248),  # filo plateado alado
     "g": (116, 248, 255, 250),  # aura de gema central
     "G": (244, 255, 255, 255),  # núcleo incandescente de reliquia
+}
+
+NPC_PAL: dict[str, tuple[int, int, int, int]] = {
+    ".": (0, 0, 0, 0),
+    "o": (22, 16, 24, 145),     # contorno oscuro
+    "r": (92, 46, 42, 186),     # túnica sombra carmesí/bronce
+    "R": (134, 68, 54, 214),    # túnica tono medio
+    "g": (214, 162, 74, 232),   # ribete dorado
+    "w": (214, 208, 194, 216),  # barba blanca
+    "s": (18, 14, 24, 156),     # sombra capucha
+    "e": (255, 224, 130, 250),  # ojo sabio luminoso (auto-emisivo)
+    "t": (106, 76, 48, 202),    # madera del báculo
+    "f": (255, 184, 64, 248),   # gema/llama del báculo (auto-emisiva)
+    "F": (255, 244, 182, 255),  # núcleo brillante del báculo (auto-emisivo)
+}
+
+LORE_PAL: dict[str, tuple[int, int, int, int]] = {
+    ".": (0, 0, 0, 0),
+    "o": (16, 18, 28, 145),     # contorno oscuro
+    "d": (48, 52, 70, 186),     # piedra sombra
+    "m": (76, 82, 108, 214),    # piedra media
+    "h": (112, 118, 148, 232),  # arista piedra iluminada
+    "f": (255, 168, 58, 248),   # runa dracónica brasa (auto-emisiva)
+    "F": (255, 234, 148, 255),  # runa núcleo dorado (auto-emisivo)
 }
 
 # Cada celda es 16×16. Personaje protagonista ocupa 12×12 (x=2..13, y=2..13), patas hasta y=13.
@@ -660,6 +685,154 @@ FRAMES: dict[tuple[int, int], tuple[dict[str, tuple[int, int, int, int]], list[s
         ".......oo.......",
         "................",
         "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 7, cols 0..3: NPC Vigía / Cronista con báculo luminoso ---
+    (0, 7): (NPC_PAL, [
+        "................",
+        "................",
+        "..ooo..oooo.....",
+        ".oFfo.oRRgRo....",
+        "..oto.oRssso....",
+        "..oto.oeswwo....",
+        "..oto.orwggRo...",
+        "..otooorRRRRRo..",
+        "..otooRRRrrRRo..",
+        "..oto.orrrrrRo..",
+        "..oto.orrrgRro..",
+        "..oto.oorrrrro..",
+        "..oto..oororo...",
+        "..ooo..oooooo...",
+        "................",
+        "................",
+    ]),
+    (1, 7): (NPC_PAL, [
+        "................",
+        "................",
+        "..ooo..oooo.....",
+        ".ofFo.oRRgRo....",
+        "..oto.oRssso....",
+        "..oto.oeswwo....",
+        "..oto.orwggRo...",
+        "..otooorRRRRRo..",
+        "..otooRRRRrRRo..",
+        "..oto.orrrrrRo..",
+        "..oto.orrrgRro..",
+        "..oto.oorrrrro..",
+        "..oto..oororo...",
+        "..ooo..oooooo...",
+        "................",
+        "................",
+    ]),
+    (2, 7): (NPC_PAL, [
+        "................",
+        "................",
+        "..ooo...........",
+        ".oFFo..oooo.....",
+        "..oto.oRRgRo....",
+        "..oto.oRssso....",
+        "..oto.oeswwo....",
+        "..otooorwggRo...",
+        "..otooRRRRRRRo..",
+        "..oto.orrrrRRo..",
+        "..oto.orrrgRro..",
+        "..oto.oorrrrro..",
+        "..oto..oororo...",
+        "..ooo..oooooo...",
+        "................",
+        "................",
+    ]),
+    (3, 7): (NPC_PAL, [
+        "................",
+        "................",
+        "..ooo..oooo.....",
+        ".oFFo.oRRgRo....",
+        "..oto.oRssso....",
+        "..oto.oeswwo....",
+        "..oto.orwggRo...",
+        "..otooorRRRRRo..",
+        "..otooRRRrrRRo..",
+        "..oto.orrrrrRo..",
+        "..oto.oorrgRro..",
+        "..oto.oorrrrro..",
+        "..oto..oororo...",
+        "..ooo..oooooo...",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 7, cols 4..7: Estela dracónica con runas incandescentes ---
+    (4, 7): (LORE_PAL, [
+        "................",
+        "......oooo......",
+        ".....ohhhho.....",
+        "....ohmmmmho....",
+        "....ohmffmmo....",
+        "....ommfFmmo....",
+        "....omdmmmdo....",
+        "....omdffmdo....",
+        "....omdmmddo....",
+        "....omdfdddo....",
+        "....ohmmdddo....",
+        "...oohmmdddoo...",
+        "...ohdddddddo...",
+        "...oooooooooo...",
+        "................",
+        "................",
+    ]),
+    (5, 7): (LORE_PAL, [
+        "................",
+        "......oooo......",
+        ".....ohhhho.....",
+        "....ohmmmmho....",
+        "....ohmFfmmo....",
+        "....ommFFmmo....",
+        "....omdmmmdo....",
+        "....omdFfmdo....",
+        "....omdmmddo....",
+        "....omdFdddo....",
+        "....ohmmdddo....",
+        "...oohmmdddoo...",
+        "...ohdddddddo...",
+        "...oooooooooo...",
+        "................",
+        "................",
+    ]),
+    (6, 7): (LORE_PAL, [
+        "................",
+        "......oooo......",
+        ".....ohhhho.....",
+        "....ohmmmmho....",
+        "....ohmFFmmo....",
+        "....ommffmmo....",
+        "....omdmmmdo....",
+        "....omdfFmdo....",
+        "....omdmmddo....",
+        "....omdFdddo....",
+        "....ohmmdddo....",
+        "...oohmmdddoo...",
+        "...ohdddddddo...",
+        "...oooooooooo...",
+        "................",
+        "................",
+    ]),
+    (7, 7): (LORE_PAL, [
+        "................",
+        "......oooo......",
+        ".....ohhhho.....",
+        "....ohmmmmho....",
+        "....ohmffmmo....",
+        "....ommfFmmo....",
+        "....omdmmmdo....",
+        "....omdffmdo....",
+        "....omdmmddo....",
+        "....omdfFddo....",
+        "....ohmmdddo....",
+        "...oohmmdddoo...",
+        "...ohdddddddo...",
+        "...oooooooooo...",
         "................",
         "................",
     ]),

@@ -47,6 +47,8 @@ struct FrameView {
   float pause_vol = 0.8f;
   int pause_mute = 0;
   int pause_has_save = 0;                    // CONTINUAR habilitado
+  int dlg = 0;                               // 1 = caja de diálogo abierta (usa ctl_txt)
+  int dlg_more = 0;                          // 1 = hay más páginas en el diálogo
   int ctl = 0;                               // página CONTROLES
   int ctl_sel = 0;                           // fila de u_txt resaltada
   int ctl_wait = 0;                          // esperando tecla/botón

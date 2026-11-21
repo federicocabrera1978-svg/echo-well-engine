@@ -6,7 +6,8 @@
 #include <vector>
 
 // Atlas de sprites pixel-art (sin GL): 8×8 celdas de 16×16 px -> textura RGBA8 128×128.
-// Filas: 0 Idle, 1 Walk, 2 Jump, 3 DoubleJump, 4 Climb, 5 Swim (protagonista), 6 Objetos (huevo/reliquia).
+// Filas: 0 Idle, 1 Walk, 2 Jump, 3 DoubleJump, 4 Climb, 5 Swim (protagonista), 6 Objetos (huevo/reliquia),
+//        7 NPC (Vigía/Cronista, cols 0..3) y Estela dracónica (cols 4..7).
 // Alpha: 0 = transparente, 1..255 = altura/relieve para el normal pass (>240 = auto-emisión suave).
 namespace ew::render {
 inline constexpr int kSpriteCellPx = 16;
@@ -21,6 +22,7 @@ enum class SpriteRow : int {
   Climb = 4,
   Swim = 5,
   Items = 6,
+  Npc = 7,
 };
 
 struct SpriteUV { int x, y; };

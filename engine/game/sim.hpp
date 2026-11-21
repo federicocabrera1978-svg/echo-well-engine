@@ -61,6 +61,7 @@ class Sim {
   static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
   static constexpr float kDoubleJumpSpeed = 215.f;  // px/s (segundo salto en el aire)
   static constexpr float kAbilityReach = 12.f;      // px: agarrar una reliquia de habilidad
+  static constexpr float kDialogReach = 16.f;       // px: alcance para hablar/leer NPC o estela
   static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
   static constexpr int kAbilityFlashFrames = 45;    // ~0.75 s de destello del HUD al desbloquear
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
@@ -175,6 +176,9 @@ class Sim {
   void load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active, uint32_t abilities = 0);
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
+  // Índice en Scene::dialogs() del diálogo disparado pendiente (-1 = ninguno). Se limpia al leerlo.
+  int take_dialog() { const int d = pending_dialog_; pending_dialog_ = -1; return d; }
+  int nearby_interact_dialog() const;
 
  private:
   Scene& scene_;
@@ -222,8 +226,11 @@ class Sim {
   int anim_frame_ = 0;
   int anim_ticks_ = 0;
   int air_ticks_ = 0;
+  int pending_dialog_ = -1;
   std::vector<Boss> bosses_;
   void update_player_anim(const Input& in);
+  void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);
+  void check_dialogs_proximity();
   void reset_bosses(bool keep_defeated);
   void advance_bosses();
   void collide_bosses();

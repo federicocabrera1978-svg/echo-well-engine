@@ -121,7 +121,8 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | `checkpoint` | Al acercarse ≤ `Sim::kCheckpointReach` (20 px) queda como reaparición. R corto o morir vuelven acá. |
 | `flood_switch` | Como `switch` (también se puede linkear a puertas). Activo, sube las piletas con **`x ≥ 400`** hasta `Sim::kFloodRestY` (72 px) a `kFloodSpeed` (48 px/s). Al apagarse, bajan a su `y` inicial. |
 | `goal` | Meta, alcance `Sim::kGoalReach` (16 px) o pisar `META` 3. No exige collectibles. |
-| `collectible` | Huevo, alcance `Sim::kCollectReach` (12 px) al centro del player. Sobrevive a morir y a R corto; R largo lo restablece. El HUD muestra n/total. |
+| `collectible` | Huevo de dragón escamado, alcance `Sim::kCollectReach` (12 px) al centro del player. Sobrevive a morir y a R corto; R largo lo restablece. El HUD muestra n/total y puede disparar un eco de diálogo al recogerlo (`trigger: pickup`). |
+| `npc` / `lore` | Vigía/cronista (`npc`) o estela rúnica (`lore`) que muestran texto al pulsar E / X / ↓ a ≤ `Sim::kDialogReach` (16 px) si tienen registro en `dialogs:`. No bloquean el movimiento fuera de la caja de diálogo. |
 | `ability_double_jump` | Reliquia cian (alcance `Sim::kAbilityReach`, 12 px) que desbloquea **Doble Salto** (`kAbilityDoubleJump`). Permite 1 salto extra en el aire (`Sim::kDoubleJumpSpeed`, 215 px/s, respetando gravedad invertida) y se recarga al apoyar en piso/mover, agarrar una cuerda, pisar un boss o entrar al agua. Sobrevive a morir y a R corto; se guarda en `save.ewsv` v3 y se limpia con R largo. Mapa de prueba: `assets/maps/src/ability.yaml` (`ability_test`). |
 | `mover` | Plataforma sólida de `w`×`h` **tiles** que recorre waypoints en ping-pong, a `speed` px/s (default 40) con `pause` s en cada extremo (default 0.5). `(x, y)` es la esquina **sup. izq.** (px) y el primer waypoint. El segundo sale de `to_x`/`to_y`, o una ruta más larga con `path: "x y x y ..."` (hasta 8 puntos en total, sin comas). `tile` es el id fuente del atlas (default 6, metal). Se dibuja con el atlas, con autotile 4 vecinos dentro del rect. El player parado encima viaja con ella (carry). No se atraviesa desde arriba, de costado ni desde abajo. **Aplastamiento:** la plataforma empuja; si después de empujar el player queda metido en un tile sólido o en otra plataforma, muere y reaparece en el checkpoint. `reset()` (R largo) y `respawn()` (R corto o muerte) la devuelven al primer waypoint. La cuerda colisiona contra ella; el agua no se toca. |
 
@@ -138,6 +139,8 @@ Ejemplo:
 
 `links: - {from: nombre_switch, to: nombre_door}` abre la puerta cuando el switch (o
 `flood_switch`) está activo. Un mismo switch puede apuntar a varias puertas.
+
+`dialogs: - {entity: npc_vigia, trigger: interact, speaker: "VIGIA", text: "Linea 1/Linea 2.|Pagina 2"}` asocia diálogos opcionales (`DIALOG = 10`) a cualquier entidad (`interact` con E/X/↓, `pickup` al recoger un huevo/reliquia o `proximity` al acercarse). Usá `/` para salto de línea (hasta 30 caracteres ASCII) y `|` para pasar de página.
 
 `flood_switch` solo afecta agua cuyo rectángulo tiene `x ≥ 400` (la pileta del chunk 0
 de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.

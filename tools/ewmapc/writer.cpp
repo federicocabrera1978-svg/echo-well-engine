@@ -69,6 +69,12 @@ template <class T> std::vector<std::byte> record_section(const std::vector<T>& v
   for (auto& r : v) s.put(r);
   return s.b;
 }
+bool valid_ascii_text(const std::string& s, std::size_t max_len) {
+  if (s.empty() || s.size() > max_len) return false;
+  for (unsigned char c : s)
+    if (c < 32 || c > 126) return false;
+  return true;
+}
 } // namespace
 
 bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::byte>& out, std::string& err) try {
@@ -217,6 +223,36 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
     }
   }
 
+  // Diálogos (opcional, sección DIALOG = 10): solo se escribe si el YAML trae `dialogs`.
+  std::vector<DialogRecord> dialogs;
+  const bool has_dialogs = doc.lists.count("dialogs") > 0;
+  if (has_dialogs) {
+    for (auto& v : doc.lists.at("dialogs")) {
+      const auto ent_name = to_str(v, "entity");
+      const auto it = ent_by_name.find(ent_name);
+      if (it == ent_by_name.end()) { err = "dialog references unknown entity"; return false; }
+      const auto speaker = to_str(v, "speaker");
+      if (!valid_ascii_text(speaker, 64)) { err = "dialog needs valid ASCII speaker (1..64)"; return false; }
+      const auto text = to_str(v, "text");
+      if (!valid_ascii_text(text, 512)) { err = "dialog needs valid ASCII text (1..512)"; return false; }
+      const auto trig_s = to_str(v, "trigger");
+      DialogTrigger trig = DialogTrigger::Interact;
+      if (trig_s.empty() || trig_s == "interact") trig = DialogTrigger::Interact;
+      else if (trig_s == "pickup") trig = DialogTrigger::Pickup;
+      else if (trig_s == "proximity") trig = DialogTrigger::Proximity;
+      else { err = "unknown dialog trigger '" + trig_s + "'"; return false; }
+      bool once = (trig != DialogTrigger::Interact);
+      if (v.count("once")) {
+        const auto& os = v.at("once");
+        if (os == "true" || os == "1" || os == "yes" || os == "on") once = true;
+        else if (os == "false" || os == "0" || os == "no" || os == "off") once = false;
+        else { err = "dialog once must be true or false"; return false; }
+      }
+      dialogs.push_back({it->second, st.add(speaker), st.add(text), uint16_t(trig),
+                         uint16_t(once ? kDialogFlagOnce : 0u)});
+    }
+  }
+
   std::vector<std::pair<SectionType, std::vector<std::byte>>> secs;
   secs.emplace_back(SectionType::TILE, tile.b);
   secs.emplace_back(SectionType::ENT, record_section(ents));
@@ -225,6 +261,7 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
   secs.emplace_back(SectionType::ROPE, record_section(ropes));
   secs.emplace_back(SectionType::MOVER, record_section(movers));
   if (has_backdrops) secs.emplace_back(SectionType::BACKDROP, record_section(backdrops));
+  if (has_dialogs) secs.emplace_back(SectionType::DIALOG, record_section(dialogs));
   {
     std::vector<std::byte> s(st.data.size());
     std::memcpy(s.data(), st.data.data(), s.size());

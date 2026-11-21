@@ -15,8 +15,31 @@ std::string unquote(std::string s) {
     return s.substr(1, s.size() - 2);
   return s;
 }
+std::string strip_comment(const std::string& raw) {
+  char q = 0;
+  for (std::size_t i = 0; i < raw.size(); ++i) {
+    const char c = raw[i];
+    if (q == 0) {
+      if (c == '"' || c == '\'') q = c;
+      else if (c == '#') return raw.substr(0, i);
+    } else if (c == q) {
+      q = 0;
+    }
+  }
+  return raw;
+}
 bool split_kv(const std::string& s, std::string& k, std::string& v) {
-  auto p = s.find(':');
+  char q = 0;
+  std::size_t p = std::string::npos;
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    const char c = s[i];
+    if (q == 0) {
+      if (c == '"' || c == '\'') q = c;
+      else if (c == ':') { p = i; break; }
+    } else if (c == q) {
+      q = 0;
+    }
+  }
   if (p == std::string::npos) return false;
   k = trim(s.substr(0, p));
   v = trim(s.substr(p + 1));
@@ -25,15 +48,31 @@ bool split_kv(const std::string& s, std::string& k, std::string& v) {
 bool parse_flow_map(std::string s, Dict& d) {
   s = trim(s);
   if (s.size() < 2 || s.front() != '{' || s.back() != '}') return false;
-  std::stringstream ss(s.substr(1, s.size() - 2));
-  std::string item;
-  while (std::getline(ss, item, ',')) {
-    if (trim(item).empty()) continue;
+  const std::string inner = s.substr(1, s.size() - 2);
+  char q = 0;
+  std::size_t start = 0;
+  auto push_item = [&](std::size_t end) -> bool {
+    const std::string item = trim(inner.substr(start, end - start));
+    if (item.empty()) return true;
     std::string k, v;
     if (!split_kv(item, k, v)) return false;
     d[k] = unquote(v);
+    return true;
+  };
+  for (std::size_t i = 0; i < inner.size(); ++i) {
+    const char c = inner[i];
+    if (q == 0) {
+      if (c == '"' || c == '\'') q = c;
+      else if (c == ',') {
+        if (!push_item(i)) return false;
+        start = i + 1;
+      }
+    } else if (c == q) {
+      q = 0;
+    }
   }
-  return true;
+  if (q != 0) return false;
+  return push_item(inner.size());
 }
 } // namespace
 
@@ -43,7 +82,7 @@ bool parse_yaml_lite(const std::string& text, YamlDoc& out, std::string& err) {
   int lineno = 0;
   while (std::getline(in, raw)) {
     ++lineno;
-    if (auto h = raw.find('#'); h != std::string::npos) raw = raw.substr(0, h);
+    raw = strip_comment(raw);
     if (trim(raw).empty()) continue;
     const bool indented = raw[0] == ' ' || raw[0] == '\t';
     const std::string line = trim(raw);

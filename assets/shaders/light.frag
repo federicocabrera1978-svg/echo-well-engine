@@ -15,6 +15,8 @@ uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
 uniform int u_sel;     // ítem seleccionado 0..4
 uniform int u_has_save; // 1 = hay partida guardada (CONTINUAR habilitado)
+uniform int u_dlg;      // 1 = caja de diálogo abierta (usa u_txt)
+uniform int u_dlg_more; // 1 = hay páginas siguientes en el diálogo
 uniform int u_ctl;      // 1 = página CONTROLES del menú
 uniform int u_ctl_sel;  // fila seleccionada (1..10 en u_txt)
 uniform int u_ctl_wait; // 1 = esperando tecla/botón
@@ -135,6 +137,38 @@ vec3 controls_page(vec3 c, vec2 px) {
   return c;
 }
 
+// Caja inferior pixel-art para diálogos con NPCs, estelas dracónicas y ecos de huevos.
+vec3 dialogue_box(vec3 c, vec2 px) {
+  vec2 ip = floor(px);
+  if (ip.x >= 18.0 && ip.x <= 301.0 && ip.y >= 118.0 && ip.y <= 173.0) {
+    bool outer_b = (ip.x == 18.0 || ip.x == 301.0 || ip.y == 118.0 || ip.y == 173.0);
+    bool inner_b = (ip.x == 20.0 || ip.x == 299.0 || ip.y == 120.0 || ip.y == 171.0) &&
+                   (ip.x >= 20.0 && ip.x <= 299.0 && ip.y >= 120.0 && ip.y <= 171.0);
+    c = mix(c, vec3(0.06, 0.06, 0.10), 0.94);
+    if (inner_b) c = vec3(0.32, 0.24, 0.14);
+    if (outer_b) c = vec3(0.86, 0.68, 0.32);
+    float d_tl = abs(ip.x - 22.0) + abs(ip.y - 122.0);
+    float d_tr = abs(ip.x - 297.0) + abs(ip.y - 122.0);
+    float d_bl = abs(ip.x - 22.0) + abs(ip.y - 169.0);
+    float d_br = abs(ip.x - 297.0) + abs(ip.y - 169.0);
+    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) c = vec3(0.96, 0.85, 0.45);
+    if (ip.y == 131.0 && ip.x >= 24.0 && ip.x <= 295.0) c = vec3(0.32, 0.24, 0.14);
+    if (u_dlg_more > 0) {
+      float blink = step(0.0, sin(u_time * 6.0));
+      vec2 ap = ip - vec2(290.0, 164.0);
+      if (ap.y >= 0.0 && ap.y <= 2.0 && abs(ap.x) <= 2.0 - ap.y && blink > 0.5)
+        c = vec3(1.0, 0.88, 0.42);
+    }
+  } else if (ip.x >= 16.0 && ip.x <= 304.0 && ip.y >= 116.0 && ip.y <= 176.0) {
+    if (bayer4(ip) > 0.45) c *= 0.55;
+  }
+  c = mix(c, vec3(1.0, 0.88, 0.42), txt_glyph(0, px - vec2(26.0, 123.0), 1.0));
+  c = mix(c, vec3(0.92, 0.90, 0.84), txt_glyph(1, px - vec2(26.0, 136.0), 1.0));
+  c = mix(c, vec3(0.92, 0.90, 0.84), txt_glyph(2, px - vec2(26.0, 146.0), 1.0));
+  c = mix(c, vec3(0.62, 0.60, 0.68), txt_glyph(3, px - vec2(26.0, 162.0), 1.0));
+  return c;
+}
+
 // Contador de huevos: ícono (óvalo 5×7) + "n/t" a escala 1, esquina superior izquierda.
 vec3 hud_items(vec3 c, vec2 px) {
   int n = clamp(u_items, 0, 9), t = clamp(u_items_total, 0, 9);
@@ -225,6 +259,7 @@ void main() {
 
   if (u_items_total > 0) c = hud_items(c, px);
   if (u_abilities != 0) c = hud_abilities(c, px);
+  if (u_dlg > 0 && u_pause == 0 && u_end == 0) c = dialogue_box(c, px);
 
   if (u_pause > 0 && u_ctl > 0) {
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
