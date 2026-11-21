@@ -1,0 +1,178 @@
+# level2.yaml — Nivel 2: "Las Catacumbas" (4×2 chunks = 160×46 tiles = 1280×368 px).
+# Primer mapa metroidvania 2D con exploración no lineal y backtracking vertical/horizontal:
+#
+# Planta alta (cy = 0, ty = 0..22, y = 0..183 px):
+#   Chunk (0,0) Entrada: spawn, repisa alta con egg_catacomb_1 visible desde el inicio (64 px,
+#     inalcanzable sin Doble Salto).
+#   Chunk (1,0) Bóveda Central (Hub): ck_hub, pozo vertical hacia (1,1) y Galería Alta a la
+#     derecha (64 px, exige Doble Salto) bloqueada además por door_hub_gallery.
+#   Chunk (2,0) Galería Invertida: ck_grav2, flip_up2 → techo sobre foso de pinchos → flip_down2.
+#   Chunk (3,0) Cámara del Guardián: ck_boss2, boss_catacomb → door_boss2 → goal.
+#
+# Planta baja (cy = 1, ty = 23..45, y = 184..367 px):
+#   Chunk (1,1) El Foso: pileta de agua que amortigua la caída desde el Hub, ck_pit y dos
+#     escalones de retorno (Escalón 1 en ty=35 y Escalón 2 en ty=28) que requieren Doble Salto.
+#   Chunk (0,1) Cisterna del Altar: ck_altar, foso corto con cuerda y rel_double_jump.
+#   Chunk (2,1) Galería Subterránea Este: ck_east_low y plataforma móvil plat_crypt sobre pinchos.
+#   Chunk (3,1) Santuario Profundo: sw_sanctum (abre door_hub_gallery) y altar alto con egg_catacomb_2.
+name: level2
+size_chunks: [4, 2]
+
+fill:
+  VIS: 0
+
+rects:
+  # --- Estructura general 4×2 (160×46 tiles) ---
+  # Techo de la planta alta (ty = 0..2, fondo en y = 24 px)
+  - {layer: COL, x: 0,   y: 0,  w: 160, h: 3,  tile: 1}
+  - {layer: VIS, x: 0,   y: 0,  w: 160, h: 3,  tile: 15}
+  # Loseta divisoria entre planta alta (piso ty=20..22, y=160) y planta baja (techo ty=23..25, y=208)
+  - {layer: COL, x: 0,   y: 20, w: 160, h: 6,  tile: 1}
+  - {layer: VIS, x: 0,   y: 20, w: 160, h: 6,  tile: 17}
+  # Piso de la planta baja (ty = 43..45, superficie en y = 344 px)
+  - {layer: COL, x: 0,   y: 43, w: 160, h: 3,  tile: 1}
+  - {layer: VIS, x: 0,   y: 43, w: 160, h: 3,  tile: 17}
+  # Paredes exteriores izquierda (tx = 0) y derecha (tx = 159)
+  - {layer: COL, x: 0,   y: 0,  w: 1,   h: 46, tile: 1}
+  - {layer: VIS, x: 0,   y: 0,  w: 1,   h: 46, tile: 15}
+  - {layer: COL, x: 159, y: 0,  w: 1,   h: 46, tile: 1}
+  - {layer: VIS, x: 159, y: 0,  w: 1,   h: 46, tile: 15}
+
+  # --- Chunk (0,0): Entrada de las Catacumbas (tx = 0..39, ty = 0..22) ---
+  # Repisa alta teaseada desde el arranque (tope y = 96 px, 64 px sobre el piso y = 160)
+  - {layer: COL, x: 6,   y: 12, w: 13,  h: 1,  tile: 3}
+  - {layer: VIS, x: 6,   y: 12, w: 13,  h: 1,  tile: 5}
+  - {layer: VIS, x: 8,   y: 3,  w: 2,   h: 9,  tile: 9}
+  - {layer: VIS, x: 15,  y: 3,  w: 2,   h: 9,  tile: 9}
+  # Pared divisoria (0,0) ↔ (1,0) con paso al nivel del piso (ty = 17..19 libres)
+  - {layer: COL, x: 39,  y: 3,  w: 1,   h: 14, tile: 1}
+  - {layer: VIS, x: 39,  y: 3,  w: 1,   h: 14, tile: 15}
+
+  # --- Chunk (1,0): Bóveda Central / Hub (tx = 40..79, ty = 0..22) ---
+  # Pozo vertical abierto entre (1,0) y (1,1): tx = 51..60 (x = 408..488 px)
+  - {layer: COL, x: 51,  y: 20, w: 10,  h: 6,  tile: 0}
+  - {layer: VIS, x: 51,  y: 20, w: 10,  h: 6,  tile: 0}
+  # Galería Alta a la derecha del pozo (tx = 64..79, ty = 12, tope y = 96 px) y muro inferior
+  - {layer: COL, x: 64,  y: 12, w: 1,   h: 8,  tile: 1}
+  - {layer: VIS, x: 64,  y: 12, w: 1,   h: 8,  tile: 15}
+  - {layer: COL, x: 64,  y: 12, w: 16,  h: 1,  tile: 3}
+  - {layer: VIS, x: 64,  y: 12, w: 16,  h: 1,  tile: 5}
+  # Pared (1,0) ↔ (2,0): paso en ty = 9..11 (cerrado por door_hub_gallery) sobre la Galería Alta
+  - {layer: COL, x: 79,  y: 3,  w: 1,   h: 6,  tile: 1}
+  - {layer: VIS, x: 79,  y: 3,  w: 1,   h: 6,  tile: 15}
+  - {layer: COL, x: 79,  y: 12, w: 1,   h: 8,  tile: 1}
+  - {layer: VIS, x: 79,  y: 12, w: 1,   h: 8,  tile: 15}
+
+  # --- Chunk (1,1): El Foso (tx = 40..79, ty = 23..45) ---
+  # Bordes de la pileta bajo el pozo (agua entre tx = 51..58, x = 408..472 px, y = 320..344)
+  - {layer: COL,  x: 50,  y: 40, w: 1,   h: 3,  tile: 1}
+  - {layer: VIS,  x: 50,  y: 40, w: 1,   h: 3,  tile: 17}
+  - {layer: COL,  x: 59,  y: 40, w: 1,   h: 3,  tile: 1}
+  - {layer: VIS,  x: 59,  y: 40, w: 1,   h: 3,  tile: 17}
+  - {layer: META, x: 51,  y: 40, w: 8,   h: 3,  tile: 2}
+  # Escalón 1 (este de (1,1), tope y = 280 px = 64 px sobre el piso y = 344)
+  - {layer: COL,  x: 61,  y: 35, w: 19,  h: 1,  tile: 3}
+  - {layer: VIS,  x: 61,  y: 35, w: 19,  h: 1,  tile: 5}
+  # Escalón 2 (dentro de la boca del pozo tx = 55..60, tope y = 224 px = 56 px sobre Escalón 1)
+  - {layer: COL,  x: 55,  y: 28, w: 6,   h: 1,  tile: 3}
+  - {layer: VIS,  x: 55,  y: 28, w: 6,   h: 1,  tile: 5}
+
+  # --- Chunk (0,1): Cisterna del Altar (tx = 0..39, ty = 23..45) ---
+  # Pared (0,1) ↔ (1,1) con paso al nivel del piso (ty = 40..42 libres)
+  - {layer: COL,  x: 39,  y: 26, w: 1,   h: 14, tile: 1}
+  - {layer: VIS,  x: 39,  y: 26, w: 1,   h: 14, tile: 15}
+  # Hueco de 3 tiles (tx = 22..24, x = 176..200 px) con pinchos abajo y cuerda arriba
+  - {layer: COL,  x: 22,  y: 43, w: 3,   h: 1,  tile: 0}
+  - {layer: VIS,  x: 22,  y: 43, w: 3,   h: 1,  tile: 0}
+  - {layer: META, x: 22,  y: 43, w: 3,   h: 2,  tile: 4}
+  - {layer: VIS,  x: 22,  y: 44, w: 3,   h: 1,  tile: 11}
+  - {layer: VIS,  x: 8,   y: 28, w: 2,   h: 15, tile: 9}
+
+  # --- Chunk (2,1): Galería Subterránea Este (tx = 80..119, ty = 23..45) ---
+  # Pared (1,1) ↔ (2,1) con paso sobre Escalón 1 (ty = 32..34 libres, sobre ty = 35)
+  - {layer: COL,  x: 79,  y: 26, w: 1,   h: 6,  tile: 1}
+  - {layer: VIS,  x: 79,  y: 26, w: 1,   h: 6,  tile: 15}
+  - {layer: COL,  x: 79,  y: 35, w: 1,   h: 8,  tile: 1}
+  - {layer: VIS,  x: 79,  y: 35, w: 1,   h: 8,  tile: 15}
+  # Repisas de entrada (tx = 80..86) y salida (tx = 112..119) en ty = 35 (tope y = 280 px)
+  - {layer: COL,  x: 80,  y: 35, w: 7,   h: 8,  tile: 1}
+  - {layer: VIS,  x: 80,  y: 35, w: 7,   h: 8,  tile: 17}
+  - {layer: COL,  x: 112, y: 35, w: 8,   h: 8,  tile: 1}
+  - {layer: VIS,  x: 112, y: 35, w: 8,   h: 8,  tile: 17}
+  # Foso de pinchos entre las dos repisas (tx = 87..111, ty = 42..43)
+  - {layer: META, x: 87,  y: 42, w: 25,  h: 2,  tile: 4}
+  - {layer: VIS,  x: 87,  y: 43, w: 25,  h: 1,  tile: 11}
+  # Pared (2,1) ↔ (3,1) con paso en ty = 32..34
+  - {layer: COL,  x: 119, y: 26, w: 1,   h: 6,  tile: 1}
+  - {layer: VIS,  x: 119, y: 26, w: 1,   h: 6,  tile: 15}
+
+  # --- Chunk (3,1): Santuario Profundo (tx = 120..159, ty = 23..45) ---
+  # Repisa de entrada desde (2,1) en ty = 35 (tx = 120..126), fosa del santuario en ty = 43 (y = 344)
+  # y altar alto en ty = 35 (tx = 138..154, tope y = 280 px = 64 px sobre el piso del santuario)
+  - {layer: COL,  x: 120, y: 35, w: 7,   h: 8,  tile: 1}
+  - {layer: VIS,  x: 120, y: 35, w: 7,   h: 8,  tile: 17}
+  - {layer: COL,  x: 138, y: 35, w: 16,  h: 1,  tile: 3}
+  - {layer: VIS,  x: 138, y: 35, w: 16,  h: 1,  tile: 5}
+  - {layer: VIS,  x: 144, y: 36, w: 2,   h: 7,  tile: 9}
+
+  # --- Chunk (2,0): Galería Invertida (tx = 80..119, ty = 0..22) ---
+  # Repisa de entrada desde door_hub_gallery (tx = 80..85, ty = 12)
+  - {layer: COL,  x: 80,  y: 12, w: 6,   h: 1,  tile: 3}
+  - {layer: VIS,  x: 80,  y: 12, w: 6,   h: 1,  tile: 5}
+  # Foso de pinchos en el piso (tx = 96..109) que se cruza caminando por el techo con flip_up2/flip_down2
+  - {layer: META, x: 96,  y: 19, w: 14,  h: 2,  tile: 4}
+  - {layer: VIS,  x: 96,  y: 20, w: 14,  h: 1,  tile: 11}
+  # Pared (2,0) ↔ (3,0) con paso al nivel del piso (ty = 17..19 libres)
+  - {layer: COL,  x: 119, y: 3,  w: 1,   h: 14, tile: 1}
+  - {layer: VIS,  x: 119, y: 3,  w: 1,   h: 14, tile: 15}
+
+  # --- Chunk (3,0): Cámara del Guardián (tx = 120..159, ty = 0..22) ---
+  - {layer: COL,  x: 150, y: 3,  w: 1,   h: 14, tile: 1}
+  - {layer: VIS,  x: 150, y: 3,  w: 1,   h: 14, tile: 15}
+  - {layer: VIS,  x: 126, y: 4,  w: 2,   h: 16, tile: 9}
+  - {layer: VIS,  x: 144, y: 4,  w: 2,   h: 16, tile: 9}
+  - {layer: META, x: 152, y: 17, w: 6,   h: 3,  tile: 3}
+
+entities:
+  # Planta alta: (0,0) Entrada y (1,0) Hub
+  - {name: spawn,            type: player_spawn,        x: 32,   y: 152}
+  - {name: egg_catacomb_1,   type: collectible,         x: 96,   y: 88}
+  - {name: ck_hub,           type: checkpoint,          x: 352,  y: 152}
+  - {name: door_hub_gallery, type: door,                x: 632,  y: 72}
+  # Planta baja: (1,1) Foso y (0,1) Altar del Doble Salto
+  - {name: ck_pit,           type: checkpoint,          x: 368,  y: 336}
+  - {name: ck_altar,         type: checkpoint,          x: 280,  y: 336}
+  - {name: rel_double_jump,  type: ability_double_jump, x: 80,   y: 336}
+  # Planta baja este: (2,1) Galería Subterránea y (3,1) Santuario Profundo
+  - {name: ck_east_low,      type: checkpoint,          x: 664,  y: 272}
+  - {name: plat_crypt,       type: mover,               x: 696,  y: 280, w: 4, h: 1, to_x: 864, to_y: 280, speed: 48, pause: 0.6, tile: 6}
+  - {name: sw_sanctum,       type: switch,              x: 1048, y: 336}
+  - {name: egg_catacomb_2,   type: collectible,         x: 1160, y: 272}
+  # Planta alta este: (2,0) Galería Invertida y (3,0) Cámara del Guardián
+  - {name: ck_grav2,         type: checkpoint,          x: 712,  y: 152}
+  - {name: flip_up2,         type: gravity_flip,        x: 744,  y: 152}
+  - {name: flip_down2,       type: gravity_flip,        x: 904,  y: 28}
+  - {name: ck_boss2,         type: checkpoint,          x: 984,  y: 152}
+  - {name: boss_catacomb,    type: boss,                x: 1120, y: 160}
+  - {name: door_boss2,       type: door,                x: 1200, y: 136}
+  - {name: goal,             type: goal,                x: 1240, y: 152}
+
+links:
+  - {from: sw_sanctum,    to: door_hub_gallery}
+  - {from: boss_catacomb, to: door_boss2}
+
+ropes:
+  - {x: 188, y: 216, segments: 15, seg_len: 6}
+
+water:
+  - {x: 408, y: 320, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo}
+  - {cx: 1, cy: 0, theme: raices}
+  - {cx: 2, cy: 0, theme: invertido}
+  - {cx: 3, cy: 0, theme: arena}
+  - {cx: 0, cy: 1, theme: cueva}
+  - {cx: 1, cy: 1, theme: cisterna}
+  - {cx: 2, cy: 1, theme: nido}
+  - {cx: 3, cy: 1, theme: engranajes}

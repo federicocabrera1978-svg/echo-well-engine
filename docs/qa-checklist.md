@@ -19,7 +19,7 @@ iniciar sesión en GitHub para descargarlos.
 
 Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `ewmapc`,
 `ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`,
-`assets/maps/bin/{slice,hello,room,mover,gravity,boss}.ewmap`, `README.md`, `DIST.txt` y
+`assets/maps/bin/{slice,level2,hello,room,mover,gravity,boss,ability}.ewmap`, `README.md`, `DIST.txt` y
 `docs/qa-checklist.md` (este archivo).
 
 ### Linux (x86_64)
@@ -44,7 +44,7 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nogamepad` / `EW_NOGAMEPAD=1` | ignora el gamepad |
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
-| `--map assets/maps/bin/boss.ewmap` | arena de prueba del boss (también `ability`, `gravity`, `mover`, `room`) |
+| `--map assets/maps/bin/level2.ewmap` | carga directo el Nivel 2 "Las Catacumbas" (también `boss`, `ability`, `gravity`, `mover`, `room`) |
 | `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
 La consola (terminal en Linux; en Windows abrí `cmd` y corré `echo_engine.exe` desde ahí)
@@ -100,9 +100,16 @@ en verde al tomarlo.
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
 - [ ] **Meta y pantalla de final.** Detrás de esa puerta: se abre la pantalla de final pixel-art
   (**NIVEL COMPLETADO**) con el resumen de huevos, muertes y habilidades, y las opciones
-  **SIGUIENTE NIVEL** (habilitada cuando existe el siguiente mapa de la campaña o se pasa `--next-map`),
+  **SIGUIENTE NIVEL** (habilitada en `slice` para pasar a `level2`, o cuando se pasa `--next-map`),
   **REINICIAR NIVEL**, **MENU DE PAUSA** y **SALIR**. Con el boss vivo la meta no cuenta.
   Después de la meta, R corto vuelve al checkpoint y R largo al inicio con el HUD en `0/1`.
+- [ ] **Nivel 2 — Las Catacumbas (`level2`, 4×2 salas metroidvania).** Al elegir **SIGUIENTE NIVEL**
+  tras completar `slice` (o con `--map assets/maps/bin/level2.ewmap`):
+  1. En la entrada `(0,0)`, verificá que el huevo de la repisa alta se ve pero no se alcanza con un salto simple (`0/2` en el HUD).
+  2. Avanzá al Hub `(1,0)`, bajá por el pozo vertical hasta caer al agua de `(1,1)` y caminá a la izquierda hasta `(0,1)` para tomar la reliquia cian de **Doble Salto** (aparece el ícono en el HUD).
+  3. Volvé a `(1,1)`, subí con Doble Salto al Escalón 1 de la derecha, cruzá `(2,1)` sobre la plataforma móvil `plat_crypt` y en `(3,1)` activá `sw_sanctum` (abre la puerta alta del Hub) y subí al altar con Doble Salto para agarrar el huevo `egg_catacomb_2` (`1/2`).
+  4. Hacé backtracking a `(1,1)`, subí con Doble Salto por los Escalones 1 y 2 de vuelta al Hub `(1,0)` y regresá a `(0,0)` para subir a la repisa inicial y agarrar `egg_catacomb_1` (`2/2` en dorado).
+  5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá la puerta abierta hacia `(2,0)` (gravedad invertida por el techo) y en `(3,0)` vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta.
 
 ## 4. Guardar partida
 
