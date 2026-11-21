@@ -150,6 +150,10 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_mover_rect"), v.mover_count, v.mover_rect.data());
     Uniform1fv(GetUniformLocation(geom_prog_, "u_mover_fam"), v.mover_count, v.mover_fam.data());
   }
+  Uniform1i(GetUniformLocation(geom_prog_, "u_hazard_count"), v.hazard_count);
+  if (v.hazard_count > 0) {
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_hazards"), v.hazard_count, v.hazards.data());
+  }
   Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_theme"), 9, v.bg_theme.data());
   Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_seed"), 9, v.bg_seed.data());
   glDrawArrays(GL_TRIANGLES, 0, 3);

@@ -34,22 +34,22 @@ N, E, S, W = 1, 2, 4, 8
 # Paleta y estilo por familia. (R, G, B) en 0..255.
 # Slice usa familia 10 (VIS) y 14 (FG) después del autotile.
 FAMILIES: list[tuple[str, tuple[int, int, int], str]] = [
-    ("slate",    (78, 76, 92),    "flat"),     # 0  (id 0 queda vacío en mapas autotile)
-    ("stone",    (118, 114, 108), "speckle"),  # 1
-    ("brick",    (152, 74, 58),   "brick"),    # 2
-    ("dirt",     (122, 84, 52),   "speckle"),  # 3
-    ("grass",    (66, 122, 60),   "grass"),    # 4  cap verde si N expuesto
-    ("wood",     (132, 90, 50),   "grain"),    # 5
-    ("metal",    (138, 142, 154), "metal"),    # 6
-    ("sand",     (190, 164, 98),  "speckle"),  # 7
-    ("ice",      (152, 192, 214), "ice"),      # 8
-    ("cave",     (60, 58, 70),    "speckle"),  # 9
-    ("moss",     (78, 116, 66),   "grass"),    # 10 slice VIS
-    ("copper",   (164, 98, 64),   "metal"),    # 11
-    ("crystal",  (118, 82, 152),  "crystal"),  # 12
-    ("snow",     (214, 218, 224), "flat"),     # 13
-    ("darkwood", (82, 56, 42),    "grain"),    # 14 slice FG
-    ("gold",     (192, 154, 66),  "metal"),    # 15
+    ("slate",    (68, 68, 86),    "ashlar"),   # 0  pizarra dracónica
+    ("stone",    (110, 108, 114), "ashlar"),   # 1  mampostería de calabozo
+    ("brick",    (144, 66, 56),   "brick"),    # 2  ladrillo de cripta
+    ("dirt",     (112, 78, 52),   "speckle"),  # 3  tierra compacta
+    ("grass",    (64, 128, 68),   "grass"),    # 4  musgo y pasto de caverna
+    ("wood",     (128, 84, 48),   "plank"),    # 5  tablones con remaches
+    ("metal",    (124, 132, 148), "metal"),    # 6  hierro forjado
+    ("sand",     (178, 152, 98),  "speckle"),  # 7  arenisca / polvo óseo
+    ("ice",      (138, 184, 212), "ice"),      # 8  hielo arcano
+    ("cave",     (54, 52, 68),    "basalt"),   # 9  basalto abisal
+    ("moss",     (72, 118, 76),   "grass"),    # 10 musgo de mazmorra (slice VIS)
+    ("copper",   (156, 92, 62),   "metal"),    # 11 bronce antiguo
+    ("crystal",  (124, 78, 168),  "crystal"),  # 12 amatista rúnica
+    ("snow",     (198, 204, 214), "ashlar"),   # 13 mármol pálido
+    ("darkwood", (76, 52, 42),    "plank"),    # 14 viga oscura (slice FG)
+    ("gold",     (196, 154, 62),  "hoard"),    # 15 tesoro dracónico
 ]
 
 
@@ -75,50 +75,88 @@ def clamp8(v: float) -> int:
 def fill_pixel(fam: int, style: str, base: tuple[int, int, int], x: int, y: int) -> tuple[int, int, int, int]:
     """Color y altura del interior (sin bisel)."""
     r, g, b = base
-    h = 255
+    h = 248
     n = (hash32(fam * 64 + y * 8 + x) & 0xFF) / 255.0
     if style == "flat":
-        k = 0.97 + 0.06 * n
+        k = 0.96 + 0.08 * n
+    elif style == "ashlar":
+        # Sillares tallados 4x4 desfasados con juntas suaves (sin hundir h < 215 en (7,4),(4,7))
+        bx = (x + (4 if y >= 4 else 0)) % 8
+        seam = (y == 3) or (bx == 4 and y < 3) or (x == 0 and y >= 4)
+        tone = 0.92 + 0.14 * ((hash32(fam * 31 + (y // 4) * 5 + (bx // 4)) & 0xFF) / 255.0)
+        k = 0.78 if seam else (tone * (0.95 + 0.10 * n))
+        h = 212 if seam else clamp8(226 + 29 * n)
     elif style == "speckle":
-        k = 0.88 + 0.24 * n
-        h = clamp8(200 + 55 * n)
+        pebble = (hash32(fam * 97 + x * 7 + y * 19) & 15) == 0
+        k = 1.14 if pebble else (0.86 + 0.24 * n)
+        h = 246 if pebble else clamp8(208 + 44 * n)
+    elif style == "basalt":
+        # Grietas diagonales en roca volcánica
+        fissure = (x + y * 2) % 7 == 0 and n < 0.55
+        k = 0.72 if fissure else (0.88 + 0.22 * n)
+        h = 195 if fissure else clamp8(220 + 35 * n)
     elif style == "brick":
         # Juntas: filas 3 y 7; ladrillos desfasados (x=3 arriba, x=7 abajo).
         joint = (y == 3 or y == 7) or (x == (3 if y < 3 else 7) and y not in (3, 7))
         if joint:
-            k, r, g, b, h = 0.72, 96, 78, 70, 110
+            k, r, g, b, h = 0.72, 86, 70, 68, 120
         else:
-            k = 0.96 + 0.08 * n
-    elif style == "grain":
-        # Vetas horizontales de madera.
-        vein = ((y + fam) % 4 == 0) or (x + 2 * y + fam) % 7 == 0
-        k = 1.12 if vein else 0.94 + 0.08 * n
-        if vein:
-            h = 210
+            bvar = 0.90 + 0.18 * ((hash32(fam * 19 + (y // 4) * 11 + (x // 4)) & 0xFF) / 255.0)
+            k = bvar * (0.94 + 0.10 * n)
+            h = 238
+    elif style == "plank" or style == "grain":
+        # Vetas horizontales + costura central + remaches en extremos
+        seam = (y == 4)
+        rivet = (x in (1, 6)) and (y in (2, 6))
+        vein = ((y + fam) % 3 == 0) or ((x + 2 * y + fam) % 7 == 0)
+        if rivet:
+            r, g, b, k, h = 110, 114, 124, 1.05, 250
+        elif seam:
+            k, h = 0.70, 185
+        else:
+            k = 1.10 if vein else (0.90 + 0.14 * n)
+            h = 224 if vein else 240
     elif style == "metal":
-        k = 0.90 + 0.18 * n
-        if (x + y) % 4 == 0:
-            k *= 1.10
-            h = 240
+        # Placa con ranura sutil y remaches en las esquinas interiores
+        rivet = (x in (1, 6)) and (y in (1, 6))
+        band = (x == 4 or y == 4)
+        if rivet:
+            k, h = 1.24, 255
+        elif band:
+            k, h = 0.80, 210
+        else:
+            k = 0.90 + 0.16 * n
+            if (x + y) % 4 == 0:
+                k *= 1.10
+                h = 244
+    elif style == "hoard":
+        # Lingotes / tesoro dorado con relieve central y brillo
+        center = (2 <= x <= 5) and (2 <= y <= 5)
+        k = (1.16 if (x + y) % 3 == 0 else 1.04) if center else (0.86 + 0.14 * n)
+        h = 252 if center else 224
     elif style == "ice":
-        k = 0.92 + 0.16 * n
+        k = 0.90 + 0.18 * n
         if (x - y + fam) % 5 == 0:
-            k, h = 1.18, 230  # destello
+            k, h = 1.20, 244  # destello
     elif style == "crystal":
-        k = 0.90 + 0.12 * n
-        if (x + 2 * y) % 3 == 0:
-            k, h = 1.15, 240
+        facet = ((x + 2 * y) % 3 == 0)
+        core = (2 <= x <= 5 and 2 <= y <= 5)
+        k = 1.18 if (facet or core) else (0.86 + 0.16 * n)
+        h = 250 if core else (238 if facet else 218)
     elif style == "grass":
-        # Tierra/musgo en el cuerpo; el cap se aplica después.
-        k = 0.86 + 0.16 * n
-        # un poco más marrón hacia abajo
+        # Piedra musgosa / tierra fértil en el cuerpo; el cap verde va en y=0..1 cuando N expuesto.
+        rock = (hash32(fam * 53 + x * 11 + y * 5) & 7) == 0
+        k = (1.06 if rock else (0.86 + 0.16 * n))
         r = clamp8(r * k + 18 * (y / 7.0))
-        g = clamp8(g * k)
+        g = clamp8(g * k + (6 if not rock else -4))
         b = clamp8(b * k - 6)
-        return r, g, b, 255
+        return max(8, r), max(8, g), max(8, b), 252
     else:
         k = 1.0
-    return clamp8(r * k), clamp8(g * k), clamp8(b * k), h
+    cr, cg, cb = clamp8(r * k), clamp8(g * k), clamp8(b * k)
+    if (cr | cg | cb) == 0:
+        cb = 8
+    return cr, cg, cb, h
 
 
 def grass_cap(fam: int, base: tuple[int, int, int], x: int, y: int) -> tuple[int, int, int, int] | None:

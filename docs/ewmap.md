@@ -71,7 +71,7 @@ El streaming en runtime usa `ew::map::ChunkCache` (LRU con capacidad configurabl
 - `WaterRecord` (24 B): `i32 x, y, w, h` (px), `f32 stiffness, damping` (resortes Hooke).
 - `RopeRecord` (16 B): `i32 x, y` (ancla fija, px), `u32 segments` (1..256), `f32 seg_len` (px).
 - `MoverRecord` (88 B): `u32 entity` (índice en ENT, type `mover`), `u16 w_tiles, h_tiles` (1..64), `f32 speed` (px/s), `f32 pause` (s en cada waypoint), `u16 n_wp` (2..8), `u16 tile` (id fuente YAML), `u32 pad`, `i32 wp_x[8], wp_y[8]` (px, esquina sup. izq. de cada waypoint). Recorre la ruta en ping-pong.
-- `BackdropRecord` (8 B): `u16 cx, cy` (chunk), `u16 theme` (`ew::map::BackdropTheme`, `engine/map/backdrop.hpp`: 0 `cueva`, 1 `pozo`, 2 `raices`, 3 `grieta`, 4 `cisterna`, 5 `nido`, 6 `engranajes`, 7 `invertido`, 8 `arena`, 9 `vacio`; desconocido = `cueva`), `u16 seed` (variación del dibujo). Un registro por chunk; los chunks sin registro usan `cueva`. Ver [level-design.md](level-design.md#fondos-backdrops).
+- `BackdropRecord` (8 B): `u16 cx, cy` (chunk), `u16 theme` (`ew::map::BackdropTheme`, `engine/map/backdrop.hpp`: 0 `cueva`, 1 `pozo`, 2 `raices`, 3 `grieta`, 4 `cisterna`, 5 `nido`, 6 `engranajes`, 7 `invertido`, 8 `arena`, 9 `vacio`, 10 `cripta`, 11 `guarida`, 12 `santuario`, 13 `abismo`; desconocido = `cueva`), `u16 seed` (variación del dibujo). Un registro por chunk; los chunks sin registro usan `cueva`. Ver [level-design.md](level-design.md#fondos-backdrops).
 - `DialogRecord` (16 B): `u32 entity` (índice en ENT), `u32 speaker_str` y `u32 text_str` (offsets en STRTAB; páginas con `|`, saltos de línea con `/`), `u16 trigger` (`0` = `interact`, `1` = `pickup`, `2` = `proximity`), `u16 flags` (`bit0` = `kDialogFlagOnce`: se dispara una sola vez).
 
 ## Fuente YAML (v1)

@@ -10,6 +10,7 @@ inline constexpr int kInternalH = 180;
 
 inline constexpr int kMaxMarkers = 48;
 inline constexpr int kMaxSprites = 16;
+inline constexpr int kMaxHazards = 32;
 inline constexpr int kMaxWaterCols = 64;
 inline constexpr int kMaxWaterBodies = 4;
 inline constexpr int kMaxMovers = 8;
@@ -64,6 +65,9 @@ struct FrameView {
   int mover_count = 0;
   std::array<float, kMaxMovers * 4> mover_rect{};
   std::array<float, kMaxMovers> mover_fam{};
+  // Pinchos pixel-art (META 4): tramos horizontales (x0, y0, w_px, dir: +1 piso, -1 techo).
+  int hazard_count = 0;
+  std::array<float, kMaxHazards * 4> hazards{};
   // Fondos (backdrops) del vecindario 3×3, [oy*3+ox] desde chunk_x_px/chunk_y_px:
   // tema (ew::map::BackdropTheme) y seed. Default: cueva.
   std::array<int, 9> bg_theme{};

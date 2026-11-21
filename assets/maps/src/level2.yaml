@@ -170,14 +170,14 @@ water:
   - {x: 408, y: 320, w: 64, h: 24, stiffness: 0.02, damping: 0.04}
 
 backdrops:
-  - {cx: 0, cy: 0, theme: pozo}
-  - {cx: 1, cy: 0, theme: raices}
+  - {cx: 0, cy: 0, theme: cripta}
+  - {cx: 1, cy: 0, theme: abismo}
   - {cx: 2, cy: 0, theme: invertido}
-  - {cx: 3, cy: 0, theme: arena}
-  - {cx: 0, cy: 1, theme: cueva}
-  - {cx: 1, cy: 1, theme: cisterna}
-  - {cx: 2, cy: 1, theme: nido}
-  - {cx: 3, cy: 1, theme: engranajes}
+  - {cx: 3, cy: 0, theme: guarida}
+  - {cx: 0, cy: 1, theme: cisterna}
+  - {cx: 1, cy: 1, theme: pozo}
+  - {cx: 2, cy: 1, theme: engranajes}
+  - {cx: 3, cy: 1, theme: santuario}
 
 dialogs:
   - {entity: npc_cronista,    trigger: interact, speaker: "CRONISTA DE LAS CATACUMBAS", text: "AQUI SELLARON A LA SIERPE/Y ESCONDIERON SUS NIDADAS.|DESCIENDE AL FOSO POR LAS ALAS/ANTES DE SUBIR AL GUARDIAN."}

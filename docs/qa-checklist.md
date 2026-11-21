@@ -97,8 +97,10 @@ en verde al tomarlo.
 - [ ] **Sala 6 (boss).** Checkpoint `ck_boss` fuera de su alcance. El boss camina, se ilumina
   (aviso) y salta. Se le pega cayéndole encima: 3 pisotones. Cada golpe lo acelera y lo hace parpadear.
   Tocarlo de costado te mata y morir lo cura. Al vencerlo se abre la puerta de la derecha.
-- [ ] **Fondos.** Cada pantalla tiene su fondo (pozo con luz y gotas, raíces, roca con
-  brasas, cisterna, nichos con huevos, engranajes, arquitectura espejada, arena con antorchas).
+- [ ] **Fondos y arte dark fantasy.** Cada pantalla tiene su fondo (`slice` conserva pozo, raíces, roca con
+  brasas, cisterna, nichos, engranajes, invertido y arena; `level2` suma `cripta`, `abismo`, `guarida` y `santuario`).
+  Los tiles muestran mampostería, ladrillos, madera remachada y musgo renovados, y los pinchos `META 4` se ven como
+  púas pixel-art de acero y punta carmesí con alto contraste sobre el fondo.
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
 - [ ] **Meta y pantalla de final.** Detrás de esa puerta: se abre la pantalla de final pixel-art
   (**NIVEL COMPLETADO**) con el resumen de huevos, muertes y habilidades, y las opciones

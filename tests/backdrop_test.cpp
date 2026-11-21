@@ -51,18 +51,24 @@ int main(int argc, char** argv) {
   if (argc < 4) { std::fprintf(stderr, "uso: backdrop_test slice.ewmap hello.ewmap backdrop_ok.ewmap\n"); return 2; }
 
   // --- tabla de nombres -------------------------------------------------------
+  CHECK(kBackdropCount == 14);
   CHECK(kBackdropNames.size() == kBackdropCount);
   for (uint16_t i = 0; i < kBackdropCount; ++i) {
     CHECK(backdrop_from_name(kBackdropNames[i]) == i);
     CHECK(backdrop_name(i) == kBackdropNames[i]);
     CHECK(backdrop_sanitize(i) == i);
   }
+  CHECK(backdrop_from_name("cripta") == int(BT::Cripta));
+  CHECK(backdrop_from_name("guarida") == int(BT::Guarida));
+  CHECK(backdrop_from_name("santuario") == int(BT::Santuario));
+  CHECK(backdrop_from_name("abismo") == int(BT::Abismo));
   CHECK(backdrop_from_name("lava") == -1);
   CHECK(backdrop_from_name("") == -1);
   CHECK(backdrop_from_name("Pozo") == -1);  // sensible a mayúsculas, como el resto del YAML
   CHECK(backdrop_name(999) == "cueva");
   CHECK(backdrop_sanitize(kBackdropCount) == 0 && backdrop_sanitize(0xFFFF) == 0);
   static_assert(backdrop_from_name("arena") == int(BT::Arena));
+  static_assert(backdrop_from_name("abismo") == int(BT::Abismo));
 
   // --- slice: un fondo por sala ------------------------------------------------
   {
@@ -153,6 +159,24 @@ int main(int argc, char** argv) {
     MapLoader m;
     CHECK(m.load_bytes(b) == MapError::None);
     CHECK(m.backdrops().empty());
+  }
+
+  // --- level2: fondos dracónicos (cripta, abismo, guarida, santuario) -----------
+  if (argc >= 5) {
+    ew::game::Scene s;
+    std::string err;
+    if (!s.load(argv[4], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
+    CHECK(same(s.backdrop(0, 0), BT::Cripta));
+    CHECK(same(s.backdrop(1, 0), BT::Abismo));
+    CHECK(same(s.backdrop(2, 0), BT::Invertido));
+    CHECK(same(s.backdrop(3, 0), BT::Guarida));
+    CHECK(same(s.backdrop(0, 1), BT::Cisterna));
+    CHECK(same(s.backdrop(1, 1), BT::Pozo));
+    CHECK(same(s.backdrop(2, 1), BT::Engranajes));
+    CHECK(same(s.backdrop(3, 1), BT::Santuario));
+    s.follow(160, 90);
+    CHECK(same(s.active_backdrops()[4], BT::Cripta));
+    CHECK(same(s.active_backdrops()[5], BT::Abismo));
   }
 
   std::printf("backdrop_test OK\n");

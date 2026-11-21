@@ -26,6 +26,8 @@ uniform float u_water[256];        // superficie por columna (px mundo), stride 
 uniform int u_mover_count;         // plataformas móviles (máx. 8)
 uniform vec4 u_mover_rect[8];      // x, y, w, h (px mundo, esquina sup. izq.)
 uniform float u_mover_fam[8];      // familia de atlas 1..15
+uniform int u_hazard_count;        // franjas de pinchos pixel-art (máx. 32)
+uniform vec4 u_hazards[32];        // (x0, y0, w_px, dir: +1 suelo, -1 techo)
 
 // ---------------------------------------------------------------------------------------------
 // Fondos (backdrops) procedurales por chunk: tema = u_bg_theme[vecindario 3×3] (ew::map::BackdropTheme).
@@ -320,6 +322,137 @@ vec4 bg_arena(vec2 q, vec2 f, float s, out float emit) {
   return vec4(c, h);
 }
 
+// 10: Cripta Dracónica — arcos góticos de pizarra, nichos funerarios y braseros violetas
+vec4 bg_cripta(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  float h = 0.0;
+  float col_x = mod(q.x, 64.0);
+  float mor = (mod(q.y, 12.0) < 1.0 || mod(q.x + floor(q.y / 12.0) * 10.0, 20.0) < 1.0) ? 0.0 : 1.0;
+  vec3 c = mix(vec3(0.04, 0.04, 0.06), vec3(0.08, 0.08, 0.12), mor * (0.65 + 0.35 * vnoise(q * 0.08)));
+  // arcos apuntados cada 64 px
+  float ax = abs(col_x - 32.0);
+  float arch_y = 34.0 + sqrt(max(0.0, 26.0 * 26.0 - ax * ax)) * 0.85;
+  if (ax > 21.0 && q.y > 32.0) {
+    c = vec3(0.11, 0.10, 0.15);
+    h = 0.55;
+  } else if (q.y < arch_y && q.y > 26.0 && ax < 18.0) {
+    // hueco profundo del nicho con reliquia tenue
+    c = vec3(0.03, 0.03, 0.05);
+    if (abs(ax - 0.0) < 3.5 && q.y > 72.0 && q.y < 86.0) {
+      c = vec3(0.16, 0.14, 0.20);
+      h = 0.4;
+    }
+  }
+  // estandartes rasgados + fuego espectral tenue en columnas alternas
+  float banner_x = abs(mod(q.x + 32.0, 128.0) - 64.0);
+  if (banner_x < 4.5 && q.y > 42.0 && q.y < 76.0 - mod(banner_x, 3.0) * 2.0) {
+    c = vec3(0.16, 0.06, 0.09);
+    h = 0.6;
+  }
+  for (int i = 0; i < 2; ++i) {
+    vec2 bp = vec2(i == 0 ? 64.0 : 256.0, 108.0);
+    vec2 d = q - bp;
+    if (abs(d.x) < 4.0 && d.y >= 0.0 && d.y < 5.0) { c = vec3(0.14, 0.13, 0.17); h = 0.8; }
+    float fl = vnoise(vec2(q.x * 0.5, q.y * 0.4 + u_time * 7.5) + float(i) * 5.3);
+    if (abs(d.x) < 2.5 && d.y < 0.0 && d.y > -5.5 - fl * 2.0) {
+      c = mix(vec3(0.32, 0.16, 0.48), vec3(0.55, 0.40, 0.72), fl);
+      emit = 0.55;
+    }
+  }
+  return vec4(c, h);
+}
+
+// 11: Guarida del Wyrm — estrato volcánico oscuro, costillar fósil y vetas de brasas
+vec4 bg_guarida(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  float h = 0.0;
+  float strata = sin(q.y * 0.11 + vnoise(q * 0.04) * 3.0);
+  vec3 c = mix(vec3(0.05, 0.03, 0.04), vec3(0.10, 0.05, 0.05), smoothstep(-0.3, 0.6, strata));
+  // grietas incandescentes en la roca basáltica (muy tenues para preservar contraste)
+  float crack = vnoise(vec2(q.x * 0.09, q.y * 0.14));
+  if (abs(crack - 0.5) < 0.022 && q.y > 92.0) {
+    c = mix(vec3(0.45, 0.12, 0.04), vec3(0.70, 0.28, 0.06), 0.5 + 0.5 * sin(u_time * 3.2 + q.x * 0.1));
+    emit = 0.45;
+  }
+  // costillar gigante de dragón al fondo
+  vec2 rc = q - vec2(160.0, 126.0);
+  if (abs(rc.x) < 76.0) {
+    float rib_id = floor((rc.x + 76.0) / 18.0);
+    float rx = mod(rc.x + 76.0, 18.0) - 9.0;
+    float arch = -abs(rc.x) * 0.18 + 64.0;
+    float rib_y = 122.0 - arch + rx * rx * 0.18;
+    if (abs(q.y - rib_y) < 2.2 && q.y < 126.0) {
+      c = vec3(0.17, 0.14, 0.12);
+      h = 0.65;
+    }
+    if (mod(rib_id, 2.0) < 0.5 && abs(q.y - 104.0) < 3.0 && abs(rx) < 5.0) {
+      c = vec3(0.14, 0.11, 0.10);
+      h = 0.5;
+    }
+  }
+  return vec4(c, h);
+}
+
+// 12: Santuario del Huevo — vitrales ojivales tenues, pilares de mármol y runas arcanas
+vec4 bg_santuario(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  float h = 0.0;
+  vec3 c = vec3(0.04, 0.05, 0.08);
+  float panel = mod(q.x, 80.0);
+  if (panel < 10.0 || panel > 70.0) {
+    // pilastras acanaladas
+    float flute = sin(panel * 1.4);
+    c = mix(vec3(0.08, 0.09, 0.13), vec3(0.13, 0.15, 0.21), 0.5 + 0.5 * flute);
+    h = 0.7;
+  } else {
+    // rosetón y vitral ojival central
+    vec2 w = vec2(panel - 40.0, q.y - 68.0);
+    float r = length(w);
+    if (abs(w.x) < 16.0 && q.y > 40.0 && q.y < 118.0) {
+      float tint = step(0.0, sin(w.x * 0.35) * cos(w.y * 0.25));
+      c = mix(vec3(0.07, 0.14, 0.18), vec3(0.12, 0.10, 0.22), tint);
+      if (abs(r - 12.0) < 1.4 || abs(w.x) < 1.0) {
+        c = vec3(0.05, 0.06, 0.09);
+        h = 0.5;
+      } else {
+        emit = 0.18;
+      }
+    }
+  }
+  // runas flotantes muy sutiles
+  float rn = vnoise(floor(q / 6.0) * 1.37 + vec2(0.0, floor(u_time * 0.8)));
+  if (rn > 0.91 && mod(q.x, 6.0) > 1.5 && mod(q.y, 6.0) > 1.5 && panel >= 12.0 && panel <= 68.0) {
+    c = vec3(0.22, 0.42, 0.52);
+    emit = 0.35;
+  }
+  return vec4(c, h);
+}
+
+// 13: Abismo Arcano — estalactitas de obsidiana, bruma violácea y ojos lejanos en la penumbra
+vec4 bg_abismo(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  float h = 0.0;
+  float fog = vnoise(vec2(q.x * 0.03 + u_time * 0.15, q.y * 0.05));
+  vec3 c = mix(vec3(0.02, 0.02, 0.05), vec3(0.06, 0.04, 0.10), fog);
+  // siluetas de agujas de obsidiana en fondo y techo
+  float spire_top = 18.0 + 22.0 * abs(sin(q.x * 0.045));
+  float spire_bot = 162.0 - 24.0 * abs(cos(q.x * 0.037 + 1.1));
+  if (q.y < spire_top || q.y > spire_bot) {
+    c = vec3(0.04, 0.04, 0.07);
+    h = 0.45;
+  }
+  // grietas arcanas distantes + pares de ojos dracónicos parpadeando
+  for (int i = 0; i < 3; ++i) {
+    vec2 ep = vec2(58.0 + float(i) * 98.0, 52.0 + float((i * 2) % 3) * 24.0);
+    float blink = step(0.12, fract(u_time * 0.22 + float(i) * 0.37));
+    if (blink > 0.5 && abs(q.y - ep.y) < 1.2 && (abs(q.x - (ep.x - 3.0)) < 1.5 || abs(q.x - (ep.x + 3.0)) < 1.5)) {
+      c = vec3(0.65, 0.28, 0.16);
+      emit = 0.7;
+    }
+  }
+  return vec4(c, h);
+}
+
 vec4 bg_theme_px(int theme, vec2 q, vec2 f, float s, out float emit) {
   emit = 0.0;
   if (theme == 1) return bg_pozo(q, f, s, emit);
@@ -331,6 +464,10 @@ vec4 bg_theme_px(int theme, vec2 q, vec2 f, float s, out float emit) {
   if (theme == 7) return bg_invertido(q, f, s, emit);
   if (theme == 8) return bg_arena(q, f, s, emit);
   if (theme == 9) return vec4(0.05, 0.06, 0.10, 0.0);  // vacio: el fondo liso de antes
+  if (theme == 10) return bg_cripta(q, f, s, emit);
+  if (theme == 11) return bg_guarida(q, f, s, emit);
+  if (theme == 12) return bg_santuario(q, f, s, emit);
+  if (theme == 13) return bg_abismo(q, f, s, emit);
   return bg_cueva(q, f, s, emit);
 }
 
@@ -446,6 +583,30 @@ void main() {
       autotile_bevel(n, vis, ml);
       depth = 0.35;
       emit = 0.0; lr = 1.0;
+    }
+  }
+  // Pinchos pixel-art afilados por tramo horizontal (META 4): acero oscuro y punta carmesí
+  for (int i = 0; i < u_hazard_count; ++i) {
+    vec4 hz = u_hazards[i];
+    if (world.x >= hz.x && world.x < hz.x + hz.z &&
+        world.y >= hz.y && world.y < hz.y + 8.0) {
+      float lx = mod(world.x - hz.x, 4.0);
+      float ly = world.y - hz.y;
+      // py = altura desde la base (0 = base apoyada, 7 = punta libre)
+      float py = hz.w > 0.0 ? (7.5 - ly) : ly;
+      float half_w = clamp((7.0 - py) * 0.29 + 0.35, 0.35, 2.0);
+      float dx = abs(lx - 2.0);
+      if (dx <= half_w && py >= 0.0 && py < 7.6) {
+        bool tip = py > 4.9;
+        bool edge = dx > half_w - 0.55 || py < 1.1;
+        albedo = tip ? vec3(0.86, 0.14, 0.18)
+                     : (edge ? vec3(0.18, 0.20, 0.25)
+                             : (lx < 2.0 ? vec3(0.62, 0.68, 0.78) : vec3(0.36, 0.40, 0.48)));
+        n = normalize(vec3((lx < 2.0 ? -0.55 : 0.55), hz.w > 0.0 ? -0.25 : 0.25, 1.0));
+        depth = 0.34;
+        emit = tip ? 0.25 : 0.0;
+        lr = 1.0;
+      }
     }
   }
   // Marcadores (actores)
