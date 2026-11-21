@@ -164,11 +164,16 @@ class Sim {
     float home_x = 0, home_y = 0;
     std::size_t ent = 0;  // índice en Scene::entities()
     bool dragon = false;  // true si es "boss_dragon" multipatrón
+    bool guardian2 = false;  // true si es boss_catacomb (Nivel 2, coloso ascendido)
     int cycle = 0;
     int max_hits() const { return dragon ? kDragonHits : kBossHits; }
     float width() const { return dragon ? kDragonW : kBossW; }
     float height() const { return dragon ? kDragonH : kBossH; }
-    float speed() const { return kBossSpeed + kBossSpeedPerHit * float(hits); }
+    float speed() const {
+      const float base = guardian2 ? (kBossSpeed + 12.f) : kBossSpeed;
+      const float step = kBossSpeedPerHit + (guardian2 ? 7.f : 0.f);
+      return base + step * float(hits);
+    }
   };
   struct Fireball {
     float x = 0, y = 0, vx = 0, vy = 0, life = 0;
