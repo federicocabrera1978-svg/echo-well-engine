@@ -524,19 +524,19 @@ int main(int argc, char** argv) {
         mi.left = nav_lt;
         mi.right = nav_rt;
         mi.confirm = nav_ok;
-      } else if (end_screen.open()) {
-        if (nav_toggle) {
-          ei.toggle = true;
-        } else if (sim->finish_t() >= 0.5f) {
-          ei.up = nav_up;
-          ei.down = nav_dn;
-          ei.confirm = nav_ok;
-        }
       } else if (dialogue.open()) {
         if (nav_toggle) {
           dialogue.close();
         } else if (nav_ok || in.interact) {
           dialogue.advance();
+        }
+      } else if (end_screen.open()) {
+        if (nav_toggle) {
+          ei.toggle = true;
+        } else if (sim->finish_t() >= 0.35f) {
+          ei.up = nav_up;
+          ei.down = nav_dn;
+          ei.confirm = nav_ok;
         }
       } else {
         mi.toggle = nav_toggle;
@@ -624,10 +624,15 @@ int main(int argc, char** argv) {
     mixer.set_mute(menu.muted());
 
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
+    // Nota: cuando end_screen está abierta, Sim::step debe seguir corriendo para avanzar finish_t_ (u_fade 0->1).
     const double now = glfwGetTime();
-    if (menu.open() || dialogue.open() || end_screen.open()) {
+    if (menu.open() || dialogue.open()) {
       acc = 0;
       last = now;
+      latched_in = {};
+    } else if (end_screen.open()) {
+      acc += max_frames ? ew::game::Sim::kDt : now - last;
+      in = {};
       latched_in = {};
     } else {
       acc += max_frames ? ew::game::Sim::kDt : now - last;
@@ -691,7 +696,7 @@ int main(int argc, char** argv) {
       }
     }
     boss_was_defeated = now_boss_defeated;
-    if (sim->finished() && !announced_goal) {
+    if (sim->finished() && !announced_goal && !dialogue.open()) {
       ew::game::EndStats st;
       st.title = ew::game::level_title(scene->map().string_at(1));
       st.items = sim->collected();
