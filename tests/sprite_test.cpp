@@ -25,7 +25,7 @@ static std::vector<uint8_t> extract_cell(const std::vector<uint8_t>& px, int col
   const auto uv = sprite_uv(col, row);
   for (int y = 0; y < kSpriteCellPx; ++y) {
     const std::size_t row_off = (std::size_t(uv.y + y) * kSpriteAtlasPx + std::size_t(uv.x)) * 4;
-    out.insert(out.end(), &px[row_off], &px[row_off + std::size_t(kSpriteCellPx) * 4]);
+    out.insert(out.end(), px.data() + row_off, px.data() + row_off + std::size_t(kSpriteCellPx) * 4);
   }
   return out;
 }
