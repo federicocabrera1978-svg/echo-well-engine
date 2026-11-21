@@ -14,6 +14,16 @@ namespace ew::game {
 inline constexpr uint32_t kAbilityDoubleJump = 1u << 0;
 inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump;
 
+// Estado de animación del protagonista (mapea a filas 0..5 de assets/atlas/sprites.png).
+enum class PlayerAnim : uint8_t {
+  Idle = 0,
+  Walk = 1,
+  Jump = 2,
+  DoubleJump = 3,
+  Climb = 4,
+  Swim = 5,
+};
+
 struct Input {
   float move_x = 0;  // -1..1
   bool jump = false;  // flanco: true el frame en que se aprieta
@@ -155,6 +165,10 @@ class Sim {
   float double_jump_x() const { return double_jump_x_; }
   float double_jump_y() const { return double_jump_y_; }
   int ability_flash() const { return ability_flash_; }
+  // Estado visual de animación del protagonista (sin GL).
+  int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
+  PlayerAnim player_anim() const { return anim_; }
+  int player_anim_frame() const { return anim_frame_; }  // 0..3
   // Partida guardada: reset() limpio, aplica Entity::active por entidad (puertas, switches,
   // huevos, boss vencido, reliquias), fija checkpoint + gravedad + habilidades y reaparece ahí.
   // `active` debe tener una entrada por entidad (lo valida apply_save en save.hpp).
@@ -203,7 +217,13 @@ class Sim {
   int double_jump_flash_ = 0;
   float double_jump_x_ = 0, double_jump_y_ = 0;
   int ability_flash_ = 0;
+  int facing_ = 1;
+  PlayerAnim anim_ = PlayerAnim::Idle;
+  int anim_frame_ = 0;
+  int anim_ticks_ = 0;
+  int air_ticks_ = 0;
   std::vector<Boss> bosses_;
+  void update_player_anim(const Input& in);
   void reset_bosses(bool keep_defeated);
   void advance_bosses();
   void collide_bosses();

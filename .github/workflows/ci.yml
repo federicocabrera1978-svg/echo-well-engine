@@ -144,6 +144,7 @@ jobs:
           ls -la /tmp/ew-pack/echo-well /tmp/ew-pack/echo-well/assets/atlas /tmp/ew-pack/echo-well/assets/maps/bin /tmp/ew-pack/echo-well/assets/shaders
           test -f /tmp/ew-pack/echo-well/echo_engine
           test -f /tmp/ew-pack/echo-well/assets/atlas/tiles.png
+          test -f /tmp/ew-pack/echo-well/assets/atlas/sprites.png
           for m in slice hello room mover gravity boss ability level2; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
           test -f /tmp/ew-pack/echo-well/docs/qa-checklist.md
           test -f /tmp/ew-pack/echo-well/DIST.txt
@@ -187,6 +188,7 @@ jobs:
           Get-ChildItem -Recurse dist/echo-well | Select-Object FullName
           if (-not (Test-Path dist/echo-well/echo_engine.exe)) { throw "falta echo_engine.exe" }
           if (-not (Test-Path dist/echo-well/assets/atlas/tiles.png)) { throw "falta tiles.png" }
+          if (-not (Test-Path dist/echo-well/assets/atlas/sprites.png)) { throw "falta sprites.png" }
           foreach ($m in 'slice','hello','room','mover','gravity','boss','ability','level2') {
             if (-not (Test-Path "dist/echo-well/assets/maps/bin/$m.ewmap")) { throw "falta $m.ewmap" }
           }

@@ -38,6 +38,11 @@ void Sim::build() {
   double_jump_x_ = 0;
   double_jump_y_ = 0;
   ability_flash_ = 0;
+  facing_ = 1;
+  anim_ = PlayerAnim::Idle;
+  anim_frame_ = 0;
+  anim_ticks_ = 0;
+  air_ticks_ = 0;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -256,6 +261,10 @@ void Sim::respawn() {
   double_jump_flash_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
+  anim_ = PlayerAnim::Idle;
+  anim_frame_ = 0;
+  anim_ticks_ = 0;
+  air_ticks_ = 0;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
@@ -318,6 +327,7 @@ void Sim::step(const Input& in) {
     const auto& p = world_.points()[player_];
     scene_.follow(p.pos.x, p.pos.y, kDt);
     scene_.tick(kDt);
+    update_player_anim({});
     return;
   }
   auto& pts = world_.points();
@@ -423,6 +433,44 @@ void Sim::step(const Input& in) {
   collide_bosses();
   check_hazards();
   check_goal();
+  update_player_anim(in);
+}
+
+void Sim::update_player_anim(const Input& in) {
+  if (in.move_x > 0.05f) facing_ = 1;
+  else if (in.move_x < -0.05f) facing_ = -1;
+
+  const bool gr = player().grounded;
+  air_ticks_ = (gr || on_rope() || player_in_water()) ? 0 : (air_ticks_ + 1);
+  const float vy_rel = player().velocity().y * down();
+  const bool in_air_anim = !gr && (anim_ == PlayerAnim::Jump || anim_ == PlayerAnim::DoubleJump ||
+                                   std::fabs(vy_rel) > 0.35f || air_ticks_ > 4);
+
+  if (on_rope()) {
+    if (anim_ != PlayerAnim::Climb) { anim_ = PlayerAnim::Climb; anim_ticks_ = 0; }
+    if (std::fabs(in.climb) > 0.05f || std::fabs(in.move_x) > 0.05f) ++anim_ticks_;
+    anim_frame_ = (anim_ticks_ / 6) & 3;
+  } else if (player_in_water()) {
+    if (anim_ != PlayerAnim::Swim) { anim_ = PlayerAnim::Swim; anim_ticks_ = 0; }
+    ++anim_ticks_;
+    anim_frame_ = (anim_ticks_ / 8) & 3;
+  } else if (double_jump_flash_ > 0) {
+    anim_ = PlayerAnim::DoubleJump;
+    const int elapsed = std::clamp(kDoubleJumpFlashFrames - double_jump_flash_, 0, kDoubleJumpFlashFrames - 1);
+    anim_frame_ = std::clamp((elapsed * 4) / kDoubleJumpFlashFrames, 0, 3);
+  } else if (in_air_anim) {
+    if (anim_ != PlayerAnim::Jump) { anim_ = PlayerAnim::Jump; anim_ticks_ = 0; }
+    ++anim_ticks_;
+    anim_frame_ = (vy_rel < -0.15f) ? ((anim_ticks_ / 8) & 1) : (2 + ((anim_ticks_ / 8) & 1));
+  } else if (std::fabs(in.move_x) > 0.05f || std::fabs(player().velocity().x) > 0.25f) {
+    if (anim_ != PlayerAnim::Walk) { anim_ = PlayerAnim::Walk; anim_ticks_ = 0; }
+    ++anim_ticks_;
+    anim_frame_ = (anim_ticks_ / 6) & 3;
+  } else {
+    if (anim_ != PlayerAnim::Idle) { anim_ = PlayerAnim::Idle; anim_ticks_ = 0; }
+    ++anim_ticks_;
+    anim_frame_ = (anim_ticks_ / 16) & 3;
+  }
 }
 
 int Sim::collected() const {

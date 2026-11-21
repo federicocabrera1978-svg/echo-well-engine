@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include <algorithm>
+#include "render/sprite_atlas.hpp"
 #include "render/tile_atlas.hpp"
 #include <fstream>
 #include <sstream>
@@ -49,7 +50,8 @@ GLuint tex(GLint ifmt, GLenum fmt, GLenum type) {
 }
 }  // namespace
 
-bool DeferredRenderer::init(const std::string& dir, std::string& err, const std::string& atlas_path) {
+bool DeferredRenderer::init(const std::string& dir, std::string& err, const std::string& atlas_path,
+                            const std::string& sprite_atlas_path) {
   albedo_ = tex(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
   normal_ = tex(GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
   depth_  = tex(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT);
@@ -86,9 +88,22 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err, const std:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
+  {  // atlas de sprites 128×128 RGBA8 (unidad 2)
+    const auto loaded_sp = load_sprite_atlas_file(sprite_atlas_path.empty() ? nullptr : sprite_atlas_path.c_str());
+    const auto& sprites = loaded_sp.px;
+    std::fprintf(stderr, "echo_engine: sprites %s%s\n",
+                 loaded_sp.source == AtlasSource::Png ? "PNG " : "procedural",
+                 loaded_sp.source == AtlasSource::Png ? sprite_atlas_path.c_str() : "");
+    glGenTextures(1, &sprite_tex_); glBindTexture(GL_TEXTURE_2D, sprite_tex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kSpriteAtlasPx, kSpriteAtlasPx, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 sprites.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
   UseProgram(geom_prog_);
   Uniform1i(GetUniformLocation(geom_prog_, "u_tiles"), 0);
   Uniform1i(GetUniformLocation(geom_prog_, "u_atlas"), 1);
+  Uniform1i(GetUniformLocation(geom_prog_, "u_sprites"), 2);
   UseProgram(light_prog_);
   Uniform1i(GetUniformLocation(light_prog_, "u_albedo"), 0);
   Uniform1i(GetUniformLocation(light_prog_, "u_normal"), 1);
@@ -104,6 +119,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     tiles_version_ = v.tiles_version;
   }
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, atlas_tex_);
+  ActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, sprite_tex_);
   // 1) Geometry pass (tiles del chunk activo + marcadores + agua) -> G-buffer
   BindFramebuffer(GL_FRAMEBUFFER, gbuf_fbo_);
   glViewport(0, 0, kInternalW, kInternalH);
@@ -117,6 +133,11 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   if (v.marker_count > 0) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_markers"), v.marker_count, v.markers.data());
     Uniform3fv(GetUniformLocation(geom_prog_, "u_marker_colors"), v.marker_count, v.marker_colors.data());
+  }
+  Uniform1i(GetUniformLocation(geom_prog_, "u_sprite_count"), v.sprite_count);
+  if (v.sprite_count > 0) {
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_sprite_rect"), v.sprite_count, v.sprites.data());
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_sprite_tint"), v.sprite_count, v.sprite_tint.data());
   }
   Uniform1i(GetUniformLocation(geom_prog_, "u_water_count"), v.water_count);
   if (v.water_count > 0) {
@@ -189,8 +210,8 @@ void DeferredRenderer::shutdown() {
   if (vao_) DeleteVertexArrays(1, &vao_);
   if (gbuf_fbo_) DeleteFramebuffers(1, &gbuf_fbo_);
   if (lit_fbo_) DeleteFramebuffers(1, &lit_fbo_);
-  GLuint texs[6] = {albedo_, normal_, depth_, lit_tex_, tiles_tex_, atlas_tex_};
-  glDeleteTextures(6, texs);
+  GLuint texs[7] = {albedo_, normal_, depth_, lit_tex_, tiles_tex_, atlas_tex_, sprite_tex_};
+  glDeleteTextures(7, texs);
   *this = {};
 }
 }  // namespace ew::render

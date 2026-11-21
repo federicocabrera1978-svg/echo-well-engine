@@ -1,5 +1,5 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave] [--version]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--atlas FILE.png] [--sprites FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave] [--version]
 // Controles: ←/→ (o A/D) caminar, Espacio/↑/Z saltar, E/X/↓ activar switch, C/Shift agarrar/soltar cuerda (colgado: ←/→ balancear, ↑/↓ o W/S trepar, Espacio/Z saltar), R corto = checkpoint, R largo = inicio, ESC/Start = menú de pausa (seguir, continuar partida, reiniciar, volumen, controles, salir). Las teclas y botones de juego se remapean en CONTROLES (game/bindings.hpp) y se guardan con la partida. Autoguardado en el directorio de datos del usuario (ver game/save.hpp). --demo = input automático.
 // Mapa por defecto: slice.ewmap (camino start→goal). hello.ewmap sigue disponible con --map.
 #include <GLFW/glfw3.h>
@@ -33,15 +33,15 @@
 #ifndef EW_DEFAULT_ATLAS
 #define EW_DEFAULT_ATLAS "assets/atlas/tiles.png"
 #endif
+#ifndef EW_DEFAULT_SPRITES
+#define EW_DEFAULT_SPRITES "assets/atlas/sprites.png"
+#endif
 
 namespace {
 using ew::render::FrameView;
 
-// Slots que se guardan para el player (cuerpo + pies + ojo), que se dibuja al final (encima).
-int g_marker_reserve = 3;
-
 void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, float cg, float cb) {
-  if (v.marker_count >= ew::render::kMaxMarkers - g_marker_reserve) return;
+  if (v.marker_count >= ew::render::kMaxMarkers) return;
   // Fuera de la vista no gasta slots (hay kMaxMarkers; con 2 cuerdas no alcanzan para todo).
   constexpr float m = 16.f;
   if (x + r < v.cam_x - m || x - r > v.cam_x + float(ew::render::kInternalW) + m ||
@@ -49,6 +49,26 @@ void push_marker(FrameView& v, float x, float y, float r, int shape, float cr, f
   const int i = v.marker_count++;
   v.markers[i * 4 + 0] = x; v.markers[i * 4 + 1] = y; v.markers[i * 4 + 2] = r; v.markers[i * 4 + 3] = float(shape);
   v.marker_colors[i * 3 + 0] = cr; v.marker_colors[i * 3 + 1] = cg; v.marker_colors[i * 3 + 2] = cb;
+}
+
+void push_sprite(FrameView& v, float x, float y, int col, int row, bool flip_x = false, bool flip_y = false,
+                 float tr = 1.f, float tg = 1.f, float tb = 1.f, float emit_boost = 0.f) {
+  if (v.sprite_count >= ew::render::kMaxSprites) return;
+  constexpr float m = 16.f;
+  if (x + 8.f < v.cam_x - m || x - 8.f > v.cam_x + float(ew::render::kInternalW) + m ||
+      y + 8.f < v.cam_y - m || y - 8.f > v.cam_y + float(ew::render::kInternalH) + m)
+    return;
+  const int i = v.sprite_count++;
+  const int c = std::clamp(col, 0, 7);
+  const int r = std::clamp(row, 0, 7);
+  v.sprites[std::size_t(i * 4 + 0)] = x;
+  v.sprites[std::size_t(i * 4 + 1)] = y;
+  v.sprites[std::size_t(i * 4 + 2)] = flip_x ? float(-c - 1) : float(c);
+  v.sprites[std::size_t(i * 4 + 3)] = flip_y ? float(-r - 1) : float(r);
+  v.sprite_tint[std::size_t(i * 4 + 0)] = tr;
+  v.sprite_tint[std::size_t(i * 4 + 1)] = tg;
+  v.sprite_tint[std::size_t(i * 4 + 2)] = tb;
+  v.sprite_tint[std::size_t(i * 4 + 3)] = emit_boost;
 }
 
 void push_movers(FrameView& v, const ew::game::Sim& sim) {
@@ -89,17 +109,15 @@ void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
     else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
       push_marker(v, e.x, e.y + 6, 4, 1, 0.45f, 0.35f, 0.15f);
       push_marker(v, e.x, e.y, 5, 0, 1.0f, 0.85f, 0.25f);
-    } else if (e.type == "collectible") {  // huevo: dos círculos crema; agarrado = no se dibuja
+    } else if (e.type == "collectible") {  // huevo de dragón con escamas; agarrado = no se dibuja
+      if (!e.active)
+        push_sprite(v, std::round(e.x), std::round(e.y - 1.f), int(time_s * 5.f) & 3, 6, false, false, 1.f, 1.f, 1.f,
+                    0.08f);
+    } else if (e.type == "ability_double_jump") {  // reliquia alada cian de doble salto; al recogerla desaparece
       if (!e.active) {
-        push_marker(v, e.x, e.y + 1, 3, 0, 1.0f, 0.93f, 0.72f);
-        push_marker(v, e.x, e.y - 2, 2, 0, 1.0f, 0.97f, 0.85f);
-      }
-    } else if (e.type == "ability_double_jump") {  // reliquia cian de doble salto; al recogerla desaparece
-      if (!e.active) {
-        const float bob = std::sin(time_s * 3.5f) * 1.5f;
-        push_marker(v, e.x, e.y + bob, 6.f, 0, 0.18f, 0.55f, 0.78f);
-        push_marker(v, e.x, e.y + bob, 3.5f, 1, 0.48f, 0.94f, 1.0f);
-        push_marker(v, e.x, e.y - 2.f + bob, 1.5f, 0, 0.95f, 1.0f, 1.0f);
+        const float bob = std::round(std::sin(time_s * 3.5f) * 1.5f);
+        push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 6.f) & 3), 6, false, false, 1.f, 1.f,
+                    1.f, 0.15f);
       }
     } else if (e.type == "gravity_flip") {  // orbe violeta; el punto marca hacia dónde cae el player
       const float d = e.active ? -1.f : 1.f;
@@ -141,8 +159,10 @@ int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
   bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false, explicit_map = false;
   float start_x = 0, start_y = 0;
-  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, next_map_override;
+  std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, sprites_path,
+              next_map_override;
   if (const char* e = std::getenv("EW_ATLAS")) atlas_path = e;
+  if (const char* e = std::getenv("EW_SPRITES")) sprites_path = e;
   if (const char* e = std::getenv("EW_NOSOUND"); e && e[0] && e[0] != '0') nosound = true;
   if (const char* e = std::getenv("EW_NOGAMEPAD"); e && e[0] && e[0] != '0') nogamepad = true;
   if (const char* e = std::getenv("EW_NOSAVE"); e && e[0] && e[0] != '0') nosave = true;
@@ -155,6 +175,7 @@ int main(int argc, char** argv) {
     else if (a == "--next-map" && i + 1 < argc) next_map_override = argv[++i];
     else if (a == "--dump" && i + 1 < argc) dump_path = argv[++i];
     else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
+    else if (a == "--sprites" && i + 1 < argc) sprites_path = argv[++i];
     else if (a == "--demo") demo = true;
     else if (a == "--nosound") nosound = true;
     else if (a == "--nogamepad") nogamepad = true;
@@ -175,6 +196,8 @@ int main(int argc, char** argv) {
     map_path = ew::core::pick_asset(root, "assets/maps/bin/slice.ewmap", EW_DEFAULT_MAP);
   if (atlas_path.empty())
     atlas_path = ew::core::pick_asset(root, "assets/atlas/tiles.png", EW_DEFAULT_ATLAS);
+  if (sprites_path.empty())
+    sprites_path = ew::core::pick_asset(root, "assets/atlas/sprites.png", EW_DEFAULT_SPRITES);
   const std::string initial_map_path = map_path;
 
   auto scene = std::make_unique<ew::game::Scene>();
@@ -213,7 +236,7 @@ int main(int argc, char** argv) {
   std::printf("echo_engine: GL %s | %s\n", glGetString(GL_VERSION), glGetString(GL_RENDERER));
 
   ew::render::DeferredRenderer renderer;
-  if (!renderer.init(shader_dir, err, atlas_path)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
+  if (!renderer.init(shader_dir, err, atlas_path, sprites_path)) { std::fprintf(stderr, "echo_engine: %s\n", err.c_str()); return 1; }
   ew::audio::Mixer mixer;
   if (!nosound) {
     if (ew::audio::device_start(mixer))
@@ -640,14 +663,15 @@ int main(int argc, char** argv) {
       push_marker(v, sim->double_jump_x(), sim->double_jump_y(), 2.5f + (1.f - f) * 7.f, 0,
                   0.45f * f, 0.92f * f, 1.0f * f);
     }
-    {  // player: cuerpo + "pies" del lado de su gravedad (invertida = pies arriba, tono lila)
+    {  // protagonista pixel-art 16×16 (Explorador del Farol): espejado según dirección y gravedad
       const float d = sim->down();
       const bool inv = sim->gravity_flipped();
-      g_marker_reserve = 0;
-      push_marker(v, px, py, ew::game::Sim::kPlayerRadius, 0, inv ? 0.85f : 0.95f, inv ? 0.8f : 0.95f, inv ? 1.0f : 0.9f);
-      push_marker(v, px, py + 3.f * d, 1.5f, 1, 0.35f, 0.3f, 0.45f);  // pies
-      push_marker(v, px + 1.5f, py - 1.5f * d, 1.f, 0, 0.1f, 0.1f, 0.15f);  // ojo
-      g_marker_reserve = 3;
+      const bool blink = sim->invuln() > 0 && (sim->invuln() / 2) % 2 == 1;
+      const float tr = blink ? 0.55f : (inv ? 0.90f : 1.0f);
+      const float tg = blink ? 0.55f : (inv ? 0.85f : 1.0f);
+      const float tb = blink ? 0.70f : (inv ? 1.08f : 1.0f);
+      push_sprite(v, std::round(px), std::round(py - 2.f * d), sim->player_anim_frame(), int(sim->player_anim()),
+                  sim->player_facing() < 0, inv, tr, tg, tb, sim->double_jump_flash() > 0 ? 0.25f : 0.05f);
     }
     for (const auto& w : sim->water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;
