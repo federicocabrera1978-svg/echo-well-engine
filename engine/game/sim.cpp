@@ -90,8 +90,14 @@ void Sim::build() {
   rearm_flips();
   bosses_.clear();
   fireballs_.clear();
+  imps_.clear();
+  elapsed_sec_ = 0.f;
   const auto& es = scene_.entities();
   for (std::size_t i = 0; i < es.size(); ++i) {
+    if (es[i].type == "imp") {
+      imps_.push_back({es[i].x, es[i].y, es[i].x, es[i].y, 1, false, i});
+      continue;
+    }
     if (es[i].type != "boss" && es[i].type != "boss_dragon") continue;
     Boss b;
     b.home_x = es[i].x;
@@ -101,6 +107,16 @@ void Sim::build() {
     bosses_.push_back(b);
   }
   reset_bosses(false);
+  reset_imps();
+}
+
+void Sim::reset_imps() {
+  for (auto& im : imps_) {
+    im.x = im.home_x;
+    im.y = im.home_y;
+    im.dir = 1;
+    im.defeated = false;
+  }
 }
 
 void Sim::reset_bosses(bool keep_defeated) {
@@ -349,6 +365,7 @@ void Sim::respawn() {
   dash_ready_ = has_ability(kAbilityDash);
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
+  reset_imps();        // los enemigos menores vuelven al reaparecer
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
   for (std::size_t k = 0; k < scene_.entities().size(); ++k)
     if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, flip_);
@@ -528,9 +545,11 @@ void Sim::step(const Input& in) {
     }
   }
   apply_flood();
+  elapsed_sec_ += kDt;
   for (auto& w : water_) { w.interact(world_); w.step(); }
   advance_movers();
   advance_bosses();
+  advance_imps();
   carry_player();
   world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
@@ -567,6 +586,7 @@ void Sim::step(const Input& in) {
   check_abilities();
   check_dialogs_proximity();
   collide_bosses();
+  collide_imps();
   check_hazards();
   check_goal();
   update_player_anim(in);
@@ -980,6 +1000,44 @@ void Sim::collide_bosses() {
         fireballs_.clear();
         scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
         sfx_ |= 4u;  // kSfxCheckpoint (fanfarria corta)
+      }
+      return;
+    }
+    if (invuln_ > 0) continue;
+    kill();
+    return;
+  }
+}
+
+void Sim::advance_imps() {
+  for (auto& im : imps_) {
+    if (im.defeated) continue;
+    im.x += float(im.dir) * kImpSpeed * kDt;
+    if (im.x > im.home_x + kImpRange) { im.x = im.home_x + kImpRange; im.dir = -1; }
+    if (im.x < im.home_x - kImpRange) { im.x = im.home_x - kImpRange; im.dir = 1; }
+  }
+}
+
+void Sim::collide_imps() {
+  if (imps_.empty() || finished_) return;
+  auto& pts = world_.points();
+  auto& pl = pts[player_];
+  const float r = pl.radius, d = down();
+  for (auto& im : imps_) {
+    if (im.defeated) continue;
+    const float l = im.x - kImpW * 0.5f, rt = im.x + kImpW * 0.5f, top = im.y - kImpH, bot = im.y;
+    const ew::physics::Vec2 c{std::clamp(pl.pos.x, l, rt), std::clamp(pl.pos.y, top, bot)};
+    if (ew::physics::length(pl.pos - c) >= r) continue;
+    const float vy = pl.velocity().y;
+    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 4.f) : (vy < 0.f && pl.pos.y >= bot - 4.f);
+    if (dash_ticks_ > 0 || from_above) {
+      im.defeated = true;
+      sfx_ |= 16u;
+      if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+      if (has_ability(kAbilityDash)) dash_ready_ = true;
+      if (dash_ticks_ == 0 && from_above) {
+        pl.pos.y = d > 0 ? top - r : bot + r;
+        pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.85f * kDt});
       }
       return;
     }

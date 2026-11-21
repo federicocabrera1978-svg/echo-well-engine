@@ -92,6 +92,9 @@ class Scene {
   // Fondos del vecindario 3×3 (fila mayor, [oy*3+ox], mismo origen que active_tiles()).
   // Fuera del mapa o sin registro BACKDROP: cueva.
   const std::array<ew::map::BackdropCell, 9>& active_backdrops() const { return nb_backdrops_; }
+  // Mini-mapa exploratorio: bit i = chunk (cy * map_w + cx) visitado en la partida actual.
+  uint64_t visited_chunks() const { return visited_; }
+  bool chunk_visited(int cx, int cy) const;
   // Fondo de un chunk cualquiera (sin registro: cueva).
   ew::map::BackdropCell backdrop(int cx, int cy) const { return ew::map::backdrop_at(map_.backdrops(), cx, cy); }
   float nb_origin_x() const { return float((cx_ - 1) * ew::map::kChunkW * ew::map::kTileSize); }
@@ -113,6 +116,7 @@ class Scene {
   float off_x_ = 0, off_y_ = 0;  // offset de cámara dentro del chunk (dead-zone)
   int cx_ = -1, cy_ = -1;
   uint32_t chunk_ver_ = 0;
+  uint64_t visited_ = 0;
   std::array<uint8_t, std::size_t(kNbW) * kNbH * kPackedCh> packed_{};
   std::array<ew::map::BackdropCell, 9> nb_backdrops_{};
 };

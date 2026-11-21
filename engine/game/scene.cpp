@@ -32,6 +32,7 @@ bool Scene::load(const std::filesystem::path& path, std::string& err) {
                         (d.flags & kDialogFlagOnce) != 0, false});
   }
   cx_ = cy_ = -1;
+  visited_ = 0;
   if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y); else follow(0, 0);
   doors_dirty_ = true;
   return true;
@@ -97,6 +98,7 @@ void Scene::reset_state() {
   doors_dirty_ = true;
   off_x_ = off_y_ = 0;
   cx_ = cy_ = -1;
+  visited_ = 0;
   if (const Entity* s = find_type("player_spawn")) follow(s->x, s->y);
   else follow(0, 0);
 }
@@ -145,6 +147,9 @@ void Scene::follow(float x, float y, float dt) {
   constexpr int cw = kChunkW * kTileSize, ch = kChunkH * kTileSize;
   const int cx = std::clamp(int(std::floor(x / cw)), 0, std::max(0, map_.header().map_w_chunks - 1));
   const int cy = std::clamp(int(std::floor(y / ch)), 0, std::max(0, map_.header().map_h_chunks - 1));
+  const int w_chunks = std::max<int>(1, map_.header().map_w_chunks);
+  const int bit = cy * w_chunks + cx;
+  if (bit >= 0 && bit < 64) visited_ |= (uint64_t(1) << unsigned(bit));
   const bool changed = cx != cx_ || cy != cy_;
   if (changed) { cx_ = cx; cy_ = cy; rebuild_active(); }
   const float lx = x - cx * cw, ly = y - cy * ch;
@@ -187,6 +192,13 @@ void Scene::rebuild_active() {
         }
     }
   ++chunk_ver_;
+}
+
+bool Scene::chunk_visited(int cx, int cy) const {
+  const int w = map_.header().map_w_chunks, h = map_.header().map_h_chunks;
+  if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
+  const int bit = cy * w + cx;
+  return bit < 64 && ((visited_ >> unsigned(bit)) & 1u) != 0;
 }
 
 }  // namespace ew::game

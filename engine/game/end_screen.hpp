@@ -19,7 +19,16 @@ struct EndStats {
   uint32_t abilities = 0;
   bool has_next = false;
   std::string next_label;
+  float elapsed_sec = 0.f;
+  bool campaign_done = false;
 };
+
+inline char end_rank(const EndStats& s) {
+  const bool all_items = (s.items_total == 0) || (s.items >= s.items_total);
+  if (all_items && s.deaths == 0) return 'S';
+  if ((all_items && s.deaths <= 3) || s.deaths <= 1) return 'A';
+  return 'B';
+}
 
 class EndScreen {
  public:
@@ -68,7 +77,7 @@ class EndScreen {
 inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   std::array<std::string, kTxtRows> t{};
   const auto& s = e.stats();
-  t[0] = "NIVEL COMPLETADO";
+  t[0] = s.campaign_done ? "VICTORIA: REINO DESPIERTO" : "NIVEL COMPLETADO";
   t[1] = s.title.empty() ? "CAMINO SUPERADO" : s.title;
   t[2] = "HUEVOS:  " + (s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-"));
   t[3] = "MUERTES: " + std::to_string(s.deaths);
@@ -79,6 +88,13 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
     abs += "DASH";
   }
   t[4] = "HABILIDADES: " + (abs.empty() ? std::string("NINGUNA") : abs);
+  if (s.elapsed_sec > 0.f || s.campaign_done) {
+    const int secs = s.elapsed_sec > 0.f ? int(s.elapsed_sec) : 0;
+    const int mm = secs / 60 > 99 ? 99 : secs / 60;
+    const int ss = secs % 60;
+    const std::string tm = std::to_string(mm) + ":" + (ss < 10 ? "0" : "") + std::to_string(ss);
+    t[5] = "TIEMPO:  " + tm + "   RANGO: " + std::string(1, end_rank(s));
+  }
   auto row = [&](int idx, const std::string& label) {
     return std::string(e.cursor() == idx ? "> " : "  ") + label;
   };
