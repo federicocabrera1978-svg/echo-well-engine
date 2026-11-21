@@ -111,9 +111,9 @@ en verde al tomarlo.
   tras completar `slice` (o con `--map assets/maps/bin/level2.ewmap`):
   1. En la entrada `(0,0)`, verificá que el huevo de la repisa alta se ve pero no se alcanza con un salto simple (`0/2` en el HUD).
   2. Avanzá al Hub `(1,0)`, bajá por el pozo vertical hasta caer al agua de `(1,1)` y caminá a la izquierda hasta `(0,1)` para tomar la reliquia cian de **Doble Salto** (aparece el ícono en el HUD).
-  3. Volvé a `(1,1)`, subí con Doble Salto al Escalón 1 de la derecha, cruzá `(2,1)` sobre la plataforma móvil `plat_crypt` y en `(3,1)` activá `sw_sanctum` (abre la puerta alta del Hub) y subí al altar con Doble Salto para agarrar el huevo `egg_catacomb_2` (`1/2`).
+  3. Volvé a `(1,1)`, subí con Doble Salto al Escalón 1 de la derecha, cruzá `(2,1)` sobre la plataforma móvil `plat_crypt` y en `(3,1)` activá `sw_sanctum` (abre la puerta alta del Hub); luego subí al altar con Doble Salto para agarrar `egg_catacomb_2` (`1/2`) y la reliquia ígnea **`rel_dash`** (`ability_dash`, aparece la flecha ardiente en el HUD junto al doble salto).
   4. Hacé backtracking a `(1,1)`, subí con Doble Salto por los Escalones 1 y 2 de vuelta al Hub `(1,0)` y regresá a `(0,0)` para subir a la repisa inicial y agarrar `egg_catacomb_1` (`2/2` en dorado).
-  5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá la puerta abierta hacia `(2,0)` (gravedad invertida por el techo) y en `(3,0)` vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta.
+  5. Desde el Hub `(1,0)`, subí con Doble Salto a la Galería Alta, cruzá `door_hub_gallery` hacia `(2,0)` (gravedad invertida por el techo), rompé el muro agrietado **`wall_guardian`** embistiendo con **Dash** (`E`/`X`/`K`/`Shift der.`) al entrar a `(3,0)` y vencé a `boss_catacomb` (3 pisotones) para abrir `door_boss2` y llegar a la meta (`HABILIDADES: DOBLE SALTO + DASH`).
 
 ## 4. Guardar partida
 

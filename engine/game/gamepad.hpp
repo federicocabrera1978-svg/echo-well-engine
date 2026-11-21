@@ -53,7 +53,10 @@ inline void apply_pad(const PadRaw& p, Input& in, bool hanging, PadEdges& e, dou
   e.jump = jump_down;
 
   const bool act_down = bind ? bind->pad_down(kBindAct, p.buttons) : (p.x || p.b);
-  if (act_down && !e.interact) in.interact = true;
+  if (act_down && !e.interact) {
+    in.interact = true;
+    in.dash = true;
+  }
   e.interact = act_down;
 
   const bool grab_down = bind ? bind->pad_down(kBindGrab, p.buttons) : (p.lb || p.y);

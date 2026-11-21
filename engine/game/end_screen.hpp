@@ -72,7 +72,13 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   t[1] = s.title.empty() ? "CAMINO SUPERADO" : s.title;
   t[2] = "HUEVOS:  " + (s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-"));
   t[3] = "MUERTES: " + std::to_string(s.deaths);
-  t[4] = std::string("HABILIDADES: ") + ((s.abilities & kAbilityDoubleJump) ? "DOBLE SALTO" : "NINGUNA");
+  std::string abs;
+  if (s.abilities & kAbilityDoubleJump) abs += "DOBLE SALTO";
+  if (s.abilities & kAbilityDash) {
+    if (!abs.empty()) abs += " + ";
+    abs += "DASH";
+  }
+  t[4] = "HABILIDADES: " + (abs.empty() ? std::string("NINGUNA") : abs);
   auto row = [&](int idx, const std::string& label) {
     return std::string(e.cursor() == idx ? "> " : "  ") + label;
   };

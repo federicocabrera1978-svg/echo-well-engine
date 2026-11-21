@@ -59,7 +59,13 @@ bool Scene::solid_tile(int tx, int ty) {
 void Scene::rebuild_doors() const {
   door_boxes_.clear();
   for (const auto& e : entities_) {
-    if (e.type != "door" || (e.active && e.anim >= kDoorSolidUntil)) continue;
+    if (e.type == "door") {
+      if (e.active && e.anim >= kDoorSolidUntil) continue;
+    } else if (e.type == "break_wall") {
+      if (e.active) continue;
+    } else {
+      continue;
+    }
     const int dx = int(std::floor(e.x / kTileSize)), dy = int(std::floor(e.y / kTileSize));
     door_boxes_.push_back({dx, dy, dx + kDoorWTiles, dy + kDoorHTiles});
   }

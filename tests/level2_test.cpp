@@ -229,15 +229,17 @@ int main(int argc, char** argv) {
   CHECK(sw_sanctum->active && door_hub->active);
   CHECK(!scene.door_blocks(79, 9));
 
-  // Subir con Doble Salto al altar alto de (3,1) (tx = 138..154, ty = 35, tope y = 280) y tomar egg_catacomb_2.
+  // Subir con Doble Salto al altar alto de (3,1) (tx = 138..154, ty = 35, tope y = 280), tomar egg_catacomb_2 y rel_dash.
   place(sim, 1088.f, 340.f);
   for (int i = 0; i < 15; ++i) sim.step({});
   CHECK(sim.player().grounded && sim.air_jumps() == 1);
   perform_double_jump_to_ledge(sim, 1.f);
   for (int i = 0; i < 120 && sim.collected() < 1; ++i) sim.step({1.f});
-  std::printf("paso C altar huevo 2: pos=(%.1f, %.1f) huevos=%d/%d\n",
-              sim.player().pos.x, sim.player().pos.y, sim.collected(), sim.collectible_total());
+  for (int i = 0; i < 100 && !sim.has_ability(game::kAbilityDash); ++i) sim.step({1.f});
+  std::printf("paso C altar huevo 2 + dash: pos=(%.1f, %.1f) huevos=%d/%d abilities=0x%x\n",
+              sim.player().pos.x, sim.player().pos.y, sim.collected(), sim.collectible_total(), sim.abilities());
   CHECK(sim.collected() == 1 && egg2->active);
+  CHECK(sim.has_ability(game::kAbilityDash) && find_name(scene, "rel_dash")->active);
 
   // --- Paso D: Backtracking vertical (1,1) -> (1,0) y regreso a (0,0) por egg_catacomb_1 ---
   // Desde el Escalón 1 en (1,1) (x = 496, y = 276), Doble Salto hacia la izquierda al Escalón 2 (tx = 55..60, y = 224).
@@ -281,13 +283,19 @@ int main(int argc, char** argv) {
   CHECK(scene.chunk_x() == 2 && scene.chunk_y() == 0);
   CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_grav2");
   CHECK(sim.gravity_flipped());
-  // Esperar a posarse en el techo (y ≈ 28) y caminar sobre el foso de pinchos hasta flip_down2 (904, 28) y (3,0).
+  // Esperar a posarse en el techo (y ≈ 28) y avanzar hasta flip_down2 (904, 28) y wall_guardian (952, 136).
   for (int i = 0; i < 40 && !sim.player().grounded; ++i) sim.step({});
-  for (int i = 0; i < 400 && !(sim.checkpoint() && sim.checkpoint()->name == "ck_boss2"); ++i)
+  const auto* wall = find_name(scene, "wall_guardian");
+  CHECK(wall && !wall->active && scene.door_blocks(119, 17));
+  for (int i = 0; i < 240; ++i) sim.step({1.f});
+  CHECK(sim.player().pos.x < 952.f && !wall->active);  // bloqueado hasta embestir con Dash
+  { Input d; d.move_x = 1.f; d.dash = true; sim.step(d); }
+  for (int i = 0; i < 120 && !(sim.checkpoint() && sim.checkpoint()->name == "ck_boss2"); ++i)
     sim.step({1.f});
-  std::printf("paso E entrada boss (3,0): pos=(%.1f, %.1f) chunk=(%d,%d) flipped=%d\n",
+  std::printf("paso E entrada boss (3,0): pos=(%.1f, %.1f) chunk=(%d,%d) flipped=%d wall_roto=%d\n",
               sim.player().pos.x, sim.player().pos.y, scene.chunk_x(), scene.chunk_y(),
-              int(sim.gravity_flipped()));
+              int(sim.gravity_flipped()), int(wall->active));
+  CHECK(wall->active && !scene.door_blocks(119, 17));
   CHECK(scene.chunk_x() == 3 && scene.chunk_y() == 0);
   CHECK(!sim.gravity_flipped());
   CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_boss2");
@@ -301,7 +309,7 @@ int main(int argc, char** argv) {
               sim.collected(), sim.collectible_total(), sim.deaths());
   CHECK(sim.finished());
   CHECK(sim.collected() == 2 && sim.collectible_total() == 2);
-  CHECK(sim.has_ability(game::kAbilityDoubleJump));
+  CHECK(sim.has_ability(game::kAbilityDoubleJump | game::kAbilityDash));
   CHECK(sim.deaths() == 0);
 
   // --- Paso F: Vínculo de campaña slice -> level2 y guardado v3 de level2 ---
@@ -326,12 +334,13 @@ int main(int argc, char** argv) {
     game::SaveData d;
     CHECK(game::decode_save(bytes.data(), bytes.size(), d) == game::SaveError::None);
     CHECK(d.map == "level2");
-    CHECK(d.abilities == game::kAbilityDoubleJump);
+    CHECK(d.abilities == (game::kAbilityDoubleJump | game::kAbilityDash));
     game::Scene s2;
     CHECK(s2.load(argv[1], err));
     Sim sim2(s2);
     CHECK(game::apply_save(sim2, d) == game::SaveError::None);
-    CHECK(sim2.collected() == 2 && sim2.has_ability(game::kAbilityDoubleJump));
+    CHECK(sim2.collected() == 2 && sim2.has_ability(game::kAbilityDoubleJump | game::kAbilityDash));
+    CHECK(find_name(s2, "wall_guardian")->active && !s2.door_blocks(119, 17));
     CHECK(sim2.bosses_defeated());
   }
 
