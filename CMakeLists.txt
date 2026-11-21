@@ -61,6 +61,9 @@ add_test(NAME ewmapc_gravity
 add_test(NAME ewmapc_boss
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/boss.ewmap)
+add_test(NAME ewmapc_ability
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/ability.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
           --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --backdrops 0
@@ -86,6 +89,11 @@ add_test(NAME ewmap_load_boss
           --name boss --chunks 1 --ents 5 --links 1
           --has player_spawn --has boss --has door --has goal --has checkpoint --backdrops 1)
 set_tests_properties(ewmap_load_boss PROPERTIES DEPENDS ewmapc_boss)
+add_test(NAME ewmap_load_ability
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/ability.ewmap
+          --name ability --chunks 1 --ents 4 --ropes 1 --backdrops 1
+          --has player_spawn --has ability_double_jump --has checkpoint --has goal)
+set_tests_properties(ewmap_load_ability PROPERTIES DEPENDS ewmapc_ability)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
 add_test(NAME ewmapc_backdrop_ok
@@ -117,6 +125,7 @@ set(EW_ROOM_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/room.ewmap)
 set(EW_MOVER_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/mover.ewmap)
 set(EW_GRAVITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/gravity.ewmap)
 set(EW_BOSS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/boss.ewmap)
+set(EW_ABILITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/ability.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -141,7 +150,11 @@ add_custom_command(OUTPUT ${EW_BOSS_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml -o ${EW_BOSS_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/boss.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP})
+add_custom_command(OUTPUT ${EW_ABILITY_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml -o ${EW_ABILITY_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -163,6 +176,10 @@ add_executable(boss_test tests/boss_test.cpp)
 target_link_libraries(boss_test PRIVATE echo_game)
 add_dependencies(boss_test ew_maps)
 add_test(NAME boss_fight COMMAND boss_test ${EW_BOSS_MAP})
+add_executable(ability_test tests/ability_test.cpp)
+target_link_libraries(ability_test PRIVATE echo_game)
+add_dependencies(ability_test ew_maps)
+add_test(NAME ability_double_jump COMMAND ability_test ${EW_ABILITY_MAP})
 add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)
@@ -341,7 +358,7 @@ if(EW_BUILD_ENGINE)
 endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png DESTINATION assets/atlas)
-install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP}
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP}
         DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/qa-checklist.md DESTINATION docs)

@@ -78,6 +78,7 @@ std::vector<uint8_t> encode_save(const SaveData& d) {
     for (int16_t k : b.key[std::size_t(a)]) put_u16(pl, uint16_t(k));
     for (int8_t p : b.pad[std::size_t(a)]) put_u8(pl, uint8_t(p));
   }
+  put_u32(pl, d.abilities & kAbilityAll);
 
   std::vector<uint8_t> out = {'E', 'W', 'S', 'V'};
   put_u16(out, kSaveVersion);
@@ -98,7 +99,7 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
   const uint16_t ver = h.u16();
   const uint16_t rsv = h.u16();
   const uint32_t psz = h.u32();
-  if (ver != 1 && ver != kSaveVersion) return SaveError::BadVersion;
+  if (ver < 1 || ver > kSaveVersion) return SaveError::BadVersion;
   if (rsv != 0) return SaveError::BadField;
   if (psz != size - kHdr - kCrc) return SaveError::BadSize;
   Reader c{data, size};
@@ -145,6 +146,11 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
     if (!r.ok) return SaveError::BadSize;
     if (!d.bind.valid()) return SaveError::BadField;
   }
+  if (ver >= 3) {
+    d.abilities = r.u32();
+    if (!r.ok) return SaveError::BadSize;
+    if (d.abilities & ~kAbilityAll) return SaveError::BadField;
+  }
   if (r.i != psz) return SaveError::BadSize;  // sin bytes de más
   out = std::move(d);
   return SaveError::None;
@@ -156,6 +162,7 @@ SaveData capture_save(const Sim& sim) {
   d.map = std::string(sc.map().string_at(1));
   d.checkpoint = sim.checkpoint_index();
   d.flipped = sim.checkpoint_flipped();
+  d.abilities = sim.abilities();
   d.active.reserve(sc.entities().size());
   for (const auto& e : sc.entities()) d.active.push_back(e.active ? 1 : 0);
   return d;
@@ -164,9 +171,10 @@ SaveData capture_save(const Sim& sim) {
 SaveError apply_save(Sim& sim, const SaveData& d) {
   auto& sc = sim.scene();
   const auto& ents = sc.entities();
+  if (d.abilities & ~kAbilityAll) return SaveError::BadField;
   if (d.map != sc.map().string_at(1) || d.active.size() != ents.size()) return SaveError::Mismatch;
   if (d.checkpoint >= 0 && ents[std::size_t(d.checkpoint)].type != "checkpoint") return SaveError::Mismatch;
-  sim.load_state(d.checkpoint, d.flipped, d.active);
+  sim.load_state(d.checkpoint, d.flipped, d.active, d.abilities);
   return SaveError::None;
 }
 

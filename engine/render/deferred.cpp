@@ -150,6 +150,8 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_items"), v.items);
   Uniform1i(GetUniformLocation(light_prog_, "u_items_total"), v.items_total);
   Uniform1f(GetUniformLocation(light_prog_, "u_items_flash"), v.items_flash);
+  Uniform1i(GetUniformLocation(light_prog_, "u_abilities"), v.abilities);
+  Uniform1f(GetUniformLocation(light_prog_, "u_ability_flash"), v.ability_flash);
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, albedo_);
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, normal_);
   glDrawArrays(GL_TRIANGLES, 0, 3);

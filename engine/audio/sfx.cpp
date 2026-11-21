@@ -14,6 +14,7 @@ Spec spec(SfxId id) {
     case SfxId::Switch:     return {990.f,  0.07f, 0.28f, 0};
     case SfxId::Splash:     return {220.f,  0.12f, 0.22f, 2};
     case SfxId::Pickup:     return {1320.f, 0.30f, 0.30f, 1};
+    case SfxId::Ability:    return {1046.f, 0.36f, 0.34f, 1};
     default:                return {440.f,  0.10f, 0.25f, 0};
   }
 }

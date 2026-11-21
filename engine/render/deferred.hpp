@@ -45,6 +45,9 @@ struct FrameView {
   // total == 0 → no se dibuja. flash 0..1 = destello al agarrar uno.
   int items = 0, items_total = 0;
   float items_flash = 0;
+  // HUD de habilidades (light pass): bitmask kAbility* + destello 0..1 al desbloquear.
+  int abilities = 0;
+  float ability_flash = 0;
   // Plataformas móviles: rect (x, y, w, h) en px mundo + familia de atlas (1..15).
   int mover_count = 0;
   std::array<float, kMaxMovers * 4> mover_rect{};

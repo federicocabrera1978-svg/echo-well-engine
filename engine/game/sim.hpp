@@ -10,6 +10,10 @@
 
 namespace ew::game {
 
+// Bitmask de habilidades permanentes del jugador (se persisten en save.ewsv v3).
+inline constexpr uint32_t kAbilityDoubleJump = 1u << 0;
+inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump;
+
 struct Input {
   float move_x = 0;  // -1..1
   bool jump = false;  // flanco: true el frame en que se aprieta
@@ -45,6 +49,10 @@ class Sim {
   static constexpr int kPickupFlashFrames = 40;   // ~0.66 s de destello del HUD al agarrar
   static constexpr float kFlipReach = 10.f;       // px: tocar un orbe gravity_flip lo dispara
   static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
+  static constexpr float kDoubleJumpSpeed = 215.f;  // px/s (segundo salto en el aire)
+  static constexpr float kAbilityReach = 12.f;      // px: agarrar una reliquia de habilidad
+  static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
+  static constexpr int kAbilityFlashFrames = 45;    // ~0.75 s de destello del HUD al desbloquear
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
   static constexpr float kBossW = 24.f, kBossH = 16.f;
   static constexpr int kBossHits = 3;              // pisotones para vencerlo
@@ -137,10 +145,20 @@ class Sim {
   void set_gravity_flipped(bool f);
   int flips() const { return flips_; }  // veces que se invirtió desde reset()
   bool checkpoint_flipped() const { return ckpt_flip_; }  // gravedad guardada con el checkpoint
+  // Habilidades metroidvania (bitmask kAbility*). Sobreviven a respawn/muerte; reset() las limpia.
+  uint32_t abilities() const { return abilities_; }
+  bool has_ability(uint32_t mask) const { return (abilities_ & mask) == mask; }
+  void grant_ability(uint32_t mask);
+  void set_abilities(uint32_t mask);
+  int air_jumps() const { return air_jumps_; }
+  int double_jump_flash() const { return double_jump_flash_; }
+  float double_jump_x() const { return double_jump_x_; }
+  float double_jump_y() const { return double_jump_y_; }
+  int ability_flash() const { return ability_flash_; }
   // Partida guardada: reset() limpio, aplica Entity::active por entidad (puertas, switches,
-  // huevos, boss vencido), fija checkpoint + gravedad y reaparece ahí. `active` debe tener
-  // una entrada por entidad (lo valida apply_save en save.hpp).
-  void load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active);
+  // huevos, boss vencido, reliquias), fija checkpoint + gravedad + habilidades y reaparece ahí.
+  // `active` debe tener una entrada por entidad (lo valida apply_save en save.hpp).
+  void load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& active, uint32_t abilities = 0);
   // Bits de SFX del último step (ew::audio::kSfx*). Se limpian al leerlos.
   uint32_t take_sfx() { const uint32_t b = sfx_; sfx_ = 0; return b; }
 
@@ -180,12 +198,18 @@ class Sim {
   bool ckpt_flip_ = false;  // gravedad al tomar el último checkpoint
   int flips_ = 0;
   std::vector<uint8_t> flip_armed_;  // por entidad: orbe gravity_flip listo para disparar
+  uint32_t abilities_ = 0;
+  int air_jumps_ = 0;
+  int double_jump_flash_ = 0;
+  float double_jump_x_ = 0, double_jump_y_ = 0;
+  int ability_flash_ = 0;
   std::vector<Boss> bosses_;
   void reset_bosses(bool keep_defeated);
   void advance_bosses();
   void collide_bosses();
   void check_gravity_flips();
   void rearm_flips();
+  void check_abilities();
   void build();
   void reset_movers();
   void advance_movers();

@@ -64,7 +64,7 @@ void push_movers(FrameView& v, const ew::game::Sim& sim) {
   }
 }
 
-void push_entities(FrameView& v, const ew::game::Scene& s) {
+void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
   for (const auto& e : s.entities()) {
     if (e.type == "switch" || e.type == "flood_switch") {  // base gris + luz: ámbar = apagado, verde = encendido
       push_marker(v, e.x, e.y + 5, 3, 1, 0.35f, 0.35f, 0.4f);
@@ -90,6 +90,13 @@ void push_entities(FrameView& v, const ew::game::Scene& s) {
       if (!e.active) {
         push_marker(v, e.x, e.y + 1, 3, 0, 1.0f, 0.93f, 0.72f);
         push_marker(v, e.x, e.y - 2, 2, 0, 1.0f, 0.97f, 0.85f);
+      }
+    } else if (e.type == "ability_double_jump") {  // reliquia cian de doble salto; al recogerla desaparece
+      if (!e.active) {
+        const float bob = std::sin(time_s * 3.5f) * 1.5f;
+        push_marker(v, e.x, e.y + bob, 6.f, 0, 0.18f, 0.55f, 0.78f);
+        push_marker(v, e.x, e.y + bob, 3.5f, 1, 0.48f, 0.94f, 1.0f);
+        push_marker(v, e.x, e.y - 2.f + bob, 1.5f, 0, 0.95f, 1.0f, 1.0f);
       }
     } else if (e.type == "gravity_flip") {  // orbe violeta; el punto marca hacia dónde cae el player
       const float d = e.active ? -1.f : 1.f;
@@ -215,6 +222,7 @@ int main(int argc, char** argv) {
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   ew::game::PauseMenu menu;
   int last_items = 0;
+  uint32_t last_abilities = 0;
   uint32_t pad_prev = 0;
   glfwSetKeyCallback(win, [](GLFWwindow*, int k, int, int action, int) { if (action == GLFW_PRESS) g_last_key = k; });
 
@@ -254,13 +262,14 @@ int main(int argc, char** argv) {
   }
   struct SaveKey {
     int ck = -1, items = 0;
+    uint32_t abilities = 0;
     bool boss = false, muted = false;
     float vol = 0;
     bool operator==(const SaveKey&) const = default;
   };
   auto save_key = [&] {
-    return SaveKey{sim.checkpoint_index(), sim.collected(), sim.boss_count() > 0 && sim.bosses_defeated(),
-                   menu.muted(), menu.volume_setting()};
+    return SaveKey{sim.checkpoint_index(), sim.collected(), sim.abilities(),
+                   sim.boss_count() > 0 && sim.bosses_defeated(), menu.muted(), menu.volume_setting()};
   };
   SaveKey last_key = save_key();
   auto write_save = [&](ew::game::SaveData d) {
@@ -398,6 +407,7 @@ int main(int argc, char** argv) {
         save_armed = true;
         last_key = save_key();
         last_items = sim.collected();  // el huevo cargado no se anuncia como recién agarrado
+        last_abilities = sim.abilities();
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim.checkpoint_index(),
                     sim.collected(), sim.collectible_total());
       } else {
@@ -438,6 +448,7 @@ int main(int argc, char** argv) {
       if (bits & kSfxSwitch) device_play(SfxId::Switch);
       if (bits & kSfxSplash) device_play(SfxId::Splash);
       if (bits & kSfxPickup) device_play(SfxId::Pickup);
+      if (bits & kSfxAbility) device_play(SfxId::Ability);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     if (sim.finished() && !announced_goal) {
@@ -454,8 +465,9 @@ int main(int argc, char** argv) {
       const SaveKey k = save_key();
       const bool bind_changed = menu.take_bindings_changed();
       if (!(k == last_key) || bind_changed) {
-        const bool progress = k.ck != last_key.ck || k.items != last_key.items || k.boss != last_key.boss;
-        if (progress && (k.ck >= 0 || k.items > 0 || k.boss)) save_armed = true;  // jugando de verdad
+        const bool progress = k.ck != last_key.ck || k.items != last_key.items ||
+                              k.abilities != last_key.abilities || k.boss != last_key.boss;
+        if (progress && (k.ck >= 0 || k.items > 0 || k.abilities != 0 || k.boss)) save_armed = true;  // jugando de verdad
         if (save_armed) write_save(ew::game::capture_save(sim));
         else if (menu.has_save()) write_save(loaded);  // solo volumen/controles: no pisar la partida
         last_key = k;
@@ -474,7 +486,7 @@ int main(int argc, char** argv) {
       v.bg_theme[i] = scene.active_backdrops()[i].theme;
       v.bg_seed[i] = scene.active_backdrops()[i].seed;
     }
-    push_entities(v, scene);
+    push_entities(v, scene, float(now));
     push_movers(v, sim);
     for (int bi = 0; bi < sim.boss_count(); ++bi) {  // boss: cuerpo rojo, punto débil dorado arriba
       const auto& b = sim.boss(bi);
@@ -504,6 +516,11 @@ int main(int argc, char** argv) {
       const auto& node = pts[sim.rope_first(sim.held_rope()) + uint32_t(sim.rope_node())];
       const float f = float(sim.grab_flash()) / float(ew::game::Sim::kGrabFlashFrames);
       push_marker(v, node.pos.x, node.pos.y, 3.f + (1.f - f) * 10.f, 0, 1.0f, 0.9f * f, 0.35f * f);
+    }
+    if (sim.double_jump_flash() > 0) {  // aro cian que se expande al activar doble salto en el aire
+      const float f = float(sim.double_jump_flash()) / float(ew::game::Sim::kDoubleJumpFlashFrames);
+      push_marker(v, sim.double_jump_x(), sim.double_jump_y(), 2.5f + (1.f - f) * 7.f, 0,
+                  0.45f * f, 0.92f * f, 1.0f * f);
     }
     {  // player: cuerpo + "pies" del lado de su gravedad (invertida = pies arriba, tono lila)
       const float d = sim.down();
@@ -550,6 +567,14 @@ int main(int argc, char** argv) {
       if (v.items > last_items) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
       last_items = v.items;
     }
+    const uint32_t ab = sim.abilities();
+    if (ab != last_abilities) {
+      if ((ab & ew::game::kAbilityDoubleJump) && !(last_abilities & ew::game::kAbilityDoubleJump))
+        std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
+      last_abilities = ab;
+    }
+    v.abilities = int(ab);
+    v.ability_flash = float(sim.ability_flash()) / float(ew::game::Sim::kAbilityFlashFrames);
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);

@@ -56,6 +56,16 @@ int main() {
   mv.render(bv.data(), 64);
   for (int i = 0; i < 64; ++i) CHECK(bv[i] == 0.f);
   CHECK(mv.gain() == 0.f);
+  // Habilidad desbloqueada: pico válido y fin limpio.
+  Mixer ma;
+  ma.play(SfxId::Ability);
+  CHECK(ma.active() == 1);
+  std::fill(buf.begin(), buf.end(), 0.f);
+  ma.render(buf.data(), int(buf.size()));
+  float pa = 0;
+  for (float s : buf) pa = std::fmax(pa, std::fabs(s));
+  CHECK(pa > 0.05f && pa <= 1.f);
+  CHECK(ma.active() == 0);
   std::puts("sfx ok");
   return 0;
 }
