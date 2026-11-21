@@ -64,6 +64,9 @@ add_test(NAME ewmapc_boss
 add_test(NAME ewmapc_ability
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/ability.ewmap)
+add_test(NAME ewmapc_dash
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/dash.ewmap)
 add_test(NAME ewmapc_level2
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap)
@@ -97,10 +100,15 @@ add_test(NAME ewmap_load_ability
           --name ability --chunks 1 --ents 4 --ropes 1 --backdrops 1
           --has player_spawn --has ability_double_jump --has checkpoint --has goal)
 set_tests_properties(ewmap_load_ability PROPERTIES DEPENDS ewmapc_ability)
+add_test(NAME ewmap_load_dash
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/dash.ewmap
+          --name dash --chunks 1 --ents 6 --ropes 1 --backdrops 1
+          --has player_spawn --has ability_dash --has break_wall --has switch --has checkpoint --has goal)
+set_tests_properties(ewmap_load_dash PROPERTIES DEPENDS ewmapc_dash)
 add_test(NAME ewmap_load_level2
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap
-          --name level2 --chunks 8 --ents 20 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 5
-          --has player_spawn --has ability_double_jump --has collectible --has switch --has door
+          --name level2 --chunks 8 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 6
+          --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
           --has mover --has gravity_flip --has boss --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level2 PROPERTIES DEPENDS ewmapc_level2)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
@@ -135,6 +143,7 @@ set(EW_MOVER_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/mover.ewmap)
 set(EW_GRAVITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/gravity.ewmap)
 set(EW_BOSS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/boss.ewmap)
 set(EW_ABILITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/ability.ewmap)
+set(EW_DASH_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/dash.ewmap)
 set(EW_LEVEL2_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level2.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
@@ -164,11 +173,15 @@ add_custom_command(OUTPUT ${EW_ABILITY_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml -o ${EW_ABILITY_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/ability.yaml)
+add_custom_command(OUTPUT ${EW_DASH_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml -o ${EW_DASH_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml)
 add_custom_command(OUTPUT ${EW_LEVEL2_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml -o ${EW_LEVEL2_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_LEVEL2_MAP})
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -194,6 +207,10 @@ add_executable(ability_test tests/ability_test.cpp)
 target_link_libraries(ability_test PRIVATE echo_game)
 add_dependencies(ability_test ew_maps)
 add_test(NAME ability_double_jump COMMAND ability_test ${EW_ABILITY_MAP})
+add_executable(dash_test tests/dash_test.cpp)
+target_link_libraries(dash_test PRIVATE echo_game)
+add_dependencies(dash_test ew_maps)
+add_test(NAME dash_breakwall COMMAND dash_test ${EW_DASH_MAP})
 add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)

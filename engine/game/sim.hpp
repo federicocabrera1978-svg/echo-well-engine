@@ -12,7 +12,8 @@ namespace ew::game {
 
 // Bitmask de habilidades permanentes del jugador (se persisten en save.ewsv v3).
 inline constexpr uint32_t kAbilityDoubleJump = 1u << 0;
-inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump;
+inline constexpr uint32_t kAbilityDash = 1u << 1;
+inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump | kAbilityDash;
 
 // Estado de animación del protagonista (mapea a filas 0..5 de assets/atlas/sprites.png).
 enum class PlayerAnim : uint8_t {
@@ -32,6 +33,7 @@ struct Input {
   float climb = 0;        // -1 sube, +1 baja (solo colgado; ↑/↓ o W/S)
   bool restart = false;      // flanco: R corto → último checkpoint (o spawn)
   bool restart_full = false; // flanco: R largo → spawn inicial, estado limpio
+  bool dash = false;         // flanco: embestida rápida (E / X / K / Shift der. o pad X/B)
 };
 
 class Sim {
@@ -64,6 +66,11 @@ class Sim {
   static constexpr float kDialogReach = 16.f;       // px: alcance para hablar/leer NPC o estela
   static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
   static constexpr int kAbilityFlashFrames = 45;    // ~0.75 s de destello del HUD al desbloquear
+  static constexpr float kDashSpeed = 240.f;        // px/s durante la embestida (Dash)
+  static constexpr int kDashFrames = 10;            // ~0.17 s de embestida sin gravedad
+  static constexpr int kDashCooldownFrames = 18;    // ~0.30 s de enfriamiento mínimo
+  static constexpr int kDashFlashFrames = 14;       // frames de estela visual
+  static constexpr int kWallBreakFlashFrames = 18;  // frames de escombros al romper break_wall
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
   static constexpr float kBossW = 24.f, kBossH = 16.f;
   static constexpr int kBossHits = 3;              // pisotones para vencerlo
@@ -166,6 +173,13 @@ class Sim {
   float double_jump_x() const { return double_jump_x_; }
   float double_jump_y() const { return double_jump_y_; }
   int ability_flash() const { return ability_flash_; }
+  int dash_ticks() const { return dash_ticks_; }
+  bool dash_ready() const { return dash_ready_; }
+  int dash_dir() const { return dash_dir_; }
+  int dash_flash() const { return dash_flash_; }
+  int wall_break_flash() const { return wall_break_flash_; }
+  float wall_break_x() const { return wall_break_x_; }
+  float wall_break_y() const { return wall_break_y_; }
   // Estado visual de animación del protagonista (sin GL).
   int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
   PlayerAnim player_anim() const { return anim_; }
@@ -221,6 +235,13 @@ class Sim {
   int double_jump_flash_ = 0;
   float double_jump_x_ = 0, double_jump_y_ = 0;
   int ability_flash_ = 0;
+  int dash_ticks_ = 0;
+  int dash_cd_ = 0;
+  int dash_dir_ = 1;
+  bool dash_ready_ = false;
+  int dash_flash_ = 0;
+  int wall_break_flash_ = 0;
+  float wall_break_x_ = 0, wall_break_y_ = 0;
   int facing_ = 1;
   PlayerAnim anim_ = PlayerAnim::Idle;
   int anim_frame_ = 0;
@@ -228,6 +249,7 @@ class Sim {
   int air_ticks_ = 0;
   int pending_dialog_ = -1;
   std::vector<Boss> bosses_;
+  void break_walls_on_dash();
   void update_player_anim(const Input& in);
   void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);
   void check_dialogs_proximity();

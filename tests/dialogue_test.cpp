@@ -152,20 +152,21 @@ dialogs:
     CHECK(!egg->active && !s.dialogs()[std::size_t(d1)].triggered);
   }
 
-  // --- 4) Nivel 2 (Las Catacumbas): Cronista, Estela, Alas y ambos huevos ---
+  // --- 4) Nivel 2 (Las Catacumbas): Cronista, Estela, Alas, Garra (Dash) y ambos huevos ---
   {
     Scene s2;
     std::string err;
     CHECK(s2.load(argv[2], err));
-    CHECK(s2.dialogs().size() == 5);
+    CHECK(s2.dialogs().size() == 6);
     Sim sim2(s2);
 
     const auto* cronista = find_name(s2, "npc_cronista");
     const auto* estela = find_name(s2, "lore_santuario");
     const auto* rel = find_name(s2, "rel_double_jump");
+    const auto* rel_dash = find_name(s2, "rel_dash");
     const auto* egg1 = find_name(s2, "egg_catacomb_1");
     const auto* egg2 = find_name(s2, "egg_catacomb_2");
-    CHECK(cronista && estela && rel && egg1 && egg2);
+    CHECK(cronista && estela && rel && rel_dash && egg1 && egg2);
     CHECK(estela->type == "lore");
 
     // NPC cronista (interact)
@@ -200,6 +201,12 @@ dialogs:
     const int de1 = sim2.take_dialog();
     CHECK(de1 >= 0 && s2.dialogs()[std::size_t(de1)].speaker == "ECO: HUEVO DEL NIDO");
     CHECK(sim2.collected() == 2);
+
+    place(sim2, rel_dash->x, rel_dash->y);
+    sim2.step({});
+    const int dd = sim2.take_dialog();
+    CHECK(sim2.has_ability(kAbilityDash));
+    CHECK(dd >= 0 && s2.dialogs()[std::size_t(dd)].speaker == "RELIQUIA: GARRA DE BRASA");
   }
 
   // --- 5) Retrocompatibilidad: hello.ewmap sin sección DIALOG ---

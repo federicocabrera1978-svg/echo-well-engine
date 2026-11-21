@@ -150,10 +150,12 @@ entities:
   - {name: sw_sanctum,       type: switch,              x: 1048, y: 336}
   - {name: lore_santuario,   type: lore,                x: 1084, y: 336}
   - {name: egg_catacomb_2,   type: collectible,         x: 1160, y: 272}
+  - {name: rel_dash,         type: ability_dash,        x: 1208, y: 272}
   # Planta alta este: (2,0) Galería Invertida y (3,0) Cámara del Guardián
   - {name: ck_grav2,         type: checkpoint,          x: 712,  y: 152}
   - {name: flip_up2,         type: gravity_flip,        x: 744,  y: 152}
   - {name: flip_down2,       type: gravity_flip,        x: 904,  y: 28}
+  - {name: wall_guardian,    type: break_wall,          x: 952,  y: 136}
   - {name: ck_boss2,         type: checkpoint,          x: 984,  y: 152}
   - {name: boss_catacomb,    type: boss,                x: 1120, y: 160}
   - {name: door_boss2,       type: door,                x: 1200, y: 136}
@@ -184,4 +186,5 @@ dialogs:
   - {entity: rel_double_jump, trigger: pickup,   speaker: "RELIQUIA: ALAS DE CRIA", text: "DOS ALAS DE BRUMA CIAN/ABRAZAN TU CAPA EN EL AIRE.|PULSA SALTO EN PLENO VUELO/Y ALCANZA LAS REPISAS ALTAS."}
   - {entity: lore_santuario,  trigger: interact, speaker: "ESTELA DEL SANTUARIO", text: "CUANDO EL FUEGO SE APAGUE,/LOS HUEVOS DE DRAGON VOLVERAN.|CADA ESCAMA GUARDA EL PACTO/DE LOS ANTIGUOS GUARDIANES."}
   - {entity: egg_catacomb_2,  trigger: pickup,   speaker: "ECO: HUEVO DE BRASA", text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA PIEDRA.|FUE OCULTADO EN EL SANTUARIO/LEJOS DEL OJO DE LA BESTIA."}
+  - {entity: rel_dash,        trigger: pickup,   speaker: "RELIQUIA: GARRA DE BRASA", text: "EL IMPETU DEL WYRM ARDE/EN TU EMBESTIDA!|PULSA E, X O K PARA EMBESTIR/Y ROMPER MUROS AGRIETADOS."}
   - {entity: egg_catacomb_1,  trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO", text: "LA NIDADA NO ERA UN TESORO:/ERA EL FUTURO DEL REINO.|LLEVA SU CALOR HACIA ARRIBA/PARA QUE DESPIERTE EL DRAGON."}

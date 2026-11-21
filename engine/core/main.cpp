@@ -120,6 +120,21 @@ void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
         push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 6.f) & 3), 6, false, false, 1.f, 1.f,
                     1.f, 0.15f);
       }
+    } else if (e.type == "ability_dash") {  // reliquia ígnea dorado-carmesí de Embestida (Dash)
+      if (!e.active) {
+        const float bob = std::round(std::sin(time_s * 4.2f) * 1.5f);
+        push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 7.f) & 3), 6, false, false,
+                    1.45f, 0.58f, 0.25f, 0.24f);
+      }
+    } else if (e.type == "break_wall") {  // muro agrietado rompible con Dash (1×3 tiles)
+      if (!e.active) {
+        const float pulse = 0.78f + 0.22f * std::sin(time_s * 4.0f);
+        for (int k = 0; k < ew::game::kDoorHTiles; ++k) {
+          const float by = e.y + 4.f + 8.f * float(k);
+          push_marker(v, e.x + 4.f, by, 4, 1, 0.30f, 0.26f, 0.34f);
+          push_marker(v, e.x + 4.f + (k == 1 ? 1.f : -1.f), by, 1.4f, 0, 0.96f * pulse, 0.45f * pulse, 0.15f * pulse);
+        }
+      }
     } else if (e.type == "gravity_flip") {  // orbe violeta; el punto marca hacia dónde cae el player
       const float d = e.active ? -1.f : 1.f;
       push_marker(v, e.x, e.y, 5, 0, 0.6f, 0.35f, 1.0f);
@@ -383,6 +398,7 @@ int main(int argc, char** argv) {
       std::fprintf(stderr, "echo_engine: no se pudo guardar en %s\n", save_path.c_str());
     }
   };
+  bool dash_was_down = false;
   const double t_loop = glfwGetTime();
   while (!glfwWindowShouldClose(win)) {
     glfwPollEvents();
@@ -401,9 +417,14 @@ int main(int argc, char** argv) {
     const bool jump_down = act(kBindJump) || (!hanging && act(kBindUp));
     in.jump = jump_down && !jump_was_down;
     jump_was_down = jump_down;
-    const bool act_down = act(kBindAct) || (!hanging && act(kBindDown));
+    const bool act_key = act(kBindAct);
+    const bool dash_key = key(GLFW_KEY_K) || key(GLFW_KEY_RIGHT_SHIFT);
+    const bool act_down = act_key || (!hanging && act(kBindDown));
     in.interact = act_down && !act_was_down;
     act_was_down = act_down;
+    const bool dash_down = act_key || dash_key;
+    in.dash = dash_down && !dash_was_down;
+    dash_was_down = dash_down;
     const bool grab_down = act(kBindGrab);
     in.grab = grab_down && !grab_was_down;
     grab_was_down = grab_down;
@@ -615,6 +636,7 @@ int main(int argc, char** argv) {
       in.jump = false;
       in.interact = false;
       in.grab = false;
+      in.dash = false;
       in.restart = false;
       in.restart_full = false;
       ++sim_steps;
@@ -717,15 +739,33 @@ int main(int argc, char** argv) {
       push_marker(v, sim->double_jump_x(), sim->double_jump_y(), 2.5f + (1.f - f) * 7.f, 0,
                   0.45f * f, 0.92f * f, 1.0f * f);
     }
+    if (sim->wall_break_flash() > 0) {  // fragmentos que saltan al destruir un break_wall con Dash
+      const float f = float(sim->wall_break_flash()) / float(ew::game::Sim::kWallBreakFlashFrames);
+      const float spread = (1.f - f) * 14.f;
+      for (int k = 0; k < 4; ++k) {
+        const float sx = (k & 1) ? 1.f : -1.f, sy = (k & 2) ? 1.f : -1.f;
+        push_marker(v, sim->wall_break_x() + sx * spread, sim->wall_break_y() + sy * (spread * 0.7f - 2.f),
+                    2.f * f, 1, 0.95f * f, 0.55f * f, 0.25f * f);
+      }
+    }
     {  // protagonista pixel-art 16×16 (Explorador del Farol): espejado según dirección y gravedad
       const float d = sim->down();
       const bool inv = sim->gravity_flipped();
+      const bool dashing = sim->dash_ticks() > 0;
+      if (dashing) {  // estela ígnea detrás del Explorador al embestir
+        const float dir = float(sim->dash_dir());
+        push_sprite(v, std::round(px - dir * 8.f), std::round(py - 2.f * d), 1, 2,
+                    sim->player_facing() < 0, inv, 0.70f, 0.34f, 0.16f, 0.08f);
+        push_sprite(v, std::round(px - dir * 4.f), std::round(py - 2.f * d), 2, 2,
+                    sim->player_facing() < 0, inv, 1.05f, 0.52f, 0.22f, 0.18f);
+      }
       const bool blink = sim->invuln() > 0 && (sim->invuln() / 2) % 2 == 1;
-      const float tr = blink ? 0.55f : (inv ? 0.90f : 1.0f);
-      const float tg = blink ? 0.55f : (inv ? 0.85f : 1.0f);
-      const float tb = blink ? 0.70f : (inv ? 1.08f : 1.0f);
+      const float tr = blink ? 0.55f : (dashing ? 1.25f : (inv ? 0.90f : 1.0f));
+      const float tg = blink ? 0.55f : (dashing ? 0.90f : (inv ? 0.85f : 1.0f));
+      const float tb = blink ? 0.70f : (dashing ? 0.55f : (inv ? 1.08f : 1.0f));
+      const float boost = dashing ? 0.38f : (sim->double_jump_flash() > 0 ? 0.25f : 0.05f);
       push_sprite(v, std::round(px), std::round(py - 2.f * d), sim->player_anim_frame(), int(sim->player_anim()),
-                  sim->player_facing() < 0, inv, tr, tg, tb, sim->double_jump_flash() > 0 ? 0.25f : 0.05f);
+                  sim->player_facing() < 0, inv, tr, tg, tb, boost);
     }
     for (const auto& w : sim->water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
       if (v.water_count >= ew::render::kMaxWaterBodies) break;
@@ -777,6 +817,8 @@ int main(int argc, char** argv) {
     if (ab != last_abilities) {
       if ((ab & ew::game::kAbilityDoubleJump) && !(last_abilities & ew::game::kAbilityDoubleJump))
         std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
+      if ((ab & ew::game::kAbilityDash) && !(last_abilities & ew::game::kAbilityDash))
+        std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");
       last_abilities = ab;
     }
     v.abilities = int(ab);

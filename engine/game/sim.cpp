@@ -38,6 +38,14 @@ void Sim::build() {
   double_jump_x_ = 0;
   double_jump_y_ = 0;
   ability_flash_ = 0;
+  dash_ticks_ = 0;
+  dash_cd_ = 0;
+  dash_dir_ = 1;
+  dash_ready_ = false;
+  dash_flash_ = 0;
+  wall_break_flash_ = 0;
+  wall_break_x_ = 0;
+  wall_break_y_ = 0;
   facing_ = 1;
   anim_ = PlayerAnim::Idle;
   anim_frame_ = 0;
@@ -143,16 +151,20 @@ void Sim::grant_ability(uint32_t mask) { set_abilities(abilities_ | mask); }
 
 void Sim::set_abilities(uint32_t mask) {
   const uint32_t next = mask & kAbilityAll;
-  const bool had = has_ability(kAbilityDoubleJump);
-  const bool has = (next & kAbilityDoubleJump) != 0;
+  const bool had_dj = has_ability(kAbilityDoubleJump);
+  const bool has_dj = (next & kAbilityDoubleJump) != 0;
+  const bool had_dash = has_ability(kAbilityDash);
+  const bool has_dash = (next & kAbilityDash) != 0;
   abilities_ = next;
-  if (!has) air_jumps_ = 0;
-  else if (!had) air_jumps_ = 1;
+  if (!has_dj) air_jumps_ = 0;
+  else if (!had_dj) air_jumps_ = 1;
+  if (!has_dash) { dash_ready_ = false; dash_ticks_ = 0; }
+  else if (!had_dash) dash_ready_ = true;
 }
 
 void Sim::set_gravity_flipped(bool f) {
   flip_ = f;
-  world_.points()[player_].gscale = f ? -1.f : 1.f;
+  if (dash_ticks_ == 0) world_.points()[player_].gscale = f ? -1.f : 1.f;
 }
 
 // Orbes al alcance quedan desarmados (no disparan al reaparecer encima); el resto, armados.
@@ -217,6 +229,7 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
     scene_.set_active(i, true);
     if (ents[i].type == "door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
     if (ents[i].type == "ability_double_jump") ab |= kAbilityDoubleJump;
+    if (ents[i].type == "ability_dash") ab |= kAbilityDash;
   }
   abilities_ = ab;
   for (auto& b : bosses_)
@@ -262,6 +275,10 @@ void Sim::respawn() {
   invuln_ = kRespawnInvuln;
   grab_flash_ = 0;
   double_jump_flash_ = 0;
+  dash_ticks_ = 0;
+  dash_cd_ = 0;
+  dash_flash_ = 0;
+  wall_break_flash_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
   anim_ = PlayerAnim::Idle;
@@ -270,6 +287,7 @@ void Sim::respawn() {
   air_ticks_ = 0;
   pending_dialog_ = -1;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
+  dash_ready_ = has_ability(kAbilityDash);
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
@@ -340,8 +358,20 @@ void Sim::step(const Input& in) {
   if (pickup_flash_ > 0) --pickup_flash_;
   if (double_jump_flash_ > 0) --double_jump_flash_;
   if (ability_flash_ > 0) --ability_flash_;
+  if (dash_cd_ > 0) --dash_cd_;
+  if (dash_flash_ > 0) --dash_flash_;
+  if (wall_break_flash_ > 0) --wall_break_flash_;
+  if (dash_ticks_ > 0) {
+    --dash_ticks_;
+    if (dash_ticks_ == 0) {
+      pts[player_].gscale = flip_ ? -1.f : 1.f;
+      Vec2 dv = pts[player_].velocity();
+      dv.x = std::clamp(dv.x, -kWalkSpeed * kDt, kWalkSpeed * kDt);
+      pts[player_].set_velocity(dv);
+    }
+  }
   // Agarrar: nodo más cercano dentro de kGrabRange.
-  if (in.grab && !held_ && regrab_cd_ == 0) {
+  if (in.grab && !held_ && regrab_cd_ == 0 && dash_ticks_ == 0) {
     int best = 0, best_r = 0;
     float bd = kGrabRange + 1e-3f;
     for (int r = 0; r < rope_count(); ++r)
@@ -356,8 +386,9 @@ void Sim::step(const Input& in) {
 
   bool rope_jumped = false;
   if (held_) {
-    // Colgado: recarga doble salto; ←/→ empujan el nodo (balanceo), ↑/↓ trepan, saltar suelta con impulso.
+    // Colgado: recarga doble salto y embestida; ←/→ empujan el nodo, ↑/↓ trepan, saltar o dash sueltan.
     if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+    if (has_ability(kAbilityDash)) dash_ready_ = true;
     auto& node = pts[held_index()];
     node.force += Vec2{std::clamp(in.move_x, -1.f, 1.f) * kSwingForce / kHeldInvMass, 0};
     const float seg = ropes_[std::size_t(held_rope_)].seg;
@@ -366,7 +397,9 @@ void Sim::step(const Input& in) {
     if (climb_acc_ <= -seg && held_ > 1) { climb_acc_ = 0; int n = held_ - 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
     else if (climb_acc_ >= seg && held_ < rn) { climb_acc_ = 0; int n = held_ + 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
     else climb_acc_ = std::clamp(climb_acc_, -seg, seg);
-    if (in.jump) {
+    if (in.dash && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_ready_) {
+      release();
+    } else if (in.jump) {
       const Vec2 v = pts[held_index()].velocity();
       release();
       const float d = down();  // el salto empuja contra la gravedad del player
@@ -379,29 +412,12 @@ void Sim::step(const Input& in) {
 
   auto& pl = pts[player_];
   if (!held_) {
-    // Control: velocidad horizontal directa (respuesta arcade), salto apoyado o doble salto aéreo.
-    Vec2 v = pl.velocity();
-    const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
-    v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
-    const bool swim = player_in_water();
-    if (pl.grounded || swim) air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
-    if (in.jump && !rope_jumped) {
-      if (pl.grounded || swim) {
-        v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
-        sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
-      } else if (has_ability(kAbilityDoubleJump) && air_jumps_ > 0) {
-        --air_jumps_;
-        v.y = -down() * kDoubleJumpSpeed * kDt;
-        double_jump_flash_ = kDoubleJumpFlashFrames;
-        double_jump_x_ = pl.pos.x;
-        double_jump_y_ = pl.pos.y + down() * kPlayerRadius;
-        sfx_ |= 1u;  // kSfxJump
-      }
-    }
-    pl.set_velocity(v);
+    // Interacción (switch / diálogo) tiene prioridad sobre el Dash cuando están en la misma tecla.
+    bool interacted = false;
     if (in.interact) {
       if (scene_.interact(pl.pos.x, pl.pos.y) >= 0) {
         sfx_ |= 16u;  // kSfxSwitch
+        interacted = true;
       } else if (const int dlg = nearby_interact_dialog(); dlg >= 0) {
         auto& d = scene_.dialogs_mut()[std::size_t(dlg)];
         d.triggered = true;
@@ -409,7 +425,47 @@ void Sim::step(const Input& in) {
         if (ent.type == "npc" || ent.type == "lore") scene_.set_active(d.entity, true);
         pending_dialog_ = dlg;
         sfx_ |= 16u;
+        interacted = true;
       }
+    }
+    if (in.dash && !interacted && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_ready_) {
+      dash_dir_ = std::fabs(in.move_x) > 0.1f ? (in.move_x > 0.f ? 1 : -1) : facing_;
+      facing_ = dash_dir_;
+      dash_ticks_ = kDashFrames;
+      dash_cd_ = kDashCooldownFrames;
+      dash_ready_ = false;
+      dash_flash_ = kDashFlashFrames;
+      sfx_ |= 1u;
+    }
+
+    if (dash_ticks_ > 0) {
+      break_walls_on_dash();
+      pl.gscale = 0.f;
+      pl.set_velocity({float(dash_dir_) * kDashSpeed * kDt, 0.f});
+    } else {
+      // Control normal: caminar, salto apoyado o doble salto aéreo.
+      Vec2 v = pl.velocity();
+      const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
+      v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
+      const bool swim = player_in_water();
+      if (pl.grounded || swim) {
+        if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+        if (has_ability(kAbilityDash)) dash_ready_ = true;
+      }
+      if (in.jump && !rope_jumped) {
+        if (pl.grounded || swim) {
+          v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+          sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
+        } else if (has_ability(kAbilityDoubleJump) && air_jumps_ > 0) {
+          --air_jumps_;
+          v.y = -down() * kDoubleJumpSpeed * kDt;
+          double_jump_flash_ = kDoubleJumpFlashFrames;
+          double_jump_x_ = pl.pos.x;
+          double_jump_y_ = pl.pos.y + down() * kPlayerRadius;
+          sfx_ |= 1u;  // kSfxJump
+        }
+      }
+      pl.set_velocity(v);
     }
   }
   apply_flood();
@@ -433,13 +489,18 @@ void Sim::step(const Input& in) {
     p.prev = node.prev;
     p.grounded = false;
   }
-  if (!held_ && world_.points()[player_].grounded)
-    air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
+  if (!held_ && world_.points()[player_].grounded) {
+    if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_ready_ = true;
+  }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
   const bool in_w = player_in_water();
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
-  if (in_w && !held_ && has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+  if (in_w && !held_) {
+    if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_ready_ = true;
+  }
   was_in_water_ = in_w;
   check_gravity_flips();
   check_checkpoints();
@@ -521,12 +582,17 @@ void Sim::check_abilities() {
   const auto& ents = scene_.entities();
   const float r2 = kAbilityReach * kAbilityReach;
   for (std::size_t i = 0; i < ents.size(); ++i) {
-    if (ents[i].type != "ability_double_jump" || ents[i].active) continue;
+    if (ents[i].active) continue;
+    uint32_t grant = 0;
+    if (ents[i].type == "ability_double_jump") grant = kAbilityDoubleJump;
+    else if (ents[i].type == "ability_dash") grant = kAbilityDash;
+    else continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
     scene_.set_active(i, true);  // desbloqueada: persiste hasta reset()
-    abilities_ |= kAbilityDoubleJump;
-    air_jumps_ = 1;
+    abilities_ |= grant;
+    if (grant & kAbilityDoubleJump) air_jumps_ = 1;
+    if (grant & kAbilityDash) dash_ready_ = true;
     ability_flash_ = kAbilityFlashFrames;
     sfx_ |= 128u;  // kSfxAbility
     trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
@@ -791,6 +857,25 @@ void Sim::collide_movers() {
     }
   for (const auto& m : movers_) {
     if (circle_hits_aabb(pl.pos, rad, m.x, m.y, m.x + m.w, m.y + m.h, eps)) { kill(); return; }
+  }
+}
+
+void Sim::break_walls_on_dash() {
+  const auto& pl = player();
+  const float reach_x = pl.pos.x + float(dash_dir_) * 4.5f;
+  const float wall_w = float(kDoorWTiles * ew::map::kTileSize);
+  const float wall_h = float(kDoorHTiles * ew::map::kTileSize);
+  const auto& ents = scene_.entities();
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "break_wall" || ents[i].active) continue;
+    if (circle_hits_aabb({reach_x, pl.pos.y}, kPlayerRadius + 1.5f,
+                         ents[i].x, ents[i].y, ents[i].x + wall_w, ents[i].y + wall_h, 0.f)) {
+      scene_.set_active(i, true);
+      wall_break_flash_ = kWallBreakFlashFrames;
+      wall_break_x_ = ents[i].x + wall_w * 0.5f;
+      wall_break_y_ = ents[i].y + wall_h * 0.5f;
+      sfx_ |= 16u;
+    }
   }
 }
 
