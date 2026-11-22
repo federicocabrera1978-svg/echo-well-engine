@@ -1,6 +1,6 @@
 # Checklist de QA — Echo Well v0.1.0
 
-Versión de prueba para QA del mundo Metroidvania unificado (**`world.ewmap`**, grilla `8×3`: **El Pozo → Las Catacumbas → La Guarida del Wyrm** con atajos de un solo sentido y ascensores; el ejecutable arranca ahí por defecto, mientras los capítulos sueltos `slice`, `level2` y `level3` siguen probándose con `--map`), habilidades desbloqueables (**Doble Salto** y **Dash**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
+Versión de prueba para QA del mundo Metroidvania unificado (**`world.ewmap`**, grilla `8×3`: **El Pozo → Las Catacumbas → La Guarida del Wyrm** con atajos de un solo sentido y ascensores; el ejecutable arranca ahí por defecto, mientras los capítulos sueltos `slice`, `level2` y `level3` siguen probándose con `--map`), habilidades desbloqueables (**Doble Salto**, **Dash** y **Trepar / Salto en Pared**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
 
 Antes de empezar, anotá la versión: `echo_engine --version` (tiene que decir `v0.1.0`).
 También aparece en el título de la ventana y abajo a la derecha del menú de pausa.
@@ -17,7 +17,7 @@ iniciar sesión en GitHub para descargarlos.
 
 Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `ewmapc`,
 `ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`, `assets/atlas/sprites.png`,
-`assets/maps/bin/{world,slice,level2,level3,hello,room,mover,gravity,boss,ability,dash}.ewmap`, `README.md`, `DIST.txt` y
+`assets/maps/bin/{world,slice,level2,level3,hello,room,mover,gravity,boss,ability,dash,wallclimb}.ewmap`, `README.md`, `DIST.txt` y
 `docs/qa-checklist.md` (este archivo).
 
 ### Linux (x86_64)
@@ -43,7 +43,7 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
 | `--hero farol\|zarigueya\|castor` | elige el personaje inicial directo sin abrir el selector |
-| `--map assets/maps/bin/slice.ewmap` | carga directo el capítulo suelto (`slice`, `level2`, `level3`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`); por defecto arranca en `world.ewmap` |
+| `--map assets/maps/bin/slice.ewmap` | carga directo el capítulo suelto (`slice`, `level2`, `level3`, `wallclimb`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`); por defecto arranca en `world.ewmap` |
 | `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
 La consola (terminal en Linux; en Windows abrí `cmd` y corré `echo_engine.exe` desde ahí)
@@ -147,6 +147,11 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - **`owd_wyrm_pozo` (en `(1,0)`, El Pozo):** desde la izquierda (lado inicial de El Pozo) **no se abre**; al subir desde Zona 3 por la derecha **se abre de forma permanente** y conserva su estado abierto tras morir, R corto y al recargar `save.ewsv`.
   - **`sw_elev_cat` → `elev_cat_pozo` (entre `(6,1)` y `(6,0)`):** verificá que `elev_cat_pozo` arranca bloqueado (sellando el piso en `(6,0)`), que al activar `sw_elev_cat` en `(6,1)` se desbloquea, se puede llamar con E/X/↓ desde arriba o abajo y te **sube directo a `(6,0)` en El Pozo** sin aplastarte ni invertir la gravedad.
   - **`elev_wyrm_pozo` (conecta `(1,1) ↔ (1,0)` cerca del inicio):** verificá que arranca desbloqueado, sube desde `(1,1)` hacia la alcoba de `(1,0)` al pisarlo (y responde al llamado con E/X/↓ desde cualquiera de los dos extremos) para abrir `owd_wyrm_pozo` hacia el inicio.
+- [ ] **`ability_wall_climb` y el secreto del techo en Zona 1 `(0,0)`:**
+  - En Zona 3 `(0,2)` de `world.ewmap`, recogé la reliquia **`rel_wall_climb`** (`ability_wall_climb`): aparece el ícono **esmeralda** en el HUD arriba a la izquierda (junto a Doble Salto y Dash) y en la pantalla de final figura **`ESCALADA`**.
+  - Al mantener dirección hacia una pared sólida en el aire, verificá que el personaje **desliza lentamente** sin caer rápido (`36 px/s` máx.) y puede alternar saltos de pared (`wall-jump`) conservando el **Doble Salto** aéreo disponible.
+  - Hacé backtracking a **Zona 1 `(0,0)`** (p. ej. vía `elev_wyrm_pozo` → `owd_wyrm_pozo`), escalá la chimenea vertical del techo (`x=128..152`, inaccesible sin trepar) y verificá que arriba podés recoger **`egg_pozo_secreto`** (completando **`6/6`** huevos en `world`) y leer la estela **`lore_techo`**.
+  - Probá también la sala aislada `--map assets/maps/bin/wallclimb.ewmap` (`wall_climb_secret`): la chimenea de `136 px` no se sube con Doble Salto solo, pero sí alternando saltos en pared hasta la meta.
 
 ## 4. Guardar partida
 

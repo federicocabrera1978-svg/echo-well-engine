@@ -207,10 +207,11 @@ int main(int argc, char** argv) {
     SaveData cb = r;
     CHECK(cb.bind.bind_key(game::kBindJump, 'K') && cb.bind.bind_pad(game::kBindGrab, game::pad::kA));
     CHECK(cb.bind.valid());
-    cb.abilities = game::kAbilityDoubleJump;
+    cb.abilities = game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb;
     cb.hero = game::HeroKind::Beaver;
     CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind &&
-          !(o.bind == game::Bindings::defaults()) && o.abilities == game::kAbilityDoubleJump &&
+          !(o.bind == game::Bindings::defaults()) &&
+          o.abilities == (game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb) &&
           o.hero == game::HeroKind::Beaver);
     {
       game::Scene s4;
@@ -218,10 +219,14 @@ int main(int argc, char** argv) {
       Sim ab_sim(s4);
       CHECK(game::apply_save(ab_sim, o) == SaveError::None);
       CHECK(ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 1);
+      CHECK(ab_sim.has_ability(game::kAbilityDash) && ab_sim.dash_ready());
+      CHECK(ab_sim.has_ability(game::kAbilityWallClimb));
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
       game::Input full; full.restart_full = true;
       ab_sim.step(full);
       CHECK(!ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 0);
+      CHECK(!ab_sim.has_ability(game::kAbilityDash) && !ab_sim.dash_ready());
+      CHECK(!ab_sim.has_ability(game::kAbilityWallClimb));
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
     }
     // v3 (sin héroe) se sigue leyendo: preserva controles y habilidades, hero = Lantern.
@@ -231,7 +236,8 @@ int main(int argc, char** argv) {
     const uint32_t psz3 = uint32_t(b.size() - 16);
     for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz3 >> (8 * i));
     reseal(b);
-    CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind && o.abilities == game::kAbilityDoubleJump &&
+    CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind &&
+          o.abilities == (game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb) &&
           o.hero == game::HeroKind::Lantern && o.active == r.active);
     // v2 (sin habilidades ni héroe) se sigue leyendo: preserva controles, abilities = 0, hero = Lantern.
     b = game::encode_save(cb);

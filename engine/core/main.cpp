@@ -432,6 +432,7 @@ int main(int argc, char** argv) {
     if (hev.new_item) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
     if (hev.new_double_jump) std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");
+    if (hev.new_wall_climb) std::printf("echo_engine: ¡habilidad desbloqueada! trepar paredes\n");
 
     int fw = 0, fh = 0;
     glfwGetFramebufferSize(win, &fw, &fh);

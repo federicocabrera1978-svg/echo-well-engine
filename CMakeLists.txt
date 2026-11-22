@@ -67,6 +67,9 @@ add_test(NAME ewmapc_ability
 add_test(NAME ewmapc_dash
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/dash.ewmap)
+add_test(NAME ewmapc_wallclimb
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/wallclimb.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/wallclimb.ewmap)
 add_test(NAME ewmapc_level2
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml
           -o ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap)
@@ -111,6 +114,11 @@ add_test(NAME ewmap_load_dash
           --name dash --chunks 1 --ents 6 --ropes 1 --backdrops 1
           --has player_spawn --has ability_dash --has break_wall --has switch --has checkpoint --has goal)
 set_tests_properties(ewmap_load_dash PROPERTIES DEPENDS ewmapc_dash)
+add_test(NAME ewmap_load_wallclimb
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/wallclimb.ewmap
+          --name wallclimb --chunks 1 --ents 4 --backdrops 1
+          --has player_spawn --has ability_wall_climb --has checkpoint --has goal)
+set_tests_properties(ewmap_load_wallclimb PROPERTIES DEPENDS ewmapc_wallclimb)
 add_test(NAME ewmap_load_level2
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap
           --name level2 --chunks 8 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 6 --guides 5
@@ -125,8 +133,8 @@ add_test(NAME ewmap_load_level3
 set_tests_properties(ewmap_load_level3 PROPERTIES DEPENDS ewmapc_level3)
 add_test(NAME ewmap_load_world
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/world.ewmap
-          --name world --chunks 24 --ents 68 --links 9 --water 6 --ropes 4 --movers 7 --backdrops 24 --dialogs 13 --guides 12
-          --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has flood_switch --has door
+          --name world --chunks 24 --ents 71 --links 9 --water 6 --ropes 4 --movers 7 --backdrops 24 --dialogs 16 --guides 12
+          --has player_spawn --has ability_double_jump --has ability_dash --has ability_wall_climb --has break_wall --has collectible --has switch --has flood_switch --has door
           --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_world PROPERTIES DEPENDS ewmapc_world)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
@@ -162,6 +170,7 @@ set(EW_GRAVITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/gravity.ewmap)
 set(EW_BOSS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/boss.ewmap)
 set(EW_ABILITY_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/ability.ewmap)
 set(EW_DASH_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/dash.ewmap)
+set(EW_WALLCLIMB_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/wallclimb.ewmap)
 set(EW_LEVEL2_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level2.ewmap)
 set(EW_LEVEL3_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level3.ewmap)
 set(EW_WORLD_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/world.ewmap)
@@ -197,6 +206,10 @@ add_custom_command(OUTPUT ${EW_DASH_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml -o ${EW_DASH_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/dash.yaml)
+add_custom_command(OUTPUT ${EW_WALLCLIMB_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/wallclimb.yaml -o ${EW_WALLCLIMB_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/wallclimb.yaml)
 add_custom_command(OUTPUT ${EW_LEVEL2_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/level2.yaml -o ${EW_LEVEL2_MAP}
@@ -209,7 +222,7 @@ add_custom_command(OUTPUT ${EW_WORLD_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/world.yaml -o ${EW_WORLD_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/world.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP})
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -243,6 +256,10 @@ add_executable(dash_test tests/dash_test.cpp)
 target_link_libraries(dash_test PRIVATE echo_game)
 add_dependencies(dash_test ew_maps)
 add_test(NAME dash_breakwall COMMAND dash_test ${EW_DASH_MAP})
+add_executable(wallclimb_test tests/wallclimb_test.cpp)
+target_link_libraries(wallclimb_test PRIVATE echo_game echo_audio)
+add_dependencies(wallclimb_test ew_maps)
+add_test(NAME wall_climb_secret COMMAND wallclimb_test ${EW_WALLCLIMB_MAP})
 add_executable(water_test tests/water_test.cpp)
 target_link_libraries(water_test PRIVATE echo_game)
 add_dependencies(water_test ew_maps)
@@ -495,7 +512,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders DESTINATION assets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/tiles.png
               ${CMAKE_CURRENT_SOURCE_DIR}/assets/atlas/sprites.png
         DESTINATION assets/atlas)
-install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP}
+install(FILES ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP}
         DESTINATION assets/maps/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/qa-checklist.md DESTINATION docs)

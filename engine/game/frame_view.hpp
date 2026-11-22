@@ -225,6 +225,12 @@ inline void push_entities(FrameData& v, const Scene& s, float time_s) {
         push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 7.f) & 3), 6, false, false,
                     1.45f, 0.58f, 0.25f, 0.24f);
       }
+    } else if (e.type == "ability_wall_climb") {  // reliquia esmeralda de Trepar y Salto en Pared
+      if (!e.active) {
+        const float bob = std::round(std::sin(time_s * 3.8f) * 1.5f);
+        push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 6.5f) & 3), 6, false, false,
+                    0.35f, 1.45f, 0.65f, 0.24f);
+      }
     } else if (e.type == "break_wall") {  // muro agrietado rompible con Dash (1×3 tiles)
       if (!e.active) {
         const float pulse = 0.78f + 0.22f * std::sin(time_s * 4.0f);
@@ -413,6 +419,12 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
 
   const auto& pl = sim.player();
   const float px = pl.pos.x, py = pl.pos.y;
+  if (sim.wall_sliding() && sim.wall_dir() != 0) {  // chispa esmeralda contra la pared al deslizar
+    const float wx = px + float(sim.wall_dir()) * (Sim::kPlayerRadius + 0.5f);
+    const float sy = py - sim.down() * 2.f + std::sin(time_s * 24.f) * 1.5f;
+    push_marker(v, wx, sy, 1.6f, 0, 0.25f, 1.0f, 0.55f);
+    push_marker(v, wx, sy + sim.down() * 2.5f, 1.1f, 1, 0.65f, 1.0f, 0.80f);
+  }
   {  // protagonista pixel-art 16×16 (según héroe): espejado según dirección y gravedad
     const float d = sim.down();
     const bool inv = sim.gravity_flipped();

@@ -49,6 +49,10 @@ void Sim::build() {
   wall_break_flash_ = 0;
   wall_break_x_ = 0;
   wall_break_y_ = 0;
+  wall_coyote_ = 0;
+  wall_lock_ticks_ = 0;
+  wall_sliding_ = false;
+  wall_dir_ = 0;
   boss_burst_ = 0;
   boss_burst_x_ = 0;
   boss_burst_y_ = 0;
@@ -279,6 +283,12 @@ void Sim::set_abilities(uint32_t mask) {
   else if (!had_dj) air_jumps_ = 1;
   if (!has_dash) { dash_ready_ = false; dash_ticks_ = 0; }
   else if (!had_dash) dash_ready_ = true;
+  if (!(next & kAbilityWallClimb)) {
+    wall_coyote_ = 0;
+    wall_lock_ticks_ = 0;
+    wall_sliding_ = false;
+    wall_dir_ = 0;
+  }
 }
 
 void Sim::set_gravity_flipped(bool f) {
@@ -352,6 +362,7 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
     if (ents[i].type == "door" || ents[i].type == "one_way_door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
     if (ents[i].type == "ability_double_jump") ab |= kAbilityDoubleJump;
     if (ents[i].type == "ability_dash") ab |= kAbilityDash;
+    if (ents[i].type == "ability_wall_climb") ab |= kAbilityWallClimb;
   }
   abilities_ = ab;
   for (auto& b : bosses_)
@@ -405,6 +416,10 @@ void Sim::respawn() {
   dash_cd_ = 0;
   dash_flash_ = 0;
   wall_break_flash_ = 0;
+  wall_coyote_ = 0;
+  wall_lock_ticks_ = 0;
+  wall_sliding_ = false;
+  wall_dir_ = 0;
   boss_burst_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
@@ -584,23 +599,79 @@ void Sim::step(const Input& in) {
     }
 
     if (dash_ticks_ > 0) {
+      wall_sliding_ = false;
+      wall_coyote_ = 0;
+      wall_lock_ticks_ = 0;
+      wall_dir_ = 0;
       break_walls_on_dash();
       pl.gscale = 0.f;
       pl.set_velocity({float(dash_dir_) * kDashSpeed * kDt, 0.f});
     } else {
-      // Control normal: caminar, salto apoyado o doble salto aéreo.
+      // Control normal: caminar, salto apoyado, salto en pared o doble salto aéreo.
       Vec2 v = pl.velocity();
       const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
-      v.x += (target - v.x) * (pl.grounded ? 0.5f : 0.15f);
+      float air_blend = 0.15f;
+      if (wall_lock_ticks_ > 0) {
+        --wall_lock_ticks_;
+        air_blend = 0.08f;
+      }
+      v.x += (target - v.x) * (pl.grounded ? 0.5f : air_blend);
       const bool swim = player_in_water();
       if (pl.grounded || swim) {
         if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
         if (has_ability(kAbilityDash)) dash_ready_ = true;
+        wall_lock_ticks_ = 0;
+      }
+      wall_sliding_ = false;
+      if (!pl.grounded && !swim && has_ability(kAbilityWallClimb)) {
+        const bool wall_l = scene_.solid_px(pl.pos.x - kPlayerRadius - 1.f, pl.pos.y);
+        const bool wall_r = scene_.solid_px(pl.pos.x + kPlayerRadius + 1.f, pl.pos.y);
+        int active_wall = 0;
+        if (wall_l && in.move_x < -0.1f) active_wall = -1;
+        else if (wall_r && in.move_x > 0.1f) active_wall = 1;
+        if (active_wall != 0) {
+          wall_dir_ = active_wall;
+          wall_coyote_ = kWallCoyoteFrames;
+        } else if (wall_l) {
+          wall_dir_ = -1;
+          wall_coyote_ = kWallCoyoteFrames;
+        } else if (wall_r) {
+          wall_dir_ = 1;
+          wall_coyote_ = kWallCoyoteFrames;
+        } else if (wall_coyote_ > 0) {
+          --wall_coyote_;
+          if (wall_coyote_ == 0) wall_dir_ = 0;
+        }
+        if (active_wall != 0 && v.y * down() > 0.f) {
+          const float max_fall = kWallSlideSpeed * kDt;
+          if (v.y * down() >= max_fall - 1e-4f) {
+            v.y = down() * max_fall;
+            pl.force.y -= down() * world_.gravity.y;
+          }
+          wall_sliding_ = true;
+          facing_ = -active_wall;
+        }
+      } else {
+        wall_coyote_ = 0;
+        wall_dir_ = 0;
       }
       if (in.jump && !rope_jumped) {
         if (pl.grounded || swim) {
           v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
           sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
+        } else if (has_ability(kAbilityWallClimb) && wall_coyote_ > 0 && wall_dir_ != 0) {
+          v.x = -float(wall_dir_) * kWallJumpVx * kDt;
+          v.y = -down() * kWallJumpVy * kDt;
+          facing_ = -wall_dir_;
+          wall_dir_ = 0;
+          wall_coyote_ = 0;
+          wall_lock_ticks_ = kWallLockFrames;
+          wall_sliding_ = false;
+          pl.force.y = 0.f;
+          double_jump_flash_ = kDoubleJumpFlashFrames;
+          double_jump_x_ = pl.pos.x;
+          double_jump_y_ = pl.pos.y;
+          sfx_ |= 1u;  // kSfxJump
         } else if (has_ability(kAbilityDoubleJump) && air_jumps_ > 0) {
           --air_jumps_;
           v.y = -down() * kDoubleJumpSpeed * kDt;
@@ -663,6 +734,20 @@ void Sim::step(const Input& in) {
     if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_ready_ = true;
   }
   was_in_water_ = in_w;
+  if (world_.points()[player_].grounded || in_w || held_ || dash_ticks_ > 0) {
+    wall_sliding_ = false;
+    wall_coyote_ = 0;
+    wall_lock_ticks_ = 0;
+    wall_dir_ = 0;
+  } else if (wall_sliding_) {
+    auto& p = world_.points()[player_];
+    Vec2 pv = p.velocity();
+    const float max_fall = kWallSlideSpeed * kDt;
+    if (pv.y * down() > max_fall) {
+      pv.y = down() * max_fall;
+      p.set_velocity(pv);
+    }
+  }
   check_gravity_flips();
   check_checkpoints();
   check_collectibles();
@@ -688,14 +773,20 @@ void Sim::step(const Input& in) {
       if (dash_ticks_ > 0) {
         wind_.push_impulse(p.pos.x, p.pos.y, float(dash_dir_) * 3.8f, 30.f, 0.25f);
       }
+      if (wall_sliding_ && wall_dir_ != 0) {
+        wind_.push_impulse(p.pos.x + float(wall_dir_) * kPlayerRadius, p.pos.y,
+                           -float(wall_dir_) * 0.9f, 18.f, 0.18f);
+      }
     }
     was_grounded_ = p.grounded;
   }
 }
 
 void Sim::update_player_anim(const Input& in) {
-  if (in.move_x > 0.05f) facing_ = 1;
-  else if (in.move_x < -0.05f) facing_ = -1;
+  if (!wall_sliding_ && wall_lock_ticks_ == 0) {
+    if (in.move_x > 0.05f) facing_ = 1;
+    else if (in.move_x < -0.05f) facing_ = -1;
+  }
 
   const bool gr = player().grounded;
   air_ticks_ = (gr || on_rope() || player_in_water()) ? 0 : (air_ticks_ + 1);
@@ -703,9 +794,9 @@ void Sim::update_player_anim(const Input& in) {
   const bool in_air_anim = !gr && (anim_ == PlayerAnim::Jump || anim_ == PlayerAnim::DoubleJump ||
                                    std::fabs(vy_rel) > 0.35f || air_ticks_ > 4);
 
-  if (on_rope()) {
+  if (on_rope() || wall_sliding_) {
     if (anim_ != PlayerAnim::Climb) { anim_ = PlayerAnim::Climb; anim_ticks_ = 0; }
-    if (std::fabs(in.climb) > 0.05f || std::fabs(in.move_x) > 0.05f) ++anim_ticks_;
+    if (wall_sliding_ || std::fabs(in.climb) > 0.05f || std::fabs(in.move_x) > 0.05f) ++anim_ticks_;
     anim_frame_ = (anim_ticks_ / 6) & 3;
   } else if (player_in_water()) {
     if (anim_ != PlayerAnim::Swim) { anim_ = PlayerAnim::Swim; anim_ticks_ = 0; }
@@ -766,13 +857,12 @@ void Sim::check_abilities() {
     uint32_t grant = 0;
     if (ents[i].type == "ability_double_jump") grant = kAbilityDoubleJump;
     else if (ents[i].type == "ability_dash") grant = kAbilityDash;
+    else if (ents[i].type == "ability_wall_climb") grant = kAbilityWallClimb;
     else continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
     scene_.set_active(i, true);  // desbloqueada: persiste hasta reset()
-    abilities_ |= grant;
-    if (grant & kAbilityDoubleJump) air_jumps_ = 1;
-    if (grant & kAbilityDash) dash_ready_ = true;
+    grant_ability(grant);
     ability_flash_ = kAbilityFlashFrames;
     sfx_ |= 128u;  // kSfxAbility
     trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
