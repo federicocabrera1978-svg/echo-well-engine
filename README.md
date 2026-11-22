@@ -11,8 +11,8 @@ Motor 2D propietario en **C++20 / GLSL** para un prototipo de metroidvania atmos
 
 ## Estructura
 ```
-engine/core/         echo_engine: ventana GLFW + loop de frame
-engine/game/         echo_game: Scene (MapLoader + ChunkCache → tiles COL/VIS, entidades, cámara, chunk activo)
+engine/core/         echo_engine: ventana GLFW, input, audio y loop de frame (< 450 líneas)
+engine/game/         echo_game (sin GL): Scene, Sim, LevelFlow, BossVictorySeq, WindField, Guide, Hud y FrameData
 engine/physics/      echo_physics: Verlet (puntos, sticks, damping, colisión círculo↔tiles) + WaterBody (Hooke)
 engine/render/       echo_render: loader GL 3.3 mínimo + DeferredRenderer
 assets/shaders/      GLSL 330: fullscreen.vert, gbuffer_map.frag, light.frag
