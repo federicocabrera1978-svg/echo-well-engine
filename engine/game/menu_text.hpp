@@ -58,7 +58,7 @@ inline std::array<std::string, kTxtRows> controls_text(const PauseMenu& m) {
   return t;
 }
 
-// Fila 0 = PAUSA, 1..8 = opciones del menú con "> " en cursor(), última = versión.
+// Fila 0 = PAUSA, 1..9 = opciones del menú con "> " en cursor(), última = versión.
 inline std::array<std::string, kTxtRows> pause_text(const PauseMenu& m, std::string_view version_str) {
   std::array<std::string, kTxtRows> t{};
   t[0] = "PAUSA";
@@ -70,6 +70,7 @@ inline std::array<std::string, kTxtRows> pause_text(const PauseMenu& m, std::str
       m.muted() ? std::string("MUTE") : ("VOL: " + std::to_string(pct)),
       "CONTROLES",
       std::string("BRISA: ") + (m.foliage() ? "SI" : "NO"),
+      std::string("IMPACTO: ") + (m.impact_fx() ? "SI" : "NO"),
       std::string("HEROE: ") + hero_short_label(m.hero()),
       "SALIR",
   };

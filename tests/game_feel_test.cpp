@@ -1,4 +1,5 @@
-// Test sin GL: Etapa 12 (Ítem 13) — Game feel (Coyote Time, Jump Buffer, Squash & Stretch, Dust y estela de Dash).
+// Test sin GL: Etapas 12 y 13 — Game feel (Coyote Time, Jump Buffer, Squash & Stretch, Dust,
+// estela de Dash, hitstop y sacudida de cámara en impactos).
 #include "game/frame_view.hpp"
 #include "game/sim.hpp"
 
@@ -13,15 +14,22 @@ using game::FrameData;
 using game::Input;
 using game::Sim;
 
-static void place(Sim& s, float x, float y) {
+static void place(Sim& s, float x, float y, float vy = 0.f) {
   auto& p = s.world().points()[s.player_index()];
-  p.pos = p.prev = {x, y};
+  p.pos = {x, y};
+  p.prev = {x, y - vy};
   p.force = {};
   p.grounded = false;
 }
 
+static const game::Entity* find_name(const game::Scene& s, const char* name) {
+  for (const auto& e : s.entities())
+    if (e.name == name) return &e;
+  return nullptr;
+}
+
 int main(int argc, char** argv) {
-  if (argc < 2) return 2;
+  if (argc < 4) return 2;
   std::string err;
   game::Scene scene;
   if (!scene.load(argv[1], err)) {
@@ -175,6 +183,163 @@ int main(int argc, char** argv) {
     CHECK(sim.coyote_ticks() == 0 && sim.jump_buffer_ticks() == 0);
     CHECK(sim.squash_x() == 1.f && sim.squash_y() == 1.f);
     CHECK(sim.dust().empty());
+  }
+
+  // --- 5) Hitstop + camera shake en pisotón y derrota de boss + build_world_frame + toggle off ---
+  {
+    game::Scene boss_scene;
+    if (!boss_scene.load(argv[2], err)) {
+      std::fprintf(stderr, "%s\n", err.c_str());
+      return 1;
+    }
+    Sim sim(boss_scene);
+    CHECK(sim.impact_fx_enabled() && sim.hitstop_ticks() == 0 && sim.shake_x() == 0.f && sim.shake_y() == 0.f);
+    for (int i = 0; i < 15; ++i) sim.step({});
+
+    // Primer pisotón: dispara kHitstopEnemyFrames y sacudida; congela boss y jugador.
+    {
+      const auto& b = sim.boss(0);
+      place(sim, b.x, b.y - Sim::kBossH - Sim::kPlayerRadius + 1.5f, 2.f);
+      sim.step({});
+    }
+    CHECK(sim.boss(0).hits == 1);
+    CHECK(sim.hitstop_ticks() == Sim::kHitstopEnemyFrames);
+    const float hit_sx = sim.shake_x(), hit_sy = sim.shake_y();
+    CHECK(std::fabs(hit_sx) > 0.f || std::fabs(hit_sy) > 0.f);
+
+    // build_world_frame aplica shake sobre cam_x/y y deja intacto chunk_x_px/chunk_y_px.
+    {
+      FrameData fd{};
+      build_world_frame(fd, boss_scene, sim, 0.f, false, false);
+      CHECK(std::fabs(fd.cam_x - std::round(boss_scene.cam_x() + hit_sx)) < 1e-4f);
+      CHECK(std::fabs(fd.cam_y - std::round(boss_scene.cam_y() + hit_sy)) < 1e-4f);
+      CHECK(fd.chunk_x_px == boss_scene.nb_origin_x() && fd.chunk_y_px == boss_scene.nb_origin_y());
+    }
+
+    // Durante los kHitstopEnemyFrames pasos siguientes, boss y player quedan congelados.
+    const float bx0 = sim.boss(0).x, by0 = sim.boss(0).y, hurt0 = sim.boss(0).hurt;
+    const float px0 = sim.player().pos.x, py0 = sim.player().pos.y;
+    for (int i = 0; i < Sim::kHitstopEnemyFrames; ++i) {
+      Input j;
+      if (i == Sim::kHitstopEnemyFrames - 1) j.jump = true;  // el buffer conserva salto durante hitstop
+      sim.step(j);
+      CHECK(sim.boss(0).x == bx0 && sim.boss(0).y == by0 && sim.boss(0).hurt == hurt0);
+      CHECK(sim.player().pos.x == px0 && sim.player().pos.y == py0);
+      CHECK(sim.hitstop_ticks() == Sim::kHitstopEnemyFrames - 1 - i);
+    }
+    CHECK(sim.hitstop_ticks() == 0);
+    CHECK(sim.jump_buffer_ticks() == Sim::kJumpBufferFrames);
+
+    // Al salir del hitstop, la simulación retoma limpiamente.
+    sim.step({});
+    CHECK(sim.boss(0).hurt < hurt0);
+    CHECK(sim.player().pos.y != py0 || sim.boss(0).x != bx0);
+
+    // Segundo pisotón y apagado inmediato con set_impact_fx_enabled(false).
+    for (int i = 0; i < 70; ++i) sim.step({});
+    {
+      const auto& b = sim.boss(0);
+      place(sim, b.x, b.y - Sim::kBossH - Sim::kPlayerRadius + 1.5f, 2.f);
+      sim.step({});
+    }
+    CHECK(sim.boss(0).hits == 2 && sim.hitstop_ticks() == Sim::kHitstopEnemyFrames);
+    sim.set_impact_fx_enabled(false);
+    CHECK(!sim.impact_fx_enabled() && sim.hitstop_ticks() == 0 && sim.shake_x() == 0.f && sim.shake_y() == 0.f);
+    {
+      FrameData fd{};
+      build_world_frame(fd, boss_scene, sim, 0.f, false, false);
+      CHECK(std::fabs(fd.cam_x - std::round(boss_scene.cam_x())) < 1e-4f);
+      CHECK(std::fabs(fd.cam_y - std::round(boss_scene.cam_y())) < 1e-4f);
+    }
+
+    // Re-activar para verificar derrota del boss: kHitstopDefeatFrames y mayor amplitud de shake.
+    sim.set_impact_fx_enabled(true);
+    for (int i = 0; i < 70; ++i) sim.step({});
+    {
+      const auto& b = sim.boss(0);
+      place(sim, b.x, b.y - Sim::kBossH - Sim::kPlayerRadius + 1.5f, 2.f);
+      sim.step({});
+    }
+    CHECK(sim.boss(0).defeated);
+    CHECK(sim.hitstop_ticks() == Sim::kHitstopDefeatFrames);
+    const float defeat_mag = std::hypot(sim.shake_x(), sim.shake_y());
+    const float hit_mag = std::hypot(hit_sx, hit_sy);
+    CHECK(defeat_mag >= hit_mag && (std::fabs(sim.shake_x()) >= 3.f || std::fabs(sim.shake_y()) >= 2.f));
+
+    // Durante hitstop de derrota, victory_seq y boss_burst siguen avanzando mientras player queda quieto.
+    const float dpx = sim.player().pos.x, dpy = sim.player().pos.y;
+    const int burst0 = sim.boss_burst();
+    for (int i = 0; i < Sim::kHitstopDefeatFrames; ++i) {
+      sim.step({});
+      CHECK(sim.player().pos.x == dpx && sim.player().pos.y == dpy);
+      CHECK(sim.victory_seq().in_defeat_anim());
+    }
+    CHECK(sim.hitstop_ticks() == 0);
+    CHECK(sim.boss_burst() < burst0);
+
+    // Con impact_fx_enabled(false), reset() conserva la preferencia y el pisotón no dispara hitstop ni shake.
+    sim.set_impact_fx_enabled(false);
+    sim.reset();
+    CHECK(!sim.impact_fx_enabled());
+    for (int i = 0; i < 15; ++i) sim.step({});
+    {
+      const auto& b = sim.boss(0);
+      place(sim, b.x, b.y - Sim::kBossH - Sim::kPlayerRadius + 1.5f, 2.f);
+      sim.step({});
+    }
+    CHECK(sim.boss(0).hits == 1);
+    CHECK(sim.hitstop_ticks() == 0 && sim.shake_x() == 0.f && sim.shake_y() == 0.f);
+  }
+
+  // --- 6) Romper break_wall con Dash dispara hitstop + shake; toggle off los suprime ---
+  {
+    game::Scene dash_scene;
+    if (!dash_scene.load(argv[3], err)) {
+      std::fprintf(stderr, "%s\n", err.c_str());
+      return 1;
+    }
+    Sim sim(dash_scene);
+    sim.grant_ability(game::kAbilityDash);
+    place(sim, 146.f, 156.f);
+    for (int i = 0; i < 15; ++i) sim.step({});
+
+    {
+      Input d;
+      d.move_x = 1.f;
+      d.dash = true;
+      sim.step(d);
+    }
+    bool broke_with_impact = false;
+    for (int i = 0; i < Sim::kDashFrames + 6; ++i) {
+      if (find_name(dash_scene, "wall_gate")->active) {
+        broke_with_impact = (sim.hitstop_ticks() == Sim::kHitstopEnemyFrames) &&
+                            (std::fabs(sim.shake_x()) > 0.f || std::fabs(sim.shake_y()) > 0.f);
+        break;
+      }
+      sim.step({});
+    }
+    CHECK(broke_with_impact);
+
+    // Con impact_fx desactivado, romper wall_gate no genera hitstop ni shake.
+    sim.set_impact_fx_enabled(false);
+    sim.reset();
+    CHECK(!sim.impact_fx_enabled());
+    sim.grant_ability(game::kAbilityDash);
+    place(sim, 146.f, 156.f);
+    for (int i = 0; i < 15; ++i) sim.step({});
+    {
+      Input d;
+      d.move_x = 1.f;
+      d.dash = true;
+      sim.step(d);
+    }
+    for (int i = 0; i < Sim::kDashFrames + 2; ++i) {
+      CHECK(sim.hitstop_ticks() == 0 && sim.shake_x() == 0.f && sim.shake_y() == 0.f);
+      if (find_name(dash_scene, "wall_gate")->active) break;
+      sim.step({});
+    }
+    CHECK(find_name(dash_scene, "wall_gate")->active);
+    CHECK(sim.hitstop_ticks() == 0 && sim.shake_x() == 0.f && sim.shake_y() == 0.f);
   }
 
   std::puts("game_feel_test: OK");

@@ -90,6 +90,11 @@ class Sim {
   static constexpr int kCoyoteFrames = 6;           // frames de coyote time al dejar el suelo
   static constexpr int kJumpBufferFrames = 6;       // frames de buffer al apretar salto antes de aterrizar
   static constexpr std::size_t kMaxDust = 24;       // pool máximo de partículas de polvo/estela
+  static constexpr int kHitstopEnemyFrames = 4;     // frames de freeze al golpear boss / romper muro / recibir daño
+  static constexpr int kHitstopDefeatFrames = 6;    // frames de freeze al derrotar un boss
+  static constexpr float kShakeHitAmp = 3.0f;       // amplitud px sacudida por golpe
+  static constexpr float kShakeBreakAmp = 2.5f;     // amplitud px sacudida al romper break_wall
+  static constexpr float kShakeBossAmp = 4.5f;      // amplitud px sacudida al derrotar un boss
   static constexpr int kBossBurstFrames = 180;      // ~3.0 s de rayos catódicos al vencer un boss
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
   static constexpr float kBossW = 24.f, kBossH = 16.f;
@@ -278,6 +283,12 @@ class Sim {
   float squash_x() const { return squash_x_; }
   float squash_y() const { return squash_y_; }
   const std::vector<DustParticle>& dust() const { return dust_; }
+  // Impacto visual (hitstop + sacudida de cámara; desactivable desde pausa).
+  bool impact_fx_enabled() const { return impact_fx_; }
+  void set_impact_fx_enabled(bool e);
+  int hitstop_ticks() const { return hitstop_ticks_; }
+  float shake_x() const { return shake_x_; }
+  float shake_y() const { return shake_y_; }
   // Partida guardada: reset() limpio, aplica Entity::active por entidad (puertas, switches,
   // huevos, boss vencido, reliquias), fija checkpoint + gravedad + habilidades y reaparece ahí.
   // `active` debe tener una entrada por entidad (lo valida apply_save en save.hpp).
@@ -349,6 +360,13 @@ class Sim {
   float squash_x_ = 1.f;
   float squash_y_ = 1.f;
   std::vector<DustParticle> dust_;
+  bool impact_fx_ = true;
+  int hitstop_ticks_ = 0;
+  int shake_ticks_ = 0;
+  int shake_max_ = 0;
+  float shake_amp_ = 0.f;
+  float shake_x_ = 0.f;
+  float shake_y_ = 0.f;
   int boss_burst_ = 0;
   float boss_burst_x_ = 0, boss_burst_y_ = 0;
   BossVictorySeq victory_;
@@ -372,6 +390,9 @@ class Sim {
   void break_walls_on_dash();
   void spawn_dust(float x, float y, float vx, float vy, float life, float radius, float r, float g, float b);
   void step_game_feel();
+  void clear_impact_fx();
+  void trigger_impact(int hitstop_frames, float shake_amp, int shake_frames);
+  void step_shake();
   void update_player_anim(const Input& in);
   void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);
   void check_dialogs_proximity();

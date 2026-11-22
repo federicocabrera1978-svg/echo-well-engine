@@ -367,6 +367,7 @@ int main(int argc, char** argv) {
     mixer.set_gain(menu.volume_setting());
     mixer.set_mute(menu.muted());
     flow.sim().set_wind_enabled(menu.foliage());
+    flow.sim().set_impact_fx_enabled(menu.impact_fx());
     flow.sim().set_hero(menu.hero());
 
     const double now = glfwGetTime();

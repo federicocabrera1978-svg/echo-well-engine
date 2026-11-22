@@ -115,11 +115,15 @@ int main() {
   for (int i = 0; i < PauseMenu::kBrisa; ++i) { in = {}; in.down = true; b.handle(in); }
   CHECK(b.cursor() == PauseMenu::kBrisa);
   in = {}; in.down = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kImpact);
+  in = {}; in.down = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kHero);
   in = {}; in.down = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kSalir);
   in = {}; in.up = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kHero);
+  in = {}; in.up = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kImpact);
   in = {}; in.up = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kBrisa);
 
@@ -135,6 +139,23 @@ int main() {
   in = {}; in.confirm = true;
   CHECK(b.handle(in) == MenuAction::None);
   CHECK(b.open() && b.foliage());
+
+  // Impacto: arranca en true, confirm/left/right alternan sin cerrar el menú.
+  CHECK(b.impact_fx());
+  in = {}; in.down = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kImpact);
+  in = {}; in.confirm = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && !b.impact_fx());
+  in = {}; in.left = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && b.impact_fx());
+  in = {}; in.right = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && !b.impact_fx());
+  in = {}; in.confirm = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && b.impact_fx());
 
   // Héroes: helpers + ciclado en kHero + subpágina de selector + start_only.
   {
@@ -185,13 +206,18 @@ int main() {
     CHECK(hm.handle(in) == MenuAction::Resume);
     CHECK(!hm.open() && hm.hero() == HeroKind::Beaver);
 
-    // pause_text incluye los 8 ítems, héroe corto, brisa y versión.
+    // pause_text incluye los 9 ítems, héroe corto, brisa, impacto y versión.
     hm.open_at(PauseMenu::kHero);
-    const auto ptxt = pause_text(hm, "0.1.0");
+    auto ptxt = pause_text(hm, "0.1.0");
     CHECK(ptxt[0] == "PAUSA");
     CHECK(ptxt[6] == "  BRISA: SI");
-    CHECK(ptxt[7] == "> HEROE: CASTOR");
+    CHECK(ptxt[7] == "  IMPACTO: SI");
+    CHECK(ptxt[8] == "> HEROE: CASTOR");
+    CHECK(ptxt[9] == "  SALIR");
     CHECK(ptxt[11] == "V0.1.0");
+    hm.set_impact_fx(false);
+    ptxt = pause_text(hm, "0.1.0");
+    CHECK(ptxt[7] == "  IMPACTO: NO");
   }
 
   std::puts("menu ok");

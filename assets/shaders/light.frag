@@ -200,9 +200,9 @@ vec3 pause_page(vec3 c, vec2 px) {
   float title_x = max(52.0, 160.0 - float(max(len0, 1)) * 9.0 + 1.5);
   c = mix(c, vec3(1.0, 0.92, 0.50), txt_glyph(0, px - vec2(title_x, 22.0), 3.0));
 
-  // Filas 1..8: opciones de juego (escala 2.0, paso 12 px).
-  for (int r = 1; r <= 8; ++r) {
-    float ry = 45.0 + float(r - 1) * 12.0;
+  // Filas 1..9: opciones de juego (escala 2.0, paso 11 px).
+  for (int r = 1; r <= 9; ++r) {
+    float ry = 43.0 + float(r - 1) * 11.0;
     int c0 = txt_at(r, 0);
     if (c0 >= 47) continue;
     bool is_sel = (r - 1 == u_sel);
@@ -229,7 +229,7 @@ vec3 pause_page(vec3 c, vec2 px) {
     float tx4 = (c4 == 36 || c4 == 37) ? 54.0 : 74.0;
     float bx = max(172.0, tx4 + float(end_c) * 12.0 + 8.0);
     float bw = max(32.0, 265.0 - bx);
-    float by = 84.0, bh = 4.0;
+    float by = 79.0, bh = 4.0;
     if (px.x >= bx - 1.0 && px.x <= bx + bw + 1.0 && px.y >= by - 1.0 && px.y <= by + bh + 1.0) {
       if (px.x >= bx && px.x <= bx + bw && px.y >= by && px.y <= by + bh) {
         float f = (px.x - bx) / bw;
