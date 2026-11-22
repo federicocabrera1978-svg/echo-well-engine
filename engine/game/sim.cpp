@@ -59,6 +59,7 @@ void Sim::build() {
   squash_x_ = 1.f;
   squash_y_ = 1.f;
   dust_.clear();
+  clear_impact_fx();
   boss_burst_ = 0;
   boss_burst_x_ = 0;
   boss_burst_y_ = 0;
@@ -432,6 +433,7 @@ void Sim::respawn() {
   squash_x_ = 1.f;
   squash_y_ = 1.f;
   dust_.clear();
+  clear_impact_fx();
   boss_burst_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
@@ -473,6 +475,7 @@ void Sim::take_hit(float src_x, float src_y, bool allow_survive) {
     pl.gscale = flip_ ? -1.f : 1.f;
     const float push = (pl.pos.x >= src_x ? 1.f : -1.f);
     pl.set_velocity({push * 85.f * kDt, -down() * 145.f * kDt});
+    trigger_impact(kHitstopEnemyFrames, kShakeHitAmp, 10);
     return;
   }
   kill();
@@ -523,12 +526,20 @@ void Sim::step(const Input& in) {
     if (pl0.pos.x != last_pos_.x || pl0.pos.y != last_pos_.y || pl0.grounded != was_grounded_) {
       coyote_ticks_ = 0;
       jump_buf_ = 0;
+      hitstop_ticks_ = 0;
     }
   }
-  if (invuln_ > 0) --invuln_;
+  step_shake();
   victory_.step(kDt);
   wind_.step(kDt);
   boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
+  if (hitstop_ticks_ > 0 && !finished_) {
+    --hitstop_ticks_;
+    if (in.jump) jump_buf_ = kJumpBufferFrames;
+    step_game_feel();
+    return;
+  }
+  if (invuln_ > 0) --invuln_;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     apply_flood();
@@ -913,6 +924,55 @@ void Sim::step_game_feel() {
     } else {
       ++i;
     }
+  }
+}
+
+namespace {
+void eval_shake_offset(int ticks, int max_ticks, float amp, float& sx, float& sy) {
+  const float t = float(ticks) / float(std::max(max_ticks, 1));
+  const float phase = float(ticks) * 2.3f;
+  sx = std::round(std::sin(phase) * amp * t);
+  sy = std::round(std::cos(phase * 1.4f) * amp * t * 0.8f);
+}
+}  // namespace
+
+void Sim::clear_impact_fx() {
+  hitstop_ticks_ = 0;
+  shake_ticks_ = 0;
+  shake_max_ = 0;
+  shake_amp_ = 0.f;
+  shake_x_ = 0.f;
+  shake_y_ = 0.f;
+}
+
+void Sim::set_impact_fx_enabled(bool e) {
+  impact_fx_ = e;
+  if (!e) clear_impact_fx();
+}
+
+void Sim::trigger_impact(int hitstop_frames, float shake_amp, int shake_frames) {
+  if (!impact_fx_) return;
+  hitstop_ticks_ = std::max(hitstop_ticks_, hitstop_frames);
+  shake_ticks_ = std::max(shake_ticks_, shake_frames);
+  shake_max_ = std::max(shake_max_, shake_frames);
+  shake_amp_ = std::max(shake_amp_, shake_amp);
+  if (shake_ticks_ > 0) eval_shake_offset(shake_ticks_, shake_max_, shake_amp_, shake_x_, shake_y_);
+}
+
+void Sim::step_shake() {
+  if (!impact_fx_ || shake_ticks_ <= 0) {
+    shake_ticks_ = 0;
+    shake_max_ = 0;
+    shake_amp_ = 0.f;
+    shake_x_ = 0.f;
+    shake_y_ = 0.f;
+    return;
+  }
+  eval_shake_offset(shake_ticks_, shake_max_, shake_amp_, shake_x_, shake_y_);
+  if (--shake_ticks_ <= 0) {
+    shake_ticks_ = 0;
+    shake_max_ = 0;
+    shake_amp_ = 0.f;
   }
 }
 
@@ -1348,6 +1408,7 @@ void Sim::break_walls_on_dash() {
       wall_break_x_ = ents[i].x + wall_w * 0.5f;
       wall_break_y_ = ents[i].y + wall_h * 0.5f;
       sfx_ |= 512u;  // kSfxBreak
+      trigger_impact(kHitstopEnemyFrames, kShakeBreakAmp, 9);
     }
   }
 }
@@ -1393,6 +1454,9 @@ void Sim::collide_bosses() {
         boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
         wind_.push_impulse(b.x, b.y, 3.6f, 44.f, 0.55f);
         sfx_ |= 4u | 2048u;  // kSfxCheckpoint | kSfxBossCrt (rayos catódicos)
+        trigger_impact(kHitstopDefeatFrames, kShakeBossAmp, 14);
+      } else {
+        trigger_impact(kHitstopEnemyFrames, kShakeHitAmp, 10);
       }
       return;
     }
@@ -1435,6 +1499,7 @@ void Sim::collide_imps() {
       im.defeated = true;
       wind_.push_impulse(im.x, im.y, float(im.dir) * 2.0f, 22.f, 0.35f);
       sfx_ |= 1024u;  // kSfxHit
+      trigger_impact(3, 2.2f, 8);
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
       if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
       if (dash_ticks_ == 0 && from_above) {

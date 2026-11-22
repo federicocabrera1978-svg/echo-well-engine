@@ -24,9 +24,9 @@ struct MenuInput {
 
 class PauseMenu {
  public:
-  static constexpr int kItemCount = 8;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Brisa, Héroe, Salir
+  static constexpr int kItemCount = 9;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Brisa, Impacto, Héroe, Salir
   static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kControles = 4, kBrisa = 5,
-                       kHero = 6, kSalir = 7;
+                       kImpact = 6, kHero = 7, kSalir = 8;
   // Página Controles: una fila por acción + POR DEFECTO + VOLVER.
   static constexpr int kCtlDefaults = kBindCount, kCtlBack = kBindCount + 1, kCtlRows = kBindCount + 2;
   static constexpr float kVolStep = 0.10f;
@@ -49,6 +49,9 @@ class PauseMenu {
   // Brisa y vegetación animada.
   bool foliage() const { return foliage_; }
   void set_foliage(bool f) { foliage_ = f; }
+  // Impacto visual (hitstop + sacudida de cámara).
+  bool impact_fx() const { return impact_fx_; }
+  void set_impact_fx(bool e) { impact_fx_ = e; }
   // Héroe seleccionado.
   HeroKind hero() const { return hero_; }
   void set_hero(HeroKind h) {
@@ -124,6 +127,10 @@ class PauseMenu {
       foliage_ = !foliage_;
       return MenuAction::None;
     }
+    if (cursor_ == kImpact && (in.left || in.right || in.confirm)) {
+      impact_fx_ = !impact_fx_;
+      return MenuAction::None;
+    }
     if (cursor_ == kHero) {
       if (in.left) hero_ = cycle_hero(hero_, -1);
       if (in.right) hero_ = cycle_hero(hero_, +1);
@@ -139,6 +146,7 @@ class PauseMenu {
       case kVolumen:   muted_ = !muted_; return MenuAction::None;
       case kControles: page_ = 1; ctl_cursor_ = 0; return MenuAction::None;
       case kBrisa:     foliage_ = !foliage_; return MenuAction::None;
+      case kImpact:    impact_fx_ = !impact_fx_; return MenuAction::None;
       case kHero:
         page_ = 2;
         hero_cursor_ = int(hero_);
@@ -199,6 +207,7 @@ class PauseMenu {
   bool muted_ = false;
   bool has_save_ = false;
   bool foliage_ = true;
+  bool impact_fx_ = true;
   HeroKind hero_ = HeroKind::Lantern;
   Bindings bind_ = Bindings::defaults();
   bool bind_changed_ = false;

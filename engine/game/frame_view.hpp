@@ -326,8 +326,8 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
 
   float shake_x = 0.f, shake_y = 0.f;
   sim.victory_seq().camera_shake(shake_x, shake_y);
-  v.cam_x = std::round(scene.cam_x() + shake_x);
-  v.cam_y = std::round(scene.cam_y() + shake_y);  // pixel-perfect
+  v.cam_x = std::round(scene.cam_x() + shake_x + sim.shake_x());
+  v.cam_y = std::round(scene.cam_y() + shake_y + sim.shake_y());  // pixel-perfect
   v.chunk_x_px = scene.nb_origin_x();             // vecindario 3×3 alrededor del chunk activo
   v.chunk_y_px = scene.nb_origin_y();
   v.tiles = scene.active_tiles().data();

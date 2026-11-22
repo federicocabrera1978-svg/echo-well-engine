@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     (void)sim.take_sfx();
     { Input d; d.move_x = 1.f; d.dash = true; sim.step(d); }
     CHECK(sim.dash_ticks() == Sim::kDashFrames);
-    for (int i = 0; i < Sim::kDashFrames; ++i) sim.step({});
+    for (int i = 0; i < Sim::kDashFrames + Sim::kHitstopEnemyFrames; ++i) sim.step({});
     std::printf("tras dash contra wall_gate: pos=(%.1f, %.1f) roto=%d\n",
                 sim.player().pos.x, sim.player().pos.y, int(find_name(s, "wall_gate")->active));
     CHECK(find_name(s, "wall_gate")->active);

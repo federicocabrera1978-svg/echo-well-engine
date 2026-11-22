@@ -66,7 +66,7 @@ o cargada, meta.
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
-VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/Espacio/←/→ alterna brisa y vegetación sin cerrar), HEROE (abre el selector de personaje), SALIR.
+VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/Espacio/←/→ alterna brisa y vegetación sin cerrar), IMPACTO SI/NO (Enter/Espacio/←/→ alterna hitstop y sacudida de cámara sin cerrar), HEROE (abre el selector de personaje), SALIR.
 
 ## 3. Recorrido sala por sala
 
@@ -80,6 +80,9 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
 - [ ] **Sensación de movimiento (Coyote time, Jump buffer, Squash & Stretch, polvo y estela de Dash).**
   - Saltar justo al salir de un borde (~6 frames de margen / coyote time, sin gastar Doble Salto) y presionar salto justo antes de tocar el piso (jump buffer, ~6 frames).
   - Verificar compresión/estiramiento del personaje al saltar y aterrizar manteniendo los pies apoyados en el piso, motas de polvo al despegar/aterrizar/trepar y estela residual al usar Dash.
+- [ ] **Hitstop, sacudida de cámara y opción `IMPACTO SI/NO`.**
+  - Verificar la micro-pausa de impacto y sacudida de cámara al pisar/vencer bosses, eliminar diablillos `imp`, romper `break_wall` o absorber un golpe.
+  - Abrir Pausa (`Esc`/`Start`), bajar a **`IMPACTO: SI`** y cambiar a **`NO`** sin cerrar el menú: comprobar que desaparecen hitstop y sacudida manteniendo intacto el menú en 9 filas alineadas con la barra de volumen.
 - [ ] **Lectura visual limpia sin flecha junto al protagonista.** Verificá que no aparece ninguna flecha orbitando al lado del personaje (los abre-puertas sin accionar conservan únicamente su indicador `↓` arriba). La lógica de cálculo basada en la sección `GUIDE` (`engine/game/guide.hpp`) sigue cubierta por `guide_arrows`.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
 - [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `world`, `slice`, `level2`, `level3`).**
