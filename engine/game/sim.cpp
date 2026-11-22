@@ -104,6 +104,7 @@ void Sim::build() {
     b.home_y = es[i].y;
     b.ent = i;
     b.dragon = (es[i].type == "boss_dragon");
+    b.guardian2 = (es[i].name == "boss_catacomb");
     bosses_.push_back(b);
   }
   reset_bosses(false);
@@ -159,12 +160,24 @@ void Sim::advance_bosses() {
         walk(b.speed());
         if (b.t >= kBossWalkSec) { b.phase = 1; b.t = 0; }
       } else if (b.phase == 1) {
-        if (b.t >= kBossTellSec) { b.phase = 2; b.t = 0; b.vy = -kBossHopSpeed; }
+        if (b.t >= kBossTellSec) {
+          b.phase = 2;
+          b.t = 0;
+          b.vy = -kBossHopSpeed;
+          // Al saltar, el boss lanza brasas (en arco alto en Nivel 1 herido; dobles laterales en Nivel 2).
+          if (b.guardian2 && fireballs_.size() + 2 <= 8) {
+            const float fy = b.y - 5.f;
+            fireballs_.push_back({b.x - 10.f, fy, -76.f, -18.f, 0.36f});
+            fireballs_.push_back({b.x + 10.f, fy, 76.f, -18.f, 0.36f});
+          } else if (!b.guardian2 && b.hits >= 1 && fireballs_.size() < 8) {
+            fireballs_.push_back({b.x + float(b.dir) * 14.f, b.y - kBossH - 4.f, float(b.dir) * 55.f, -75.f, 0.34f});
+          }
+        }
       } else {
-        walk(b.speed() * 1.5f);
+        walk(std::min(b.speed() * (b.guardian2 ? 1.45f : 1.5f), 105.f));
         b.vy += 600.f * kDt;
         b.y += b.vy * kDt;
-        if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; }
+        if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; ++b.cycle; }
       }
       continue;
     }
@@ -967,14 +980,6 @@ void Sim::collide_bosses() {
   auto& pts = world_.points();
   auto& pl = pts[player_];
   const float r = pl.radius, d = down();
-  // Bolas de fuego del Wyrm: hacen daño salvo durante invuln o i-frames de embestida (Dash).
-  if (invuln_ == 0 && dash_ticks_ == 0) {
-    const float hit_r = r + kFireballRadius;
-    for (const auto& fb : fireballs_) {
-      const float dx = fb.x - pl.pos.x, dy = fb.y - pl.pos.y;
-      if (dx * dx + dy * dy < hit_r * hit_r) { kill(); return; }
-    }
-  }
   for (auto& b : bosses_) {
     if (b.defeated) continue;
     const float bw = b.width(), bh = b.height();
@@ -1006,6 +1011,14 @@ void Sim::collide_bosses() {
     if (invuln_ > 0) continue;
     kill();
     return;
+  }
+  // Bolas de fuego de los bosses: hacen daño salvo durante invuln o i-frames de embestida (Dash).
+  if (invuln_ == 0 && dash_ticks_ == 0) {
+    const float hit_r = r + kFireballRadius;
+    for (const auto& fb : fireballs_) {
+      const float dx = fb.x - pl.pos.x, dy = fb.y - pl.pos.y;
+      if (dx * dx + dy * dy < hit_r * hit_r) { kill(); return; }
+    }
   }
 }
 

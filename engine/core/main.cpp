@@ -301,6 +301,7 @@ int main(int argc, char** argv) {
   ew::game::DialogueBox dialogue;
   int last_items = 0;
   uint32_t last_abilities = 0;
+  bool boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
   uint32_t pad_prev = 0;
   glfwSetKeyCallback(win, [](GLFWwindow*, int k, int, int action, int) { if (action == GLFW_PRESS) g_last_key = k; });
 
@@ -329,6 +330,7 @@ int main(int argc, char** argv) {
     dialogue.close();
     last_items = sim->collected();
     last_abilities = sim->abilities();
+    boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
     glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
     std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene->width_px(),
                 scene->height_px(), scene->entities().size());
@@ -522,19 +524,19 @@ int main(int argc, char** argv) {
         mi.left = nav_lt;
         mi.right = nav_rt;
         mi.confirm = nav_ok;
-      } else if (end_screen.open()) {
-        if (nav_toggle) {
-          ei.toggle = true;
-        } else if (sim->finish_t() >= 0.5f) {
-          ei.up = nav_up;
-          ei.down = nav_dn;
-          ei.confirm = nav_ok;
-        }
       } else if (dialogue.open()) {
         if (nav_toggle) {
           dialogue.close();
         } else if (nav_ok || in.interact) {
           dialogue.advance();
+        }
+      } else if (end_screen.open()) {
+        if (nav_toggle) {
+          ei.toggle = true;
+        } else if (sim->finish_t() >= 0.35f) {
+          ei.up = nav_up;
+          ei.down = nav_dn;
+          ei.confirm = nav_ok;
         }
       } else {
         mi.toggle = nav_toggle;
@@ -582,6 +584,7 @@ int main(int argc, char** argv) {
         last_key = save_key();
         last_items = sim->collected();  // el huevo cargado no se anuncia como recién agarrado
         last_abilities = sim->abilities();
+        boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
         end_screen.close();
         dialogue.close();
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim->checkpoint_index(),
@@ -621,10 +624,15 @@ int main(int argc, char** argv) {
     mixer.set_mute(menu.muted());
 
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
+    // Nota: cuando end_screen está abierta, Sim::step debe seguir corriendo para avanzar finish_t_ (u_fade 0->1).
     const double now = glfwGetTime();
-    if (menu.open() || dialogue.open() || end_screen.open()) {
+    if (menu.open() || dialogue.open()) {
       acc = 0;
       last = now;
+      latched_in = {};
+    } else if (end_screen.open()) {
+      acc += max_frames ? ew::game::Sim::kDt : now - last;
+      in = {};
       latched_in = {};
     } else {
       acc += max_frames ? ew::game::Sim::kDt : now - last;
@@ -673,7 +681,22 @@ int main(int argc, char** argv) {
       if (bits & kSfxHit) device_play(SfxId::Hit);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
-    if (sim->finished() && !announced_goal) {
+    const bool now_boss_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
+    if (now_boss_defeated && !boss_was_defeated && !demo && !max_frames) {
+      const auto& b0 = sim->boss(0);
+      if (b0.dragon) {
+        dialogue.open("CORONA DE LA PUREZA",
+                      "VENCISTE A TODOS LOS BOSS/CON LA LUZ DE TU PUREZA!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|HAS DEMOSTRADO QUE PERTENECES/AL REINO DE LO ALTO!");
+      } else if (b0.guardian2) {
+        dialogue.open("SELLO DE LAS CATACUMBAS",
+                      "EL SEGUNDO IMPEDIMENTO CAYO/ANTE TU CORAZON PURO.|TU TAREA NO ES VANA:/NO DESISTAS EN SUBIR!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.");
+      } else {
+        dialogue.open("SELLO DE LA ASCENSION",
+                      "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!");
+      }
+    }
+    boss_was_defeated = now_boss_defeated;
+    if (sim->finished() && !announced_goal && !dialogue.open()) {
       ew::game::EndStats st;
       st.title = ew::game::level_title(scene->map().string_at(1));
       st.items = sim->collected();
@@ -727,30 +750,19 @@ int main(int argc, char** argv) {
       push_marker(v, de.x, de.y - 12.f + std::round(std::sin(float(now) * 5.f)), 1.5f, 0, 1.0f, 0.88f, 0.35f);
     }
     push_movers(v, *sim);
-    for (int bi = 0; bi < sim->boss_count(); ++bi) {  // boss clásico o Wyrm dragón multipatrón
+    for (int bi = 0; bi < sim->boss_count() && v.boss_count < ew::render::kMaxBosses; ++bi) {
       const auto& b = sim->boss(bi);
       if (b.defeated) continue;
       if (b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
-      const float tell = b.phase == 1 ? 1.f : 0.f;  // aviso antes del ataque: más claro
-      if (b.dragon) {
-        const float flap = std::sin(float(now) * (b.phase == 2 ? 18.f : 6.f)) * 2.5f;
-        const float cy = b.y - ew::game::Sim::kDragonH * 0.5f;
-        const float cr = 0.68f + 0.30f * tell, cg = 0.12f + 0.25f * tell, cb = 0.16f + 0.08f * tell;
-        // Alas membranosas y torso escamado del Wyrm (caja 32×22 px)
-        push_marker(v, b.x - float(b.dir) * 8.f, cy - 4.f + flap, 5.5f, 1, 0.38f, 0.08f, 0.14f);
-        push_marker(v, b.x - 6.f, cy + 1.f, 8.f, 1, cr, cg, cb);
-        push_marker(v, b.x + 6.f, cy + 1.f, 8.f, 1, cr, cg, cb);
-        push_marker(v, b.x + float(b.dir) * 12.f, cy - 2.f, 5.f, 1, cr + 0.08f, cg + 0.06f, cb);
-        push_marker(v, b.x + float(b.dir) * 10.f, cy - 9.f, 2.f, 1, 0.85f, 0.72f, 0.45f);  // cuerno
-        push_marker(v, b.x, b.y - ew::game::Sim::kDragonH, 3.5f, 0, 1.0f, 0.88f, 0.25f);  // corona / punto débil
-        push_marker(v, b.x + float(b.dir) * 14.f, cy - 3.f, 1.5f, 0, 1.0f, 0.92f, 0.35f);  // ojo dracónico
-      } else {
-        const float cy = b.y - ew::game::Sim::kBossH * 0.5f;
-        push_marker(v, b.x - 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
-        push_marker(v, b.x + 4.f, cy, 8, 1, 0.65f + 0.3f * tell, 0.15f + 0.2f * tell, 0.2f);
-        push_marker(v, b.x, b.y - ew::game::Sim::kBossH, 3, 0, 1.0f, 0.85f, 0.2f);  // punto débil
-        push_marker(v, b.x + 5.f * float(b.dir), cy - 2.f, 1.5f, 0, 1.0f, 1.0f, 1.0f);  // ojo
-      }
+      const int k = v.boss_count++;
+      v.boss_rect[std::size_t(k * 4 + 0)] = std::round(b.x);
+      v.boss_rect[std::size_t(k * 4 + 1)] = std::round(b.y);
+      v.boss_rect[std::size_t(k * 4 + 2)] = b.width();
+      v.boss_rect[std::size_t(k * 4 + 3)] = b.height();
+      v.boss_state[std::size_t(k * 4 + 0)] = b.dragon ? 2.f : (b.guardian2 ? 1.f : 0.f);
+      v.boss_state[std::size_t(k * 4 + 1)] = float(b.dir);
+      v.boss_state[std::size_t(k * 4 + 2)] = float(b.phase);
+      v.boss_state[std::size_t(k * 4 + 3)] = float(b.hits);
     }
     for (const auto& fb : sim->fireballs()) {
       push_marker(v, fb.x, fb.y, ew::game::Sim::kFireballRadius + 1.f, 0, 0.96f, 0.34f, 0.08f);

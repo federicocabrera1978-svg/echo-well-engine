@@ -133,7 +133,7 @@ backdrops:
   - {cx: 2, cy: 1, theme: engranajes}
 
 dialogs:
-  - {entity: npc_centinela, trigger: interact, speaker: "CENTINELA DEL FAROL", text: "MAS ALLA AGUARDA EL WYRM/DEL ULTIMO SELLO.|USA TU EMBESTIDA EN LOS MUROS/Y SALTA SOBRE SUS LLAMAS."}
-  - {entity: lore_wyrm,     trigger: interact, speaker: "CRONICA DEL WYRM", text: "CUATRO PISOTONES SOBRE SU CORONA/QUEBRARAN SU CORAZA.|ATRAVIESA SUS BRASAS CON DASH/SI EL CIELO SE TORNA FUEGO."}
-  - {entity: egg_wyrm_1,    trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO", text: "SU LATIDO RESPONDE AL POZO:/EL FAROL RECONOCE A LA CRIA."}
-  - {entity: egg_wyrm_2,    trigger: pickup,   speaker: "ECO: ULTIMO HUEVO", text: "DOS ESCAMAS, UNA PROMESA:/EL REINO DESPERTARA TRAS EL WYRM."}
+  - {entity: npc_centinela, trigger: interact, speaker: "CENTINELA DEL FAROL", text: "EL WYRM ES EL ULTIMO BOSS/QUE IMPIDE TU ASCENSION.|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|DEMUESTRA QUE ALLI PERTENECES:/VENCE AL BOSS CON TU PUREZA!"}
+  - {entity: lore_wyrm,     trigger: interact, speaker: "CRONICA DEL WYRM", text: "TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|4 PISOTONES SOBRE SU CORONA:/VENCE A LOS BOSS CON PUREZA!"}
+  - {entity: egg_wyrm_1,    trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO", text: "SU LATIDO RESPONDE AL POZO:/EL FAROL RECONOCE TU PUREZA."}
+  - {entity: egg_wyrm_2,    trigger: pickup,   speaker: "ECO: ULTIMO HUEVO", text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."}

@@ -28,6 +28,9 @@ uniform vec4 u_mover_rect[8];      // x, y, w, h (px mundo, esquina sup. izq.)
 uniform float u_mover_fam[8];      // familia de atlas 1..15
 uniform int u_hazard_count;        // franjas de pinchos pixel-art (máx. 32)
 uniform vec4 u_hazards[32];        // (x0, y0, w_px, dir: +1 suelo, -1 techo)
+uniform int u_boss_count;          // bosses pixel-art (máx. 4)
+uniform vec4 u_boss_rect[4];       // (x_center, y_feet, w, h)
+uniform vec4 u_boss_state[4];      // (kind: 0=coloso1, 1=coloso2, 2=wyrm; dir; phase; hits)
 
 // ---------------------------------------------------------------------------------------------
 // Fondos (backdrops) procedurales por chunk: tema = u_bg_theme[vecindario 3×3] (ew::map::BackdropTheme).
@@ -619,6 +622,201 @@ void main() {
       n = m.w < 0.5 && m.z > 1.5 ? normalize(vec3(d.x / m.z, -d.y / m.z, 1.0)) : vec3(0.0, 0.0, 1.0);
       depth = 0.3;
       emit = 0.0; lr = 1.0;
+    }
+  }
+  // Bosses pixel-art (Coloso del Sello 24×16 y Wyrm Ancestral 32×22) con corona dorada de pureza.
+  for (int bi = 0; bi < u_boss_count; ++bi) {
+    vec4 br = u_boss_rect[bi];
+    vec4 bs = u_boss_state[bi];
+    int kind = int(floor(bs.x + 0.5));
+    float dir = bs.y >= 0.0 ? 1.0 : -1.0;
+    int phase = int(floor(bs.z + 0.5));
+    float hits = bs.w;
+    float tell = (phase == 1 || phase == 3) ? 1.0 : 0.0;
+    float fx = floor(world.x - br.x) * dir;
+    float fy = floor(world.y - (br.y - br.w));
+    if (kind < 2) {
+      // Coloso Acorazado (24×16 px): kind 0 = Carcelero Carmesí (Nivel 1), kind 1 = Arconte Abisal (Nivel 2)
+      if (abs(fx) <= 13.0 && fy >= -2.0 && fy < 16.0) {
+        float stride = (phase == 0 || phase == 3) ? floor(sin(u_time * 12.0 + sign(fx) * 1.57) * 1.5) : 0.0;
+        vec3 arm_hi = kind == 1 ? vec3(0.42, 0.24, 0.58) : vec3(0.56, 0.16, 0.20);
+        vec3 arm_lo = kind == 1 ? vec3(0.18, 0.11, 0.28) : vec3(0.24, 0.08, 0.11);
+        vec3 trim   = kind == 1 ? vec3(0.75, 0.56, 0.95) : vec3(0.78, 0.48, 0.22);
+        vec3 glow_c = kind == 1 ? vec3(0.95, 0.38, 0.88) : vec3(1.0, 0.48, 0.14);
+        if (tell > 0.5) { arm_hi += vec3(0.22, 0.12, 0.08); glow_c = vec3(1.0, 0.85, 0.28); }
+        bool drawn = false;
+        vec3 col = arm_lo;
+        float e = 0.0;
+        vec2 norm_xy = vec2(fx * 0.07 * dir, (fy - 8.0) * 0.08);
+        // 1) Corona dorada de la Pureza (punto débil superior: fy -1..2, abs(fx) <= 4)
+        bool prong = (fy <= 0.0 && (abs(fx) < 0.8 || abs(abs(fx) - 3.0) < 0.9));
+        bool band  = (fy >= 0.0 && fy <= 2.0 && abs(fx) <= 3.5);
+        if ((fy >= -1.0 && prong) || band) {
+          drawn = true;
+          bool gem = (abs(fx) < 1.0 && fy == 1.0);
+          col = gem ? vec3(0.45, 0.95, 1.0) : vec3(1.0, 0.84, 0.24);
+          e = gem ? 0.85 : 0.52;
+          norm_xy = vec2(0.0, -0.45);
+        }
+        // 2) Cuernos curvos laterales (abs(fx) 6..11, fy 0..5)
+        else if (abs(fx) >= 6.0 && abs(fx) <= 11.0 && fy >= 0.0 && fy <= 5.0 &&
+                 abs(fy - (5.0 - (abs(fx) - 6.0) * 0.85)) <= 1.3) {
+          drawn = true;
+          col = mix(vec3(0.62, 0.54, 0.44), vec3(0.88, 0.80, 0.66), (5.0 - fy) * 0.2);
+          norm_xy = vec2(sign(fx) * 0.45 * dir, -0.35);
+        }
+        // 3) Yelmo, hombreras segmentadas y torso acorazado (fy 2..12)
+        else if (fy >= 2.0 && fy <= 12.0 && abs(fx) <= (fy < 6.0 ? 6.5 : 10.5)) {
+          drawn = true;
+          bool edge = abs(fx) >= (fy < 6.0 ? 5.5 : 9.5) || fy == 2.0 || fy == 12.0;
+          bool pauldron = fy >= 5.0 && fy <= 9.0 && abs(fx) >= 6.0;
+          bool visor = (fy >= 4.0 && fy <= 5.0 && fx >= -2.0 && fx <= 5.0);
+          bool eye = (fy == 4.0 && (abs(fx - 1.0) < 0.8 || abs(fx - 4.0) < 0.8));
+          bool core = (fy >= 7.0 && fy <= 10.0 && abs(fx - 0.5) <= 2.5);
+          if (eye) {
+            col = vec3(1.0, 0.92, 0.35);
+            e = 0.85;
+          } else if (visor) {
+            col = vec3(0.06, 0.04, 0.08);
+          } else if (core) {
+            float pulse = 0.65 + 0.35 * sin(u_time * (6.0 + hits * 3.0));
+            bool inner = (fy >= 8.0 && fy <= 9.0 && abs(fx - 0.5) <= 1.2);
+            col = inner ? vec3(1.0, 0.90, 0.45) : glow_c * pulse;
+            e = inner ? 0.80 : (0.45 + 0.35 * tell);
+          } else if (pauldron) {
+            bool rib = mod(floor(abs(fx) + fy), 3.0) < 1.0;
+            col = rib ? trim : arm_hi;
+          } else {
+            col = edge ? arm_lo : mix(arm_lo, arm_hi, 0.65);
+          }
+        }
+        // 4) Guantelete / garra frontal (fx 9..13, fy 7..11)
+        else if (fx >= 9.0 && fx <= 13.0 && fy >= 7.0 && fy <= 11.0) {
+          drawn = true;
+          col = (fx >= 12.0) ? vec3(0.92, 0.86, 0.72) : trim;
+          e = (tell > 0.5 && fx >= 12.0) ? 0.45 : 0.0;
+        }
+        // 5) Grebas / piernas articuladas (fy 12..15)
+        else if (fy >= 12.0 && fy < 16.0 && abs(abs(fx) - 4.5) <= 2.5) {
+          float leg_y = fy + (fx > 0.0 ? stride : -stride) * 0.5;
+          if (leg_y < 15.8) {
+            drawn = true;
+            col = (fy >= 14.0) ? trim * 0.75 : arm_lo;
+          }
+        }
+        if (drawn) {
+          albedo = clamp(col, 0.0, 1.0);
+          n = normalize(vec3(norm_xy, 1.0));
+          depth = 0.29;
+          emit = e;
+          lr = 1.0;
+        }
+      }
+    } else {
+      // Wyrm Ancestral (32×22 px): dragón alado multipatrón con escamas, alas membranosas y fauces ígneas
+      if (fx >= -18.0 && fx <= 17.0 && fy >= -2.0 && fy < 22.0) {
+        float flap = floor(sin(u_time * (phase >= 2 ? 18.0 : 7.0)) * 2.5);
+        float stride = (phase == 0 || phase == 3) ? floor(sin(u_time * 11.0 + sign(fx) * 1.57) * 1.5) : 0.0;
+        vec3 sc_hi = vec3(0.68, 0.14, 0.18) + vec3(0.20, 0.12, 0.04) * tell;
+        vec3 sc_lo = vec3(0.28, 0.06, 0.10);
+        vec3 belly = vec3(0.82, 0.56, 0.22);
+        bool drawn = false;
+        vec3 col = sc_lo;
+        float e = 0.0;
+        vec2 norm_xy = vec2(fx * 0.05 * dir, (fy - 11.0) * 0.06);
+        // 1) Corona dorada del Wyrm sobre el cráneo (fx 1..8, fy -1..2)
+        bool c_prong = (fy <= 0.0 && (abs(fx - 2.0) < 0.8 || abs(fx - 4.5) < 0.8 || abs(fx - 7.0) < 0.8));
+        bool c_band  = (fy >= 0.0 && fy <= 2.0 && fx >= 1.5 && fx <= 7.5);
+        if ((fy >= -1.0 && c_prong) || c_band) {
+          drawn = true;
+          bool gem = (abs(fx - 4.5) < 1.0 && fy == 1.0);
+          col = gem ? vec3(0.50, 0.96, 1.0) : vec3(1.0, 0.86, 0.25);
+          e = gem ? 0.90 : 0.58;
+          norm_xy = vec2(0.0, -0.45);
+        }
+        // 2) Cuernos dracónicos barridos hacia atrás (fx -5..2, fy 0..4)
+        else if (fx >= -5.0 && fx <= 2.0 && fy >= 0.0 && fy <= 4.5 &&
+                 abs(fy - (1.0 + (fx + 5.0) * 0.42)) <= 1.2) {
+          drawn = true;
+          col = mix(vec3(0.58, 0.48, 0.36), vec3(0.92, 0.82, 0.64), (2.0 - fx) / 7.0);
+          norm_xy = vec2(-0.35 * dir, -0.35);
+        }
+        // 3) Cabeza, hocico escamado y fauces en llamas (fx 2..16, fy 2..10)
+        else if (fx >= 2.0 && fx <= 16.0 && fy >= 2.0 && fy <= 10.0 &&
+                 (fy <= 7.0 || (fx <= 14.0 && fy <= (tell > 0.5 || phase == 2 ? 10.0 : 8.5)))) {
+          drawn = true;
+          bool eye = (fx >= 6.0 && fx <= 8.0 && fy >= 3.5 && fy <= 5.0);
+          bool nostril = (fx >= 14.0 && fx <= 15.0 && fy == 4.0);
+          bool maw = (fx >= 7.0 && fx <= 14.5 && fy >= 7.0 && fy <= 9.0);
+          bool fang = (maw && fy == 7.0 && mod(fx, 2.0) < 1.0);
+          if (eye) {
+            col = vec3(1.0, 0.92, 0.32);
+            e = 0.92;
+          } else if (fang) {
+            col = vec3(0.95, 0.92, 0.86);
+          } else if (maw && (tell > 0.5 || phase >= 2)) {
+            col = vec3(1.0, 0.52, 0.12);
+            e = 0.88;
+          } else if (nostril) {
+            col = vec3(1.0, 0.45, 0.10);
+            e = 0.65;
+          } else {
+            bool sc = mod(fx + fy, 2.0) < 1.0;
+            col = sc ? sc_hi : sc_lo;
+          }
+          norm_xy = vec2(0.35 * dir, (fy - 5.0) * 0.1);
+        }
+        // 4) Alas membranosas batientes con nervaduras de brasa (fx -13..3, fy 1..13)
+        else if (fx >= -13.0 && fx <= 3.0 && fy >= 1.0 + flap && fy <= 12.0 + flap &&
+                 fy <= 13.0 + flap - abs(fx + 5.0) * 0.35) {
+          drawn = true;
+          float wy = fy - flap;
+          bool rib = abs(wy - 2.0) < 1.0 || abs(fx + 12.0) < 1.0 || abs(fx + 7.0 + (wy - 2.0) * 0.4) < 0.9 ||
+                     abs(fx + 2.0 + (wy - 2.0) * 0.3) < 0.9;
+          col = rib ? vec3(0.76, 0.26, 0.18) : vec3(0.34, 0.08, 0.14);
+          e = rib ? (0.22 + 0.38 * tell) : 0.05;
+          norm_xy = vec2(-0.25 * dir, -0.30);
+        }
+        // 5) Torso acorazado de escamas, pecho dorado y núcleo ígneo (fx -9..8, fy 7..17)
+        else if (fx >= -9.0 && fx <= 8.0 && fy >= 7.0 && fy <= 17.0 &&
+                 (fx * fx) / 81.0 + ((fy - 12.0) * (fy - 12.0)) / 30.0 <= 1.05) {
+          drawn = true;
+          bool underbelly = (fx >= 2.0 && fy >= 9.0 && fy <= 16.0);
+          bool heart = (abs(fx - 1.0) <= 2.0 && abs(fy - 12.0) <= 2.0);
+          if (heart) {
+            float p = 0.65 + 0.35 * sin(u_time * (7.0 + hits * 3.0));
+            col = vec3(1.0, 0.58, 0.16) * p;
+            e = 0.55 + 0.35 * tell;
+          } else if (underbelly) {
+            col = (mod(fy, 2.0) < 1.0) ? belly : belly * 0.72;
+          } else {
+            bool sc = mod(fx + floor(fy * 0.5) * 2.0, 3.0) < 1.0;
+            col = sc ? sc_hi : sc_lo;
+          }
+        }
+        // 6) Cola espinosa (fx -17..-8, fy 12..17)
+        else if (fx >= -17.0 && fx < -8.0 &&
+                 abs(fy - (14.5 + sin((fx + u_time * 8.0) * 0.45) * 1.6)) <= (18.0 + fx) * 0.28 + 0.8) {
+          drawn = true;
+          bool spike = mod(fx, 3.0) < 1.0 && fy < 14.5;
+          col = spike ? belly : sc_hi * 0.8;
+        }
+        // 7) Garras / patas dracónicas (fy 17..21)
+        else if (fy >= 17.0 && fy < 22.0 && (abs(fx - 4.0) <= 2.5 || abs(fx + 5.0) <= 2.5)) {
+          float ly = fy + (fx > 0.0 ? stride : -stride) * 0.5;
+          if (ly < 21.8) {
+            drawn = true;
+            col = (fy >= 20.0) ? vec3(0.92, 0.84, 0.66) : sc_lo;
+          }
+        }
+        if (drawn) {
+          albedo = clamp(col, 0.0, 1.0);
+          n = normalize(vec3(norm_xy, 1.0));
+          depth = 0.29;
+          emit = e;
+          lr = 1.0;
+        }
+      }
     }
   }
   // Sprites pixel-art 16×16 (protagonista, huevos de dragón, reliquias) con normales por altura.
