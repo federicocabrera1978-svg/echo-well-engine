@@ -44,12 +44,12 @@ void Sim::build() {
   dash_ready_ = false;
   dash_flash_ = 0;
   wall_break_flash_ = 0;
-  boss_burst_ = 0;
   wall_break_x_ = 0;
   wall_break_y_ = 0;
   boss_burst_ = 0;
   boss_burst_x_ = 0;
   boss_burst_y_ = 0;
+  victory_.reset();
   facing_ = 1;
   anim_ = PlayerAnim::Idle;
   anim_frame_ = 0;
@@ -332,6 +332,10 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
               ? checkpoint : -1;
   ckpt_flip_ = ckpt_ >= 0 && flipped;
   respawn();
+  if (bosses_defeated() && !bosses_.empty()) {
+    victory_.mark_done();
+    boss_burst_ = 0;
+  }
   invuln_ = 0;
   // Pileta inundada: el nivel queda directo en su destino (sin la subida animada).
   for (int i = 0; i < 4096; ++i) {
@@ -383,6 +387,8 @@ void Sim::respawn() {
   dash_ready_ = has_ability(kAbilityDash);
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
+  if (bosses_defeated() && !bosses_.empty()) victory_.mark_done();
+  else victory_.reset();
   reset_imps();        // los enemigos menores vuelven al reaparecer
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
   for (std::size_t k = 0; k < scene_.entities().size(); ++k)
@@ -432,7 +438,8 @@ void Sim::step(const Input& in) {
   if (in.restart_full) { reset(); return; }
   if (in.restart) { respawn(); return; }
   if (invuln_ > 0) --invuln_;
-  if (boss_burst_ > 0) --boss_burst_;
+  victory_.step(kDt);
+  boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     apply_flood();
@@ -1010,9 +1017,12 @@ void Sim::collide_bosses() {
         b.defeated = true;
         fireballs_.clear();
         scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
-        boss_burst_ = kBossBurstFrames;
+        const float cy = b.y - bh * 0.5f;
+        const BossKind kind = b.dragon ? BossKind::Wyrm : (b.guardian2 ? BossKind::Guardian2 : BossKind::Watcher);
+        victory_.start(b.x, cy, kind);
         boss_burst_x_ = b.x;
-        boss_burst_y_ = b.y - bh * 0.5f;
+        boss_burst_y_ = cy;
+        boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
         sfx_ |= 4u | 2048u;  // kSfxCheckpoint | kSfxBossCrt (rayos catódicos)
       }
       return;

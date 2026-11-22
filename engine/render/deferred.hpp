@@ -67,6 +67,7 @@ struct FrameView {
   uint32_t visited_mask = 0;
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
+  float boss_flash = 0;
   // Plataformas móviles: rect (x, y, w, h) en px mundo + familia de atlas (1..15).
   int mover_count = 0;
   std::array<float, kMaxMovers * 4> mover_rect{};

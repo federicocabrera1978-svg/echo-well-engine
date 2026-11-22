@@ -374,7 +374,6 @@ int main(int argc, char** argv) {
   ew::game::DialogueBox dialogue;
   int last_items = 0;
   uint32_t last_abilities = 0;
-  bool boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
   uint32_t pad_prev = 0;
   glfwSetKeyCallback(win, [](GLFWwindow*, int k, int, int action, int) { if (action == GLFW_PRESS) g_last_key = k; });
 
@@ -403,7 +402,6 @@ int main(int argc, char** argv) {
     dialogue.close();
     last_items = sim->collected();
     last_abilities = sim->abilities();
-    boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
     glfwSetWindowTitle(win, "Echo Well v" EW_VERSION);
     std::printf("echo_engine: mapa %s (%dx%d px, %zu entidades)\n", map_path.c_str(), scene->width_px(),
                 scene->height_px(), scene->entities().size());
@@ -657,7 +655,6 @@ int main(int argc, char** argv) {
         last_key = save_key();
         last_items = sim->collected();  // el huevo cargado no se anuncia como recién agarrado
         last_abilities = sim->abilities();
-        boss_was_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
         end_screen.close();
         dialogue.close();
         std::printf("echo_engine: partida cargada (checkpoint %d, huevos %d/%d)\n", sim->checkpoint_index(),
@@ -708,7 +705,7 @@ int main(int argc, char** argv) {
       in = {};
       latched_in = {};
     } else {
-      acc += max_frames ? ew::game::Sim::kDt : now - last;
+      acc += max_frames ? ew::game::Sim::kDt : (now - last) * double(sim->victory_seq().time_scale());
       in.jump = in.jump || latched_in.jump;
       in.interact = in.interact || latched_in.interact;
       in.grab = in.grab || latched_in.grab;
@@ -728,6 +725,10 @@ int main(int argc, char** argv) {
           const auto& d = scene->dialogs()[std::size_t(dlg_id)];
           dialogue.open(d.speaker, d.text);
         }
+      }
+      if (!demo && !max_frames && !sim->finished()) {
+        ew::game::BossVictoryDialog vdlg;
+        if (sim->take_victory_dialog(vdlg)) dialogue.open(vdlg.speaker, vdlg.text);
       }
       in.jump = false;
       in.interact = false;
@@ -755,24 +756,6 @@ int main(int argc, char** argv) {
       if (bits & kSfxBossCrt) device_play(SfxId::BossCrt);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
-    const bool now_boss_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
-    if (now_boss_defeated && !boss_was_defeated && sim->boss_burst() <= 15) {
-      if (!demo && !max_frames && !sim->finished()) {
-        const auto& b0 = sim->boss(0);
-        if (b0.dragon) {
-          dialogue.open("CORONA DE LA PUREZA",
-                        "VENCISTE A TODOS LOS BOSS/CON LA LUZ DE TU PUREZA!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|HAS DEMOSTRADO QUE PERTENECES/AL REINO DE LO ALTO!");
-        } else if (b0.guardian2) {
-          dialogue.open("SELLO DE LAS CATACUMBAS",
-                        "EL SEGUNDO IMPEDIMENTO CAYO/ANTE TU CORAZON PURO.|TU TAREA NO ES VANA:/NO DESISTAS EN SUBIR!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.");
-        } else {
-          dialogue.open("SELLO DE LA ASCENSION",
-                        "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!");
-        }
-      }
-      boss_was_defeated = true;
-    }
-    if (!now_boss_defeated) boss_was_defeated = false;
     if (sim->finished() && !announced_goal && !dialogue.open()) {
       ew::game::EndStats st;
       st.title = ew::game::level_title(scene->map().string_at(1));
@@ -811,7 +794,10 @@ int main(int argc, char** argv) {
     const float px = pl.pos.x, py = pl.pos.y;
 
     FrameView v;
-    v.cam_x = std::round(scene->cam_x()); v.cam_y = std::round(scene->cam_y());  // pixel-perfect
+    float shake_x = 0.f, shake_y = 0.f;
+    sim->victory_seq().camera_shake(shake_x, shake_y);
+    v.cam_x = std::round(scene->cam_x() + shake_x);
+    v.cam_y = std::round(scene->cam_y() + shake_y);  // pixel-perfect
     v.chunk_x_px = scene->nb_origin_x();  // vecindario 3×3 alrededor del chunk activo
     v.chunk_y_px = scene->nb_origin_y();
     v.tiles = scene->active_tiles().data();
@@ -844,10 +830,18 @@ int main(int argc, char** argv) {
       v.boss_state[std::size_t(k * 4 + 2)] = b.defeated ? 1.f : float(b.phase);
       v.boss_state[std::size_t(k * 4 + 3)] = float(b.hits);
     }
-    if (sim->boss_burst() > 0) {
-      v.boss_burst_x = sim->boss_burst_x() - v.cam_x;
-      v.boss_burst_y = sim->boss_burst_y() - v.cam_y;
-      v.boss_burst_t = float(sim->boss_burst()) / float(ew::game::Sim::kBossBurstFrames);
+    const auto& vic = sim->victory_seq();
+    if (vic.in_defeat_anim()) {
+      v.boss_burst_x = vic.origin_x() - v.cam_x;
+      v.boss_burst_y = vic.origin_y() - v.cam_y;
+      v.boss_burst_t = vic.crt_progress();
+    }
+    v.boss_flash = vic.flash_alpha();
+    for (const auto& pt : vic.particles()) {
+      if (v.marker_count >= ew::render::kMaxMarkers) break;
+      if (pt.life <= 0.f) continue;
+      const float f = std::clamp(pt.life / std::max(pt.max_life, 1e-4f), 0.f, 1.f);
+      push_marker(v, pt.x, pt.y, pt.radius * (0.4f + 0.6f * f), 1, pt.r * f, pt.g * f, pt.b * f);
     }
     for (const auto& fb : sim->fireballs()) {
       push_marker(v, fb.x, fb.y, ew::game::Sim::kFireballRadius + 1.f, 0, 0.96f, 0.34f, 0.08f);

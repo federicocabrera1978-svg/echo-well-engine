@@ -95,7 +95,16 @@ en verde al tomarlo.
   tenías en el checkpoint.
 - [ ] **Sala 6 (boss).** Checkpoint `ck_boss` fuera de su alcance. El boss camina, se ilumina
   (aviso) y salta. Se le pega cayéndole encima: 3 pisotones. Cada golpe lo acelera y lo hace parpadear.
-  Tocarlo de costado te mata y morir lo cura. Al vencerlo se abre la puerta de la derecha.
+  Tocarlo de costado te mata y morir lo cura. Al vencerlo se abre la puerta de la derecha y
+  corre la secuencia ordenada de victoria: animación CRT + destello + partículas + sacudida (~3,0 s) →
+  pausa breve (~0,75 s) con jugador libre en cámara lenta → diálogo de salida (`SELLO DE LA ASCENSION`,
+  que no se repite al reiniciar/cargar con el boss ya vencido).
+- [ ] **Secuencia de victoria en los 3 bosses (`slice`, `level2`, `level3`).** Al derrotar al
+  Vigilante de `slice` (3 pisotones), a `boss_catacomb` en `level2` (3 pisotones) o al
+  `wyrm` en `level3` (4 pisotones), verificá el orden estricto: primero animación CRT +
+  destello + chispas + sacudida de cámara (~3,0 s), luego pausa breve en cámara lenta donde
+  seguís pudiendo moverte libremente (~0,75 s) y recién al terminar aparece una sola vez el
+  diálogo de salida (`SELLO DE LA ASCENSION`, `SELLO DE LAS CATACUMBAS` o `CORONA DE LA PUREZA`).
 - [ ] **Fondos y arte dark fantasy.** Cada pantalla tiene su fondo (`slice` conserva pozo, raíces, roca con
   brasas, cisterna, nichos, engranajes, invertido y arena; `level2` suma `cripta`, `abismo`, `guarida` y `santuario`).
   Los tiles muestran mampostería, ladrillos, madera remachada y musgo renovados, y los pinchos `META 4` se ven como

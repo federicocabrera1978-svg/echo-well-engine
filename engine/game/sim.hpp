@@ -2,6 +2,7 @@
 // Player = círculo Verlet controlado (caminar/saltar/nadar) + cuerdas colgantes (sección ROPE)
 // + cuerpos de agua Hooke (sección WATER del mapa).
 #pragma once
+#include "game/boss_victory.hpp"
 #include "game/scene.hpp"
 #include "physics/verlet.hpp"
 #include "physics/water.hpp"
@@ -71,7 +72,7 @@ class Sim {
   static constexpr int kDashCooldownFrames = 18;    // ~0.30 s de enfriamiento mínimo
   static constexpr int kDashFlashFrames = 14;       // frames de estela visual
   static constexpr int kWallBreakFlashFrames = 18;  // frames de escombros al romper break_wall
-  static constexpr int kBossBurstFrames = 75;       // ~1.25 s de rayos catódicos al vencer un boss
+  static constexpr int kBossBurstFrames = 180;      // ~3.0 s de rayos catódicos al vencer un boss
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
   static constexpr float kBossW = 24.f, kBossH = 16.f;
   static constexpr int kBossHits = 3;              // pisotones para vencerlo
@@ -222,6 +223,10 @@ class Sim {
   int boss_burst() const { return boss_burst_; }
   float boss_burst_x() const { return boss_burst_x_; }
   float boss_burst_y() const { return boss_burst_y_; }
+  const BossVictorySeq& victory_seq() const { return victory_; }
+  BossVictorySeq& victory_seq() { return victory_; }
+  void set_victory_config(const BossVictoryConfig& cfg) { victory_.set_config(cfg); }
+  bool take_victory_dialog(BossVictoryDialog& out) { return victory_.poll_dialog(out); }
   // Estado visual de animación del protagonista (sin GL).
   int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
   PlayerAnim player_anim() const { return anim_; }
@@ -286,6 +291,7 @@ class Sim {
   float wall_break_x_ = 0, wall_break_y_ = 0;
   int boss_burst_ = 0;
   float boss_burst_x_ = 0, boss_burst_y_ = 0;
+  BossVictorySeq victory_;
   int facing_ = 1;
   PlayerAnim anim_ = PlayerAnim::Idle;
   int anim_frame_ = 0;
