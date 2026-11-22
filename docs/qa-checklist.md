@@ -54,8 +54,8 @@ o cargada, meta.
 | Acción | Teclado | Gamepad |
 |---|---|---|
 | Caminar | ← → o A D | stick izquierdo o d-pad |
-| Saltar / nadar / Doble Salto aéreo | Espacio, Z (también ↑ si no estás en la cuerda) | A, RB |
-| Activar switch / diálogo | E, X (también ↓ si no estás en la cuerda) | X, B |
+| Saltar / nadar / Doble Salto aéreo | Espacio, Z (también ↑ o W si no estás en la cuerda, flancos separados) | A, RB |
+| Activar switch / diálogo | E, X (también ↓ o S si no estás en la cuerda) | X, B |
 | Embestida (Dash, al desbloquear reliquia) | E, X, K, Shift derecho (si no hay switch/diálogo cerca) | X, B |
 | Agarrar / soltar cuerda | C, Shift izquierdo | LB, Y |
 | Trepar (colgado) | ↑ ↓ o W S | stick o d-pad arriba/abajo |
@@ -65,15 +65,17 @@ o cargada, meta.
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
-VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/←/→ alterna brisa y vegetación sin cerrar), SALIR.
+VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/Espacio/←/→ alterna brisa y vegetación sin cerrar), SALIR.
 
 ## 3. Recorrido sala por sala
 
 Para cada sala: llegá, morite a propósito en cada peligro y verificá que reaparezcas en el
-checkpoint correcto, con la cámara bien ubicada y sin quedar trabado. El checkpoint se marca
-en verde al tomarlo.
+checkpoint correcto, con la cámara bien ubicada y sin quedar trabado. Los **altares de
+checkpoint** (`shape 2`) pasan de cristal cian a llama verde al tomarlos, y las **palancas
+abre-puertas elevadas** (`shape 3`) muestran una flecha verde encima mientras están en ámbar y
+pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`near_mech`).
 
-- [ ] **Protagonista pixel-art (Explorador del Farol) y objetos.** Verificá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto, trepada en cuerda, nado y parpadeo post-respawn; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados y la reliquia como un emblema alado cian.
+- [ ] **Protagonista pixel-art (Explorador del Farol) y objetos.** Verificá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto (`245 px/s`), trepada en cuerda, nado y parpadeo post-respawn; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados, la reliquia de Doble Salto como emblema alado cian y la de Dash como reliquia ígnea dorado-carmesí.
 - [ ] **Flecha guía de navegación (`engine/game/guide.hpp`, sección `GUIDE`).** Verificá que la flecha alrededor del jugador apunta al siguiente objetivo vigente (ámbar para switches/puertas, cian para reliquias) y desaparece al acercarse `≤ 24 px` o completar el nivel:
   - En `slice`: desde el spawn apunta a `switch_start`, al activarlo pasa a `flood` (ignorando `switch_well`) y se oculta al activarlo o pasar `x > 1130`.
   - En `level2`: rutea por el pozo (`x = 448`) hacia `rel_double_jump` (cian), luego a `sw_sanctum` (ámbar), a `rel_dash` (cian) y de regreso subiendo por el pozo (`up_x = 472`) hacia `door_hub_gallery` hasta pasar `x > 640`.
@@ -104,10 +106,11 @@ en verde al tomarlo.
   corre la secuencia ordenada de victoria: animación CRT + destello + partículas + sacudida (~3,0 s) →
   pausa breve (~0,75 s) con jugador libre en cámara lenta → diálogo de salida (`SELLO DE LA ASCENSION`,
   que no se repite al reiniciar/cargar con el boss ya vencido).
-- [ ] **Secuencia de victoria en los 3 bosses (`slice`, `level2`, `level3`).** Al derrotar al
+- [ ] **Secuencia CRT post-boss en los 3 bosses (`slice`, `level2`, `level3`).** Al derrotar al
   Vigilante de `slice` (3 pisotones), a `boss_catacomb` en `level2` (3 pisotones) o al
-  `wyrm` en `level3` (4 pisotones), verificá el orden estricto: primero animación CRT +
-  destello + chispas + sacudida de cámara (~3,0 s), luego pausa breve en cámara lenta donde
+  `wyrm` en `level3` (4 pisotones), verificá el orden estricto: primero animación CRT
+  (~3,0 s / 180 frames de desintegración en scanlines + destello + 14 chispas radiales +
+  sacudida de cámara + sonido CRT `BossCrt`), luego pausa breve en cámara lenta donde
   seguís pudiendo moverte libremente (~0,75 s) y recién al terminar aparece una sola vez el
   diálogo de salida (`SELLO DE LA ASCENSION`, `SELLO DE LAS CATACUMBAS` o `CORONA DE LA PUREZA`).
 - [ ] **Fondos y arte dark fantasy.** Cada pantalla tiene su fondo (`slice` conserva pozo, raíces, roca con
@@ -117,12 +120,12 @@ en verde al tomarlo.
   Verificá en particular que el fondo del Hub `c10` (`abismo`, `(1,0)` de `level2`) tenga lectura clara y contraste suficiente frente al primer plano y los bordes del pozo.
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
 - [ ] **Pasto, brisa e interacción ambiental (`BRISA SI/NO`).**
-  - Verificá sobre pisos y repisas el **pasto pixel-art con variantes** (despejado alrededor de switches y checkpoints) y, en Las Catacumbas (`level2`), los **hongos y flores** bioluminiscentes.
+  - Verificá sobre pisos y repisas el **pasto pixel-art con variantes** (despejado alrededor de palancas `shape 3` y altares `shape 2` vía `near_mech` para no taparlos) y, en Las Catacumbas (`level2`), los **hongos y flores** bioluminiscentes.
   - Verificá la **brisa global con ondas viajeras** recorriendo la sala y la reacción local al **caminar** (estela en los pies), **aterrizar** de un salto, **embestir con Dash** y al **caer/aterrizar enemigos y bosses** (coloso, `imp`, Wyrm).
   - Comprobá que reaccionan tanto el pasto/hongos/flores como las **telarañas**, **hojas/enredaderas colgantes**, **estandartes** (p. ej. `cripta`) y el balanceo de las **cuerdas**.
-  - Abrí el menú de pausa (`Esc`/`Start`), bajá hasta **`BRISA SI`** y pulsá `Enter`/`←`/`→`: debe cambiar a **`BRISA NO`** sin cerrar el menú, deteniendo la animación de vegetación y el empuje del viento en las cuerdas; al volver a **`BRISA SI`** todo se reanuda.
+  - Abrí el menú de pausa (`Esc`/`Start`), bajá hasta **`BRISA SI`** y pulsá `Enter`/`Espacio`/`←`/`→`: debe cambiar a **`BRISA NO`** sin cerrar el menú, deteniendo la animación de vegetación y el empuje del viento en las cuerdas; al volver a **`BRISA SI`** todo se reanuda.
 - [ ] **Meta y pantalla de final.** Detrás de esa puerta: se abre la pantalla de final pixel-art
-  (**NIVEL COMPLETADO**) con el resumen de huevos, muertes y habilidades, y las opciones
+  (**NIVEL COMPLETADO**) con el resumen de huevos, muertes, habilidades, tiempo y rango **S/A/B**, y las opciones
   **SIGUIENTE NIVEL** (habilitada en `slice` para pasar a `level2`, o cuando se pasa `--next-map`),
   **REINICIAR NIVEL**, **MENU DE PAUSA** y **SALIR**. Con el boss vivo la meta no cuenta.
   Después de la meta, R corto vuelve al checkpoint y R largo al inicio con el HUD en `0/1`.

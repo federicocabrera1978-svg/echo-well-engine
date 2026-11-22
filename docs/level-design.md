@@ -116,14 +116,14 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | Tipo | Qué hace |
 |---|---|
 | `player_spawn` | Punto de aparición (obligatorio). R largo / menú “inicio” vuelven acá. |
-| `switch` | Se activa a ≤ `Scene::kSwitchReach` (14 px) con E / X / ↓ / botón. |
+| `switch` | Palanca abre-puertas elevada (`shape 3`, ámbar con flecha `shape 4` encima mientras `!active` → verde al activarse; despeja el pasto cercano con `near_mech`). Se activa a ≤ `Scene::kSwitchReach` (14 px) con E / X / ↓ / botón. |
 | `door` | Bloquea un hueco de 1×3 tiles (`kDoorWTiles` × `kDoorHTiles`), esquina sup. izq. en (x, y). Sólida mientras `anim < kDoorSolidUntil` (0.5). |
-| `checkpoint` | Al acercarse ≤ `Sim::kCheckpointReach` (20 px) queda como reaparición. R corto o morir vuelven acá. |
-| `flood_switch` | Como `switch` (también se puede linkear a puertas). Activo, sube las piletas con **`x ≥ 400`** hasta `Sim::kFloodRestY` (72 px) a `kFloodSpeed` (48 px/s). Al apagarse, bajan a su `y` inicial. |
+| `checkpoint` | Altar de santuario (`shape 2`, cristal cian inactivo `(0.25, 0.55, 0.70)` → llama verde `(0.30, 1.0, 0.55)` al activarse; despeja el pasto cercano con `near_mech`). Al acercarse ≤ `Sim::kCheckpointReach` (20 px) queda como reaparición (y guarda la gravedad actual). R corto o morir vuelven acá. |
+| `flood_switch` | Como `switch` (`shape 3`, también se puede linkear a puertas). Activo, sube las piletas con **`x ≥ 400`** hasta `Sim::kFloodRestY` (72 px) a `kFloodSpeed` (48 px/s). Al apagarse, bajan a su `y` inicial. |
 | `goal` | Meta, alcance `Sim::kGoalReach` (16 px) o pisar `META` 3. No exige collectibles. |
 | `collectible` | Huevo de dragón escamado, alcance `Sim::kCollectReach` (12 px) al centro del player. Sobrevive a morir y a R corto; R largo lo restablece. El HUD muestra n/total y puede disparar un eco de diálogo al recogerlo (`trigger: pickup`). |
 | `npc` / `lore` | Vigía/cronista (`npc`) o estela rúnica (`lore`) que muestran texto al pulsar E / X / ↓ a ≤ `Sim::kDialogReach` (16 px) si tienen registro en `dialogs:`. No bloquean el movimiento fuera de la caja de diálogo. |
-| `ability_double_jump` | Reliquia cian (alcance `Sim::kAbilityReach`, 12 px) que desbloquea **Doble Salto** (`kAbilityDoubleJump`). Permite 1 salto extra en el aire (`Sim::kDoubleJumpSpeed`, 215 px/s, respetando gravedad invertida) y se recarga al apoyar en piso/mover, agarrar una cuerda, pisar un boss o entrar al agua. Sobrevive a morir y a R corto; se guarda en `save.ewsv` v3 y se limpia con R largo. Mapa de prueba: `assets/maps/src/ability.yaml` (`ability_test`). |
+| `ability_double_jump` | Reliquia cian (alcance `Sim::kAbilityReach`, 12 px) que desbloquea **Doble Salto** (`kAbilityDoubleJump`). Permite 1 salto extra en el aire (`Sim::kDoubleJumpSpeed`, 245 px/s, respetando gravedad invertida) y se recarga al apoyar en piso/mover, agarrar una cuerda, pisar un boss o entrar al agua. Sobrevive a morir y a R corto; se guarda en `save.ewsv` v3 y se limpia con R largo. Mapa de prueba: `assets/maps/src/ability.yaml` (`ability_test`). |
 | `ability_dash` | Reliquia ígnea dorado-carmesí (alcance `Sim::kAbilityReach`, 12 px) que desbloquea **Embestida / Dash** (`kAbilityDash`). Con **E / X / K / Shift der.** (o **X / B** en pad) impulsa horizontalmente a `Sim::kDashSpeed` (240 px/s) durante `Sim::kDashFrames` (10 pasos) sin caída por gravedad (normal o invertida); 1 embestida aérea recargable al pisar suelo, nadar o colgarse. Si hay un switch o diálogo interactivo al alcance, E/X prioriza la interacción y no dispara Dash. Mapa de prueba: `assets/maps/src/dash.yaml` (`dash_test`). |
 | `break_wall` | Muro agrietado rompible de **1×3 tiles** (`kDoorWTiles` × `kDoorHTiles`, esquina sup. izq. en `(x, y)`). Sólido mientras `!active`; al embestirlo con **Dash**, se destruye (`active = true`), suelta escombros y libera el paso. Persiste tras morir, R corto y en `save.ewsv` v3; se restaura con R largo. |
 | `mover` | Plataforma sólida de `w`×`h` **tiles** que recorre waypoints en ping-pong, a `speed` px/s (default 40) con `pause` s en cada extremo (default 0.5). `(x, y)` es la esquina **sup. izq.** (px) y el primer waypoint. El segundo sale de `to_x`/`to_y`, o una ruta más larga con `path: "x y x y ..."` (hasta 8 puntos en total, sin comas). `tile` es el id fuente del atlas (default 6, metal). Se dibuja con el atlas, con autotile 4 vecinos dentro del rect. El player parado encima viaja con ella (carry). No se atraviesa desde arriba, de costado ni desde abajo. **Aplastamiento:** la plataforma empuja; si después de empujar el player queda metido en un tile sólido o en otra plataforma, muere y reaparece en el checkpoint. `reset()` (R largo) y `respawn()` (R corto o muerte) la devuelven al primer waypoint. La cuerda colisiona contra ella; el agua no se toca. |
@@ -192,12 +192,13 @@ de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
 - Para pegarle: esperá a que camine hacia vos, saltá cuando esté a ~40 px y caele en la
   cabeza. Mapa de prueba: `assets/maps/src/boss.yaml` (`boss_test`, que incluye una pelea
   jugada con input).
-- **Secuencia ordenada de victoria (`BossVictorySeq`, probada en `boss_victory_test`)**: al dar el
+- **Secuencia ordenada de victoria (`BossVictorySeq`, probada en `boss_victory_seq` y `mechanisms_crt`)**: al dar el
   golpe final en cualquiera de los 3 bosses (`slice`, `level2`, `level3`) se abren las
   puertas linkeadas y corre en orden estricto:
-  1. **Animación de derrota (`DefeatAnim`, 3.0 s por defecto):** desintegración CRT en
-     scanlines, destello de pantalla (`flash_alpha`), 14 partículas/chispas radiales,
-     sacudida amortiguada de cámara (`shake_amp = 2.5` px) y sonido `kSfxBossCrt`.
+  1. **Animación de derrota (`DefeatAnim`, ~3.0 s / `Sim::kBossBurstFrames = 180` por defecto):**
+     desintegración CRT en scanlines (`v.boss_count` alterna `0`/`1` según la paridad de `boss_burst()`),
+     destello de pantalla (`flash_alpha`), 14 partículas/chispas radiales CRT,
+     sacudida amortiguada de cámara (`shake_amp = 2.5` px) y sonido `SfxId::BossCrt` (`kSfxBossCrt`).
   2. **Pausa dramática (`AftermathPause`, 0.75 s por defecto):** sin CRT ni sacudida, con
      el jugador libre para moverse en cámara lenta (`slow_mo_scale = 0.55`).
   3. **Diálogo de salida (`ReadyForDialog` → `Done`):** se dispara una única vez al
@@ -251,7 +252,7 @@ backdrops:
 
 ## Vegetación, brisa e interacción ambiental
 
-- **Pasto pixel-art con variantes, hongos y flores (`assets/shaders/gbuffer_map.frag`):** sobre pisos y repisas sólidas (`floor_1`, despejado alrededor de switches y checkpoints) se dibujan matas cada 5 px con claros entre sí y 3 variantes deterministas de altura: cortas (`2–3 px`), medianas arqueadas (`4–5 px`) y juncos altos (`6–8 px`), usando paletas de 3 tonos según el tema del chunk (verde musgo en `pozo`/`raices`/`nido`/`cueva`/`engranajes`, verde-azulado espectral en `cripta`/`santuario`/`abismo`/`cisterna`, oliva-ocre con punta ámbar en `grieta`/`guarida`/`arena` e índigo-lavanda en `invertido`). En los temas de catacumbas/subterráneos (`cripta`, `santuario`, `abismo`, `cisterna`, `raices`, `grieta`) brotan **hongos** chicos (tallo `2–3 px` y sombrero cian espectral u ocre con brillo tenue), mientras que en el resto de los biomas aparecen **flores silvestres** mecidas por el viento.
+- **Pasto pixel-art con variantes, hongos y flores (`assets/shaders/gbuffer_map.frag`):** sobre pisos y repisas sólidas (`floor_1`, despejado por `near_mech` en `|dx| ≤ 11 px, |dy| ≤ 18 px` alrededor de altares `shape 2` y palancas `shape 3`) se dibujan matas cada 5 px con claros entre sí y 3 variantes deterministas de altura: cortas (`2–3 px`), medianas arqueadas (`4–5 px`) y juncos altos (`6–8 px`), usando paletas de 3 tonos según el tema del chunk (verde musgo en `pozo`/`raices`/`nido`/`cueva`/`engranajes`, verde-azulado espectral en `cripta`/`santuario`/`abismo`/`cisterna`, oliva-ocre con punta ámbar en `grieta`/`guarida`/`arena` e índigo-lavanda en `invertido`). En los temas de catacumbas/subterráneos (`cripta`, `santuario`, `abismo`, `cisterna`, `raices`, `grieta`) brotan **hongos** chicos (tallo `2–3 px` y sombrero cian espectral u ocre con brillo tenue), mientras que en el resto de los biomas aparecen **flores silvestres** mecidas por el viento.
 - **Brisa global con ondas viajeras (`engine/game/wind.hpp` y `wind_sway` en `gbuffer_map.frag`):** `WindField` evalúa `wind_gust(time_s, seed)` (ráfaga lenta acotada a `[0.35, 1.85]`) multiplicada por `wind_wave(world_x, time_s, seed)` (onda viajera horizontal determinista según la `seed` de la sala).
 - **Interacción física y ráfagas locales (`Sim` + `WindField`):** además de la brisa global (`u_wind_gust`), `WindField` mantiene hasta `kMaxImpulses = 4` impulsos empaquetados para el renderer (`u_wind_imp_count`, `u_wind_imp`):
   - **Caminar:** estela continua en el slot 0 (`set_wake`, radio `16 px`, centrada en los pies mientras el jugador está en el suelo o recién despega).
@@ -312,8 +313,8 @@ Probado sin GL en `tests/guide_test.cpp` (`guide_arrows`).
 ./build/echo_engine --map build/maps/room.ewmap --frames 90 --demo --dump frame.ppm --nosound
 ```
 
-En el árbol de build, CMake ya compila `hello`, `slice` y `room` hacia `build/maps/*.ewmap`.
-`ctest` corre `ewmapc_room` + `ewmap_load_room` (y el job `build` de CI lo vuelve a
+En el árbol de build, CMake ya compila `hello`, `slice`, `level2`, `level3`, `room`, `mover`, `gravity`, `boss`, `ability` y `dash` hacia `build/maps/*.ewmap`.
+`ctest` corre `ewmapc_*` + `ewmap_load_*` (y el job `build` de CI lo vuelve a
 compilar y pasar por `ewmap_smoke`).
 
 ## Enganchar la sala al juego
