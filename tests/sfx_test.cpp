@@ -69,6 +69,77 @@ int main() {
     CHECK(pa > 0.05f && pa <= 1.f);
     CHECK(ma.active() == 0);
   }
+  // Pasos por superficie: pico sutil válido, sin clic inicial y fin limpio.
+  std::vector<float> buf_step(kRate / 5, 0.f);  // 0.2 s cubre todos los pasos (~38..58 ms)
+  for (SfxId id : {SfxId::StepStone, SfxId::StepMoss, SfxId::StepMetal, SfxId::StepWater}) {
+    Mixer ms;
+    ms.play(id);
+    CHECK(ms.active() == 1);
+    std::fill(buf_step.begin(), buf_step.end(), 0.f);
+    ms.render(buf_step.data(), int(buf_step.size()));
+    float ps = 0.f;
+    int nz = 0;
+    for (float s : buf_step) {
+      ps = std::fmax(ps, std::fabs(s));
+      if (std::fabs(s) > 1e-4f) ++nz;
+    }
+    CHECK(std::fabs(buf_step[0]) < 0.15f);
+    CHECK(ps > 0.04f && ps <= 0.35f);
+    CHECK(nz > 50);
+    CHECK(ms.active() == 0);
+  }
+  // Música procedural por zona: acotada, no nula, crossfade ~1.5 s y respeta mute/enable.
+  {
+    Mixer def;
+    CHECK(def.music_zone() == MusicZone::Silence);
+    CHECK(def.music_fade() == 1.f);
+    CHECK(def.music_enabled());
+  }
+  for (MusicZone z : {MusicZone::Well, MusicZone::Catacombs, MusicZone::WyrmLair, MusicZone::Boss}) {
+    Mixer mz;
+    mz.set_music_zone(z);
+    CHECK(mz.music_zone() == z);
+    CHECK(mz.music_fade() < 1.f);
+    std::vector<float> half_sec(kRate / 2, 0.f);
+    mz.render(half_sec.data(), int(half_sec.size()));
+    CHECK(mz.music_fade() > 0.1f && mz.music_fade() < 0.9f);
+    std::vector<float> rest(kRate + kRate / 10, 0.f);
+    mz.render(rest.data(), int(rest.size()));
+    CHECK(mz.music_fade() == 1.f);
+    std::fill(half_sec.begin(), half_sec.end(), 0.f);
+    mz.render(half_sec.data(), int(half_sec.size()));
+    float pm = 0.f;
+    int nz = 0;
+    for (float s : half_sec) {
+      CHECK(std::isfinite(s) && s >= -1.f && s <= 1.f);
+      pm = std::fmax(pm, std::fabs(s));
+      if (std::fabs(s) > 1e-4f) ++nz;
+    }
+    CHECK(pm > 0.02f && pm <= 0.35f);
+    CHECK(nz > kRate / 4);
+    mz.set_music_enabled(false);
+    std::fill(half_sec.begin(), half_sec.end(), 99.f);
+    mz.render(half_sec.data(), 128);
+    for (int i = 0; i < 128; ++i) CHECK(half_sec[i] == 0.f);
+    mz.set_music_enabled(true);
+    mz.set_mute(true);
+    std::fill(half_sec.begin(), half_sec.end(), 99.f);
+    mz.render(half_sec.data(), 128);
+    for (int i = 0; i < 128; ++i) CHECK(half_sec[i] == 0.f);
+  }
+  // Transición directa entre dos zonas no silenciosas.
+  {
+    Mixer mc;
+    mc.set_music_zone(MusicZone::Well);
+    std::vector<float> blk(kRate * 2, 0.f);
+    mc.render(blk.data(), int(blk.size()));
+    CHECK(mc.music_fade() == 1.f);
+    mc.set_music_zone(MusicZone::Boss);
+    CHECK(mc.music_fade() < 1.f);
+    mc.render(blk.data(), int(blk.size()));
+    CHECK(mc.music_fade() == 1.f);
+    for (float s : blk) CHECK(std::isfinite(s) && s >= -1.f && s <= 1.f);
+  }
   std::puts("sfx ok");
   return 0;
 }

@@ -29,6 +29,9 @@ enum class PlayerAnim : uint8_t {
   Swim = 5,
 };
 
+// Superficie bajo los pies del protagonista (para SFX de pasos).
+enum class SurfaceKind : uint8_t { Stone = 0, Moss = 1, Metal = 2, Water = 3 };
+
 struct Input {
   float move_x = 0;  // -1..1
   bool jump = false;  // flanco: true el frame en que se aprieta
@@ -156,6 +159,7 @@ class Sim {
   const std::vector<ew::physics::WaterBody>& water() const { return water_; }
   std::vector<ew::physics::WaterBody>& water() { return water_; }
   bool player_in_water() const;
+  SurfaceKind surface_under_feet() const;
   bool on_rope() const { return held_ > 0; }
   int rope_node() const { return held_; }  // 1..n de held_rope() (0 = no colgado)
   int grab_flash() const { return grab_flash_; }  // frames de destello restantes (0 = nada)
@@ -379,6 +383,7 @@ class Sim {
   int anim_frame_ = 0;
   int anim_ticks_ = 0;
   int air_ticks_ = 0;
+  int step_cd_ = 2;
   int pending_dialog_ = -1;
   float elapsed_sec_ = 0.f;
   std::vector<Boss> bosses_;

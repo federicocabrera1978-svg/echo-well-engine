@@ -356,6 +356,11 @@ add_executable(sfx_test tests/sfx_test.cpp)
 target_link_libraries(sfx_test PRIVATE echo_audio)
 add_test(NAME sfx COMMAND sfx_test)
 
+add_executable(audio_feel_test tests/audio_feel_test.cpp)
+target_link_libraries(audio_feel_test PRIVATE echo_game echo_audio)
+add_dependencies(audio_feel_test ew_maps)
+add_test(NAME audio_feel COMMAND audio_feel_test ${EW_WORLD_MAP} ${EW_MOVER_MAP})
+
 add_executable(gamepad_test tests/gamepad_test.cpp)
 target_link_libraries(gamepad_test PRIVATE echo_game)
 add_test(NAME gamepad COMMAND gamepad_test)

@@ -83,6 +83,9 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
 - [ ] **Hitstop, sacudida de cámara y opción `IMPACTO SI/NO`.**
   - Verificar la micro-pausa de impacto y sacudida de cámara al pisar/vencer bosses, eliminar diablillos `imp`, romper `break_wall` o absorber un golpe.
   - Abrir Pausa (`Esc`/`Start`), bajar a **`IMPACTO: SI`** y cambiar a **`NO`** sin cerrar el menú: comprobar que desaparecen hitstop y sacudida manteniendo intacto el menú en 9 filas alineadas con la barra de volumen.
+- [ ] **Música ambiental por zona y pasos según suelo.**
+  - Caminar sobre musgo/tierra en *El Pozo*, piedra/ladrillo en *Las Catacumbas*, plataformas metálicas (`mover`/`elevator`) y agua poco profunda: distinguir los 4 timbres de pasos.
+  - Escuchar el cambio suave (~1,5 s) entre la atmósfera de *El Pozo*, *Las Catacumbas*, *La Guarida del Wyrm* y la música de combate al entrar en la arena de un boss (y la atenuación al pausar o silencio total con `--nosound` / `MUTE`).
 - [ ] **Lectura visual limpia sin flecha junto al protagonista.** Verificá que no aparece ninguna flecha orbitando al lado del personaje (los abre-puertas sin accionar conservan únicamente su indicador `↓` arriba). La lógica de cálculo basada en la sección `GUIDE` (`engine/game/guide.hpp`) sigue cubierta por `guide_arrows`.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
 - [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `world`, `slice`, `level2`, `level3`).**
