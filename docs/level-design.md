@@ -246,9 +246,11 @@ backdrops:
   contraste, pero evitá un tema rojizo (`grieta`, `arena`) justo detrás de pinchos rojos si
   la sala depende de verlos de lejos. Los tiles `VIS` sin `COL` (columnas de decorado) se siguen
   dibujando encima del fondo.
-- Para mirar los fondos: `tools/room_shots.py build out --png` (con display o `xvfb-run`) saca una
-  captura por sala de `slice` y la compara con la misma sala en `vacio`. CI lo corre en el job
-  `engine` y sube las capturas como artifact `fondos-salas`.
+- Para mirar los fondos: `tools/room_shots.py build out --png` (con display o `xvfb-run`) captura
+  y valida las 22 salas de los niveles 1, 2 y 3 (`slice`: 8, `level2`: 8, `level3`: 6) y compara cada
+  una con su misma sala en `vacio`. CI lo corre en el job `engine` y sube las capturas reales de los
+  3 niveles (`fondos/sala*.ppm`, `fondos/level2_*.ppm`, `fondos/level3_*.ppm`, excluyendo
+  `*_vacio.ppm`) como artifact `fondos-salas`.
 
 ## Vegetación, brisa e interacción ambiental
 
