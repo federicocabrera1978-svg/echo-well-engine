@@ -41,6 +41,8 @@ jobs:
           ./build/ewmap_smoke assets/maps/bin/level2.ewmap --name level2 --chunks 8 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 6 --guides 5 --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door --has mover --has gravity_flip --has boss --has checkpoint --has goal --has npc --has lore
           ./build/ewmapc --crc assets/maps/src/level3.yaml -o assets/maps/bin/level3.ewmap
           ./build/ewmap_smoke assets/maps/bin/level3.ewmap --name level3 --chunks 6 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4 --guides 3 --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door --has mover --has gravity_flip --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore
+          ./build/ewmapc --crc assets/maps/src/world.yaml -o assets/maps/bin/world.ewmap
+          ./build/ewmap_smoke assets/maps/bin/world.ewmap --name world --chunks 24 --ents 68 --links 9 --water 6 --ropes 4 --movers 7 --backdrops 24 --dialogs 13 --guides 12 --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has flood_switch --has door --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore
 
   sanitizers:
     runs-on: ubuntu-latest
@@ -118,6 +120,7 @@ jobs:
             fondos/sala*.ppm
             fondos/level2_*.ppm
             fondos/level3_*.ppm
+            fondos/world_*.ppm
             !fondos/*_vacio.ppm
           if-no-files-found: error
       - name: Smoke partida guardada (menú abre en CONTINUAR)
@@ -153,7 +156,7 @@ jobs:
           test -f /tmp/ew-pack/echo-well/echo_engine
           test -f /tmp/ew-pack/echo-well/assets/atlas/tiles.png
           test -f /tmp/ew-pack/echo-well/assets/atlas/sprites.png
-          for m in slice hello room mover gravity boss ability dash level2 level3; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
+          for m in slice hello room mover gravity boss ability dash level2 level3 world; do test -f /tmp/ew-pack/echo-well/assets/maps/bin/$m.ewmap; done
           test -f /tmp/ew-pack/echo-well/docs/qa-checklist.md
           test -f /tmp/ew-pack/echo-well/DIST.txt
           test -f /tmp/ew-pack/echo-well/assets/shaders/light.frag
@@ -197,7 +200,7 @@ jobs:
           if (-not (Test-Path dist/echo-well/echo_engine.exe)) { throw "falta echo_engine.exe" }
           if (-not (Test-Path dist/echo-well/assets/atlas/tiles.png)) { throw "falta tiles.png" }
           if (-not (Test-Path dist/echo-well/assets/atlas/sprites.png)) { throw "falta sprites.png" }
-          foreach ($m in 'slice','hello','room','mover','gravity','boss','ability','dash','level2','level3') {
+          foreach ($m in 'slice','hello','room','mover','gravity','boss','ability','dash','level2','level3','world') {
             if (-not (Test-Path "dist/echo-well/assets/maps/bin/$m.ewmap")) { throw "falta $m.ewmap" }
           }
           if (-not (Test-Path dist/echo-well/docs/qa-checklist.md)) { throw "falta docs/qa-checklist.md" }

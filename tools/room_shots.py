@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capturas headless de cada sala de campaña (slice, level2, level3) + chequeo de los fondos.
+"""Capturas headless de cada sala de campaña (slice, level2, level3, world) + chequeo de los fondos.
 
 Uso: tools/room_shots.py BUILD_DIR OUT_DIR [--png]
 Corre echo_engine con --start en cada sala y --dump a OUT_DIR/<nombre>.ppm (320×180).
@@ -46,6 +46,32 @@ LEVELS = [
         ("level3_c01", 184, 336),
         ("level3_c11", 520, 336),
         ("level3_c21", 800, 336),
+    ]),
+    ("world", [
+        ("world_c00", 32, 152),
+        ("world_c10", 536, 56),
+        ("world_c20", 720, 56),
+        ("world_c30", 1152, 56),
+        ("world_c40", 1440, 56),
+        ("world_c50", 1620, 56),
+        ("world_c60", 1964, 152),
+        ("world_c70", 2264, 152),
+        ("world_c01", 300, 336),
+        ("world_c11", 560, 336),
+        ("world_c21", 928, 336),
+        ("world_c31", 1104, 336),
+        ("world_c41", 1560, 336),
+        ("world_c51", 1848, 336),
+        ("world_c61", 2192, 336),
+        ("world_c71", 2416, 336),
+        ("world_c02", 264, 520),
+        ("world_c12", 464, 520),
+        ("world_c22", 760, 520),
+        ("world_c32", 1120, 520),
+        ("world_c42", 1472, 520),
+        ("world_c52", 1888, 456),
+        ("world_c62", 2176, 520),
+        ("world_c72", 2480, 520),
     ]),
 ]
 HDR = b"P6\n320 180\n255\n"

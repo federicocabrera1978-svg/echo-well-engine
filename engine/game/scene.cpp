@@ -60,7 +60,7 @@ bool Scene::solid_tile(int tx, int ty) {
 void Scene::rebuild_doors() const {
   door_boxes_.clear();
   for (const auto& e : entities_) {
-    if (e.type == "door") {
+    if (e.type == "door" || e.type == "one_way_door") {
       if (e.active && e.anim >= kDoorSolidUntil) continue;
     } else if (e.type == "break_wall") {
       if (e.active) continue;
@@ -85,7 +85,7 @@ void Scene::tick(float dt) {
   doors_dirty_ = true;
   const float step = kDoorAnimSpeed * dt;
   for (auto& e : entities_) {
-    if (e.type != "door") continue;
+    if (e.type != "door" && e.type != "one_way_door") continue;
     const float tgt = e.active ? 1.f : 0.f;
     if (e.anim < tgt) e.anim = std::min(tgt, e.anim + step);
     else if (e.anim > tgt) e.anim = std::max(tgt, e.anim - step);
@@ -115,9 +115,32 @@ void Scene::set_switch(std::size_t idx, bool on) {
 void Scene::set_linked(std::size_t idx, bool on) {
   if (idx >= entities_.size()) return;
   entities_[idx].active = on;
-  for (const auto& [from, to] : links_)
-    if (from == idx && entities_[to].type == "door") entities_[to].active = on;
+  for (const auto& [from, to] : links_) {
+    if (from != idx) continue;
+    const auto& t = entities_[to].type;
+    if (t == "door" || t == "one_way_door" || t == "elevator") entities_[to].active = on;
+  }
   doors_dirty_ = true;
+}
+
+int Scene::try_open_one_way(float x, float y, bool push_touch) {
+  const float rx = push_touch ? 12.f : 18.f;
+  const float ry = push_touch ? 14.f : 18.f;
+  bool saw_locked = false;
+  for (std::size_t i = 0; i < entities_.size(); ++i) {
+    auto& e = entities_[i];
+    if (e.type != "one_way_door" || e.active) continue;
+    const float cx = e.x + 4.f, cy = e.y + 12.f;
+    if (std::fabs(x - cx) > rx || std::fabs(y - cy) > ry) continue;
+    const bool from_unlock_side = one_way_unlocks_from_left(e) ? (x < cx) : (x > cx);
+    if (from_unlock_side) {
+      e.active = true;
+      doors_dirty_ = true;
+      return int(i);
+    }
+    saw_locked = true;
+  }
+  return (!push_touch && saw_locked) ? -2 : -1;
 }
 
 int Scene::interact(float x, float y) {
