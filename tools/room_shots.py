@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Capturas headless de cada sala de slice (una por chunk) + chequeo de los fondos.
+"""Capturas headless de cada sala de campaña (slice, level2, level3) + chequeo de los fondos.
 
 Uso: tools/room_shots.py BUILD_DIR OUT_DIR [--png]
-Corre echo_engine con --start en cada sala y --dump a OUT_DIR/salaN.ppm (320×180).
-Para comparar, compila una copia de slice.yaml con todos los fondos en `vacio` (el fondo
-liso de antes) y saca la misma captura (OUT_DIR/salaN_vacio.ppm).
+Corre echo_engine con --start en cada sala y --dump a OUT_DIR/<nombre>.ppm (320×180).
+Para comparar, compila una copia de cada mapa con todos los fondos en `vacio` (el fondo
+liso de antes) y saca la misma captura (OUT_DIR/<nombre>_vacio.ppm).
 Necesita un display (en CI: xvfb-run, LIBGL_ALWAYS_SOFTWARE=1). Falla si:
   - algún frame no es un PPM 320×180 válido,
   - el fondo de una sala no suma detalle respecto de `vacio` (bordes en la mitad de arriba),
-  - dos salas quedaron con el mismo fondo (diferencia media por píxel casi nula).
---png además guarda salaN.png (×3, NEAREST) si hay Pillow.
+  - dos salas de un mismo mapa quedaron con el mismo fondo (diferencia media por píxel casi nula).
+--png además guarda cada captura en .png (×3, NEAREST) si hay Pillow.
 """
 import re
 import subprocess
@@ -17,9 +17,37 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# (chunk, x, y): un punto seguro de cada sala de assets/maps/src/slice.yaml
-ROOMS = [(0, 32, 152), (1, 536, 56), (2, 720, 56), (3, 1152, 56),
-         (4, 1440, 56), (5, 1620, 56), (6, 1936, 152), (7, 2264, 152)]
+# (nombre_mapa, [(label, x, y), ...]): puntos seguros de cada sala de campaña.
+LEVELS = [
+    ("slice", [
+        ("sala0", 32, 152),
+        ("sala1", 536, 56),
+        ("sala2", 720, 56),
+        ("sala3", 1152, 56),
+        ("sala4", 1440, 56),
+        ("sala5", 1620, 56),
+        ("sala6", 1936, 152),
+        ("sala7", 2264, 152),
+    ]),
+    ("level2", [
+        ("level2_c00", 32, 152),
+        ("level2_c10", 352, 152),
+        ("level2_c20", 712, 152),
+        ("level2_c30", 984, 152),
+        ("level2_c01", 80, 336),
+        ("level2_c11", 368, 336),
+        ("level2_c21", 664, 272),
+        ("level2_c31", 1048, 336),
+    ]),
+    ("level3", [
+        ("level3_c00", 32, 152),
+        ("level3_c10", 344, 152),
+        ("level3_c20", 664, 152),
+        ("level3_c01", 184, 336),
+        ("level3_c11", 520, 336),
+        ("level3_c21", 800, 336),
+    ]),
+]
 HDR = b"P6\n320 180\n255\n"
 W = 320
 
@@ -52,6 +80,29 @@ def shoot(exe: Path, x: int, y: int, ppm: Path, extra=()):
                     "--nosound", "--nogamepad", "--nosave", *extra], check=True, stdout=subprocess.DEVNULL)
 
 
+def replace_backdrop_themes(src: str) -> str:
+    """Sustituye theme: <tema> por theme: vacio solo dentro de la sección backdrops:."""
+    lines = []
+    in_backdrops = False
+    for line in src.splitlines(keepends=True):
+        if line and not line[0].isspace() and not line.startswith("#") and ":" in line:
+            in_backdrops = line.startswith("backdrops:")
+        if in_backdrops:
+            line = re.sub(r"theme:\s*\w+", "theme: vacio", line)
+        lines.append(line)
+    return "".join(lines)
+
+
+def resolve_real_map(build: Path, out: Path, ewmapc: Path, name: str, src_yaml: Path) -> Path:
+    for cand in (build / "maps" / f"{name}.ewmap", build.parent / "maps" / f"{name}.ewmap"):
+        if cand.is_file():
+            return cand
+    real_map = out / f"{name}.ewmap"
+    subprocess.run([str(ewmapc), "--crc", str(src_yaml), "-o", str(real_map)],
+                   check=True, stdout=subprocess.DEVNULL)
+    return real_map
+
+
 def main() -> int:
     if len(sys.argv) < 3:
         print(__doc__)
@@ -61,34 +112,42 @@ def main() -> int:
     win = sys.platform == "win32"
     exe = build / ("echo_engine.exe" if win else "echo_engine")
     ewmapc = build / ("ewmapc.exe" if win else "ewmapc")
-    src = (ROOT / "assets/maps/src/slice.yaml").read_text(encoding="utf-8")
-    flat_yaml = out / "slice_vacio.yaml"
-    flat_yaml.write_text(re.sub(r"theme:\s*\w+", "theme: vacio", src), encoding="utf-8")
-    flat_map = out / "slice_vacio.ewmap"
-    subprocess.run([str(ewmapc), "--crc", str(flat_yaml), "-o", str(flat_map)], check=True, stdout=subprocess.DEVNULL)
 
-    tops = []
-    for cx, x, y in ROOMS:
-        ppm, flat = out / f"sala{cx}.ppm", out / f"sala{cx}_vacio.ppm"
-        shoot(exe, x, y, ppm)
-        shoot(exe, x, y, flat, ("--map", str(flat_map)))
-        t, f = top_half(ppm), top_half(flat)
-        er, ef, d = edge_ratio(t), edge_ratio(f), mad(t, f)
-        print(f"sala{cx}: bordes {er:.3f} (vacio {ef:.3f}), dif media vs vacio {d:.2f}")
-        assert er >= ef + 0.03, f"sala{cx}: el fondo no suma detalle ({er:.3f} vs {ef:.3f})"
-        assert d > 2.0, f"sala{cx}: igual que el fondo liso (dif {d:.2f})"
-        tops.append(t)
-    for i in range(len(tops)):
-        for j in range(i + 1, len(tops)):
-            d = mad(tops[i], tops[j])
-            assert d > 2.0, f"sala{i} y sala{j} tienen el mismo fondo (dif {d:.2f})"
+    shots = []
+    for map_name, rooms in LEVELS:
+        src_yaml = ROOT / "assets/maps/src" / f"{map_name}.yaml"
+        src = src_yaml.read_text(encoding="utf-8")
+        real_map = resolve_real_map(build, out, ewmapc, map_name, src_yaml)
+        flat_yaml = out / f"{map_name}_vacio.yaml"
+        flat_yaml.write_text(replace_backdrop_themes(src), encoding="utf-8")
+        flat_map = out / f"{map_name}_vacio.ewmap"
+        subprocess.run([str(ewmapc), "--crc", str(flat_yaml), "-o", str(flat_map)],
+                       check=True, stdout=subprocess.DEVNULL)
+
+        tops = []
+        for label, x, y in rooms:
+            ppm, flat = out / f"{label}.ppm", out / f"{label}_vacio.ppm"
+            shoot(exe, x, y, ppm, ("--map", str(real_map)))
+            shoot(exe, x, y, flat, ("--map", str(flat_map)))
+            t, f = top_half(ppm), top_half(flat)
+            er, ef, d = edge_ratio(t), edge_ratio(f), mad(t, f)
+            print(f"{label}: bordes {er:.3f} (vacio {ef:.3f}), dif media vs vacio {d:.2f}")
+            assert er >= ef + 0.03, f"{label}: el fondo no suma detalle ({er:.3f} vs {ef:.3f})"
+            assert d > 2.0, f"{label}: igual que el fondo liso (dif {d:.2f})"
+            tops.append((label, t))
+            shots.append(label)
+        for i in range(len(tops)):
+            for j in range(i + 1, len(tops)):
+                d = mad(tops[i][1], tops[j][1])
+                assert d > 2.0, f"{tops[i][0]} y {tops[j][0]} tienen el mismo fondo (dif {d:.2f})"
+
     if "--png" in sys.argv:
         try:
             from PIL import Image
-            for cx, _, _ in ROOMS:
+            for label in shots:
                 for suf in ("", "_vacio"):
-                    im = Image.open(out / f"sala{cx}{suf}.ppm")
-                    im.resize((960, 540), Image.NEAREST).save(out / f"sala{cx}{suf}.png")
+                    im = Image.open(out / f"{label}{suf}.ppm")
+                    im.resize((960, 540), Image.NEAREST).save(out / f"{label}{suf}.png")
         except ImportError:
             print("sin Pillow: solo PPM")
     print("room_shots OK")
