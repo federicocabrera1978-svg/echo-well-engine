@@ -266,7 +266,7 @@ backdrops:
 
 ## Flecha guía de navegación (`guide`)
 
-El runtime calcula la flecha guía alrededor del jugador en `engine/game/guide.hpp` (`GuideArrow` y `compute_guide_arrow(const Scene&, const Sim&, float time_s = 0.f)`), leyendo la sección opcional `GUIDE` (`id = 11`, registros `GuideRecord` de 24 B).
+El motor expone la lógica de navegación en `engine/game/guide.hpp` (`GuideArrow` y `compute_guide_arrow(const Scene&, const Sim&, float time_s = 0.f)`), leyendo la sección opcional `GUIDE` (`id = 11`, registros `GuideRecord` de 24 B). Por defecto en pantalla no se dibuja la flecha orbitando al personaje (`show_player_guide = false` en `build_world_frame`); solo los switches sin accionar conservan su indicador `↓` encima.
 
 - **Reglas generales en runtime:**
   - Si `sim.finished()` es `true` o la distancia entre el jugador y el objetivo es `≤ 24 px`, `compute_guide_arrow` devuelve `valid = false`.

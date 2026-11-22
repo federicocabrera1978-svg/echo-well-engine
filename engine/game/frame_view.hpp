@@ -264,7 +264,7 @@ inline void push_hazards(FrameData& v, Scene& s) {
 
 // Empaqueta cámara, vecindario 3×3, entidades, física, bosses, protagonista, agua, luz y viento.
 inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float time_s, bool demo,
-                              bool overlay_open) {
+                              bool overlay_open, bool show_player_guide = false) {
   v.marker_count = 0;
   v.sprite_count = 0;
   v.water_count = 0;
@@ -290,7 +290,7 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
   }
 
   push_entities(v, scene, time_s);
-  if (!demo) {
+  if (show_player_guide && !demo) {
     if (const auto ga = compute_guide_arrow(scene, sim, time_s); ga.valid)
       push_marker(v, ga.x, ga.y, 6.f, 4, ga.ux, ga.uy, float(ga.style));
   }
