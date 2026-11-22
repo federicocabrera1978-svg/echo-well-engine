@@ -484,28 +484,152 @@ vec4 bg_santuario(vec2 q, vec2 f, float s, out float emit) {
   return vec4(c, h);
 }
 
-// 13: Abismo Arcano — estalactitas de obsidiana, bruma violácea y ojos lejanos en la penumbra
+// 13: Abismo Arcano — bóveda ojival de obsidiana azul-violácea, agujas lejanas, bruma, runas y ojos
 vec4 bg_abismo(vec2 q, vec2 f, float s, out float emit) {
   emit = 0.0;
   float h = 0.0;
-  float fog = vnoise(vec2(q.x * 0.03 + u_time * 0.15, q.y * 0.05));
-  vec3 c = mix(vec3(0.02, 0.02, 0.05), vec3(0.06, 0.04, 0.10), fog);
-  // siluetas de agujas de obsidiana en fondo y techo
-  float spire_top = 18.0 + 22.0 * abs(sin(q.x * 0.045));
-  float spire_bot = 162.0 - 24.0 * abs(cos(q.x * 0.037 + 1.1));
-  if (q.y < spire_top || q.y > spire_bot) {
-    c = vec3(0.04, 0.04, 0.07);
-    h = 0.45;
+
+  // 1) Capa lejana: vacío abisal con bruma violácea tenue (gradiente suave + dither sutil)
+  float fog_n = vnoise(vec2(f.x * 0.032 + u_time * 0.10, f.y * 0.045 + u_time * 0.18) + s);
+  float depth_t = clamp((q.y - 24.0) / 160.0, 0.0, 1.0);
+  float fog_mix = clamp(0.18 + 0.45 * fog_n + 0.37 * depth_t, 0.0, 1.0);
+  vec3 c = mix(vec3(0.045, 0.045, 0.10), vec3(0.085, 0.065, 0.16), q4(fog_mix));
+  if (fog_mix > bayer4(q) + 0.15) c += vec3(0.012, 0.010, 0.025);
+
+  // Siluetas de agujas de obsidiana en capa lejana f (h > 0 y borde azul-pizarra claro)
+  float sp_id1 = floor(f.x / 28.0);
+  float sp_h1 = hash12(vec2(sp_id1, s + 3.0));
+  float sp_d1 = mod(f.x, 28.0) - 14.0;
+  float sp_x1 = abs(sp_d1);
+  float sp_w1 = 5.5 + sp_h1 * 4.5;
+  float sp_top1 = 166.0 - (46.0 + sp_h1 * 64.0) * max(0.0, 1.0 - sp_x1 / sp_w1);
+  if (f.y > sp_top1) {
+    bool rim1 = (f.y < sp_top1 + 1.8) || (sp_x1 > sp_w1 - 1.4);
+    c = rim1 ? vec3(0.25, 0.30, 0.45) : (sp_d1 < 0.0 ? vec3(0.10, 0.11, 0.20) : vec3(0.07, 0.08, 0.15));
+    h = rim1 ? 0.50 : (sp_d1 < 0.0 ? 0.36 : 0.24);
   }
-  // grietas arcanas distantes + pares de ojos dracónicos parpadeando
+
+  float sp_id2 = floor((f.x + 17.0) / 42.0);
+  float sp_h2 = hash12(vec2(sp_id2, s + 17.0));
+  float sp_d2 = mod(f.x + 17.0, 42.0) - 21.0;
+  float sp_x2 = abs(sp_d2);
+  float sp_w2 = 6.5 + sp_h2 * 4.5;
+  float sp_bot2 = 16.0 + (32.0 + sp_h2 * 44.0) * max(0.0, 1.0 - sp_x2 / sp_w2);
+  if (f.y < sp_bot2) {
+    bool rim2 = (f.y > sp_bot2 - 1.8) || (sp_x2 > sp_w2 - 1.4);
+    c = rim2 ? vec3(0.27, 0.32, 0.48) : (sp_d2 < 0.0 ? vec3(0.11, 0.12, 0.21) : vec3(0.08, 0.09, 0.16));
+    h = rim2 ? 0.65 : (sp_d2 < 0.0 ? 0.48 : 0.34);
+  }
+
+  // Ojos dracónicos parpadeantes en las zonas oscuras lejanas (detrás de los arcos y agujas)
   for (int i = 0; i < 3; ++i) {
-    vec2 ep = vec2(58.0 + float(i) * 98.0, 52.0 + float((i * 2) % 3) * 24.0);
-    float blink = step(0.12, fract(u_time * 0.22 + float(i) * 0.37));
-    if (blink > 0.5 && abs(q.y - ep.y) < 1.2 && (abs(q.x - (ep.x - 3.0)) < 1.5 || abs(q.x - (ep.x + 3.0)) < 1.5)) {
-      c = vec3(0.65, 0.28, 0.16);
-      emit = 0.7;
+    float fi = float(i);
+    float jx = floor((hash12(vec2(fi, s + 7.0)) - 0.5) * 14.0);
+    vec2 ep = vec2((i == 0 ? 48.0 : (i == 1 ? 128.0 : 288.0)) + jx,
+                   68.0 + float((i * 2) % 3) * 14.0);
+    float blink = step(0.14, fract(u_time * 0.22 + fi * 0.37));
+    if (h < 0.1 && blink > 0.5 && abs(f.y - ep.y) < 0.8 &&
+        (abs(f.x - (ep.x - 2.5)) < 1.1 || abs(f.x - (ep.x + 2.5)) < 1.1)) {
+      c = vec3(0.72, 0.26, 0.15);
+      emit = 0.56;
     }
   }
+
+  // 2) Geometría de bóveda ojival (período 80 px, pilastras alineadas con el pozo central)
+  float bay = mod(q.x - 8.0, 80.0) - 40.0;
+  float ax = abs(bay);
+  float px_pil = 40.0 - ax;
+  float arch_y_in = 66.0 - sqrt(max(0.0, 40.0 * 40.0 - (ax + 15.0) * (ax + 15.0))) * 0.92;
+  float arch_y_out = 66.0 - sqrt(max(0.0, 43.0 * 43.0 - (ax + 15.0) * (ax + 15.0))) * 0.92;
+  bool in_vault = (ax < 25.0) && (q.y >= arch_y_in);
+  bool in_rim = !in_vault && ((ax < 28.0 && q.y >= arch_y_out && q.y < 66.0) ||
+                              (ax >= 25.0 && ax < 28.0 && q.y >= 66.0));
+
+  if (in_vault) {
+    // Haz suave de bruma abisal ascendente dentro de cada arcada
+    float mist_beam = exp(-pow(ax / 16.0, 2.0));
+    float mist_flow = vnoise(vec2(q.x * 0.055, q.y * 0.045 + u_time * 0.36) + s * 2.0);
+    float mist_v = smoothstep(28.0, 172.0, q.y);
+    float mist = mist_beam * (0.38 + 0.62 * mist_flow) * (0.20 + 0.80 * mist_v);
+    if (mist * 0.72 > bayer4(q)) {
+      c = mix(c, vec3(0.20, 0.26, 0.44), 0.28);
+      emit = max(emit, 0.13 * mist);
+    }
+  } else {
+    // 3) Capa cercana: sillares de obsidiana azul-violácea (bricks + bevel * 0.8)
+    vec3 b = bricks(q, vec2(22.0, 11.0), s);
+    float n_st = vnoise(q * 0.24 + s);
+    vec3 stone = vec3(0.14, 0.12, 0.21) * (0.78 + 0.22 * q4(b.x)) * (0.88 + 0.12 * n_st);
+    h = bevel(b.y) * 0.8;
+    if (b.y < 1.0) {
+      stone = vec3(0.07, 0.06, 0.11);
+      h = 0.0;
+    }
+
+    // Pilastras monumentales, moldura de archivolt y capiteles
+    if (in_rim) {
+      stone = vec3(0.18, 0.17, 0.28) * (b.y < 1.0 ? 0.65 : 1.0);
+      h = (b.y < 1.0) ? 0.35 : 0.92;
+    } else if (ax >= 25.0 && ((q.y >= 63.0 && q.y <= 67.0) || (q.y >= 153.0 && q.y <= 159.0))) {
+      stone = vec3(0.19, 0.18, 0.30);
+      h = 1.0;
+    } else if (px_pil <= 4.0 && q.y >= 68.0 && q.y < 153.0) {
+      // Canal central de pilastra con acanalado y glifos rúnicos calados
+      stone = (px_pil <= 2.5) ? vec3(0.10, 0.09, 0.16) : vec3(0.17, 0.15, 0.26);
+      h = (px_pil <= 2.5) ? 0.45 : 0.88;
+      float ry_f = mod(q.y - 74.0, 26.0);
+      if (px_pil <= 2.5 && q.y >= 74.0 && q.y < 148.0 && ry_f < 7.0) {
+        int rx = int(floor(px_pil + 0.5));
+        int ry = int(floor(ry_f));
+        int tier = int(floor((q.y - 74.0) / 26.0));
+        int pid = int(floor((q.x + 32.0) / 80.0));
+        int glyph_id = (tier + pid) % 3;
+        bool rune_px = false;
+        if (glyph_id == 0) {
+          rune_px = (rx == 0 && ry >= 0 && ry <= 6) || (rx == 1 && (ry == 1 || ry == 5)) || (rx == 2 && ry == 3);
+        } else if (glyph_id == 1) {
+          rune_px = (rx == 2 && ry >= 1 && ry <= 5) || (rx == abs(ry - 3) && ry >= 1 && ry <= 5);
+        } else {
+          rune_px = (rx == 0 && ry >= 0 && ry <= 6) || (rx == ry && ry <= 2) || (rx == 2 && ry == 5);
+        }
+        if (rune_px) {
+          float rp = 0.5 + 0.5 * sin(u_time * 2.2 + float(tier) * 1.7 + float(pid) * 2.3);
+          stone = mix(vec3(0.28, 0.68, 0.88), vec3(0.56, 0.40, 0.92), 0.35);
+          h = 0.96;
+          emit = 0.30 + 0.20 * rp;
+        }
+      }
+    }
+
+    // Cristales laterales oblicuos en los hombros y basas de las pilastras
+    bool cr_top = (px_pil >= 7.0 && px_pil <= 11.0 && q.y >= 57.0 && q.y <= 62.0);
+    bool cr_bot = (px_pil >= 7.0 && px_pil <= 11.0 && q.y >= 148.0 && q.y <= 152.0);
+    if (cr_top || cr_bot) {
+      float cy = cr_top ? (62.0 - q.y) : (152.0 - q.y);
+      float tilt_x = (px_pil - 7.0) - cy * 0.45;
+      if (abs(tilt_x - 1.2) <= 0.85 && cy <= 4.5) {
+        float cp = 0.5 + 0.5 * sin(u_time * 2.6 + floor((q.x + 32.0) / 80.0) * 1.9);
+        bool tip = (cy >= 3.0);
+        stone = tip ? vec3(0.42, 0.82, 0.94) : vec3(0.54, 0.34, 0.86);
+        h = 1.0;
+        emit = tip ? (0.40 + 0.16 * cp) : 0.29;
+      }
+    }
+    c = stone;
+  }
+
+  // 4) Esporas violáceas-cian flotando en la bóveda
+  float m_cyan = motes(q, 24.0, vec2(2.0, -8.5), s + 5.0, 0.20);
+  if (m_cyan > 0.0) {
+    c = vec3(0.44, 0.86, 0.95);
+    emit = clamp(0.32 + 0.22 * m_cyan, 0.28, 0.65);
+  }
+  float m_viol = motes(q, 20.0, vec2(-2.5, -6.0), s + 13.0, 0.22);
+  if (m_viol > 0.0) {
+    c = vec3(0.66, 0.42, 0.94);
+    emit = clamp(0.29 + 0.20 * m_viol, 0.28, 0.65);
+  }
+
   return vec4(c, h);
 }
 

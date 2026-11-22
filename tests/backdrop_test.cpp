@@ -168,6 +168,7 @@ int main(int argc, char** argv) {
     if (!s.load(argv[4], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
     CHECK(same(s.backdrop(0, 0), BT::Cripta));
     CHECK(same(s.backdrop(1, 0), BT::Abismo));
+    CHECK(s.backdrop(1, 0).seed == 7);  // Hub c10: seed por defecto = 1*7 + 0*13
     CHECK(same(s.backdrop(2, 0), BT::Invertido));
     CHECK(same(s.backdrop(3, 0), BT::Guarida));
     CHECK(same(s.backdrop(0, 1), BT::Cisterna));
@@ -177,6 +178,15 @@ int main(int argc, char** argv) {
     s.follow(160, 90);
     CHECK(same(s.active_backdrops()[4], BT::Cripta));
     CHECK(same(s.active_backdrops()[5], BT::Abismo));
+    // Al mover la escena al centro de la bóveda c10 (1,0), el vecindario 3×3
+    // expone Cripta a la izq [3], Abismo al centro [4], Invertido a la der [5] y Pozo abajo [7].
+    s.follow(448, 120);
+    CHECK(s.chunk_x() == 1 && s.chunk_y() == 0);
+    const auto& c10_nb = s.active_backdrops();
+    CHECK(same(c10_nb[3], BT::Cripta));
+    CHECK(same(c10_nb[4], BT::Abismo) && c10_nb[4].seed == 7);
+    CHECK(same(c10_nb[5], BT::Invertido));
+    CHECK(same(c10_nb[7], BT::Pozo));
   }
 
   std::printf("backdrop_test OK\n");

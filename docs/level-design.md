@@ -235,7 +235,7 @@ backdrops:
 | `cripta` | arcos góticos de pizarra, estandartes y braseros violetas | `level2` chunk `(0,0)` (entrada a Las Catacumbas) |
 | `guarida` | estrato basáltico oscuro, grietas de magma tenue y costillar fósil de dragón | `level2` chunk `(3,0)` (guarida del boss dracónico) |
 | `santuario` | pilastras de mármol oscuro, vitral ojival y runas arcanas tenues | `level2` chunk `(3,1)` (altar del huevo y santuario) |
-| `abismo` | bruma violácea, agujas de obsidiana en techo/suelo y ojos lejanos en la penumbra | `level2` chunk `(1,0)` (hub vertical profundo) |
+| `abismo` | sillares de obsidiana azul-violácea, arcadas lejanas, cristales/esporas abisales con luz propia y ojos en la penumbra | `level2` chunk `(1,0)` (hub vertical profundo `c10`) |
 
 - Sección binaria `BACKDROP` (id 9), **opcional**: un mapa sin `backdrops` compila byte a byte
   igual que antes, y un loader viejo ignora la sección (ver [ewmap.md](ewmap.md)).
