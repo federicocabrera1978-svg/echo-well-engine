@@ -125,6 +125,8 @@ bool LevelFlow::load_level(const std::string& path, uint32_t carry_abilities, En
   dialogue.close();
   hud.last_items = sim_->collected();
   hud.last_abilities = sim_->abilities();
+  hud.last_max_hp = sim_->max_hp();
+  hud.last_dash_up = sim_->dash_upgraded();
   return true;
 }
 
@@ -174,6 +176,8 @@ bool LevelFlow::continue_save(PauseMenu& menu, EndScreen& end_screen, DialogueBo
   last_key_ = current_save_key(menu);
   hud.last_items = sim_->collected();  // el huevo cargado no se anuncia como recién agarrado
   hud.last_abilities = sim_->abilities();
+  hud.last_max_hp = sim_->max_hp();
+  hud.last_dash_up = sim_->dash_upgraded();
   end_screen.close();
   dialogue.close();
   return true;
@@ -219,6 +223,9 @@ LevelFlow::PostStepResult LevelFlow::post_step(PauseMenu& menu, EndScreen& end_s
     st.has_next = !resolve_next_map().empty();
     st.elapsed_sec = sim_->elapsed_sec();
     st.campaign_done = !st.has_next && find_campaign_level(mname) != nullptr;
+    st.true_ending = st.campaign_done && st.items_total > 0 && st.items >= st.items_total;
+    st.max_hp = sim_->max_hp();
+    st.dash_upgraded = sim_->dash_upgraded();
     end_screen.open(st);
     announced_goal_ = true;
     res.opened_end = true;

@@ -175,6 +175,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_end"), v.end_screen);
   Uniform1i(GetUniformLocation(light_prog_, "u_end_sel"), v.end_sel);
   Uniform1i(GetUniformLocation(light_prog_, "u_end_has_next"), v.end_has_next);
+  Uniform1i(GetUniformLocation(light_prog_, "u_end_true"), v.end_true);
   Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
   Uniform1i(GetUniformLocation(light_prog_, "u_pause"), v.pause);
   Uniform1i(GetUniformLocation(light_prog_, "u_sel"), v.pause_sel);
@@ -196,6 +197,9 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1f(GetUniformLocation(light_prog_, "u_items_flash"), v.items_flash);
   Uniform1i(GetUniformLocation(light_prog_, "u_abilities"), v.abilities);
   Uniform1f(GetUniformLocation(light_prog_, "u_ability_flash"), v.ability_flash);
+  Uniform1i(GetUniformLocation(light_prog_, "u_hp"), v.hp);
+  Uniform1i(GetUniformLocation(light_prog_, "u_max_hp"), v.max_hp);
+  Uniform1i(GetUniformLocation(light_prog_, "u_dash_up"), v.dash_upgraded);
   Uniform4f(GetUniformLocation(light_prog_, "u_map_grid"),
             float(v.map_w), float(v.map_h), float(v.cur_cx), float(v.cur_cy));
   Uniform1i(GetUniformLocation(light_prog_, "u_map_vis"), int(v.visited_mask));

@@ -360,6 +360,7 @@ int main(int argc, char** argv) {
     CHECK(eg->active);
   }
   CHECK(sim.collected() == 6);
+  CHECK(sim.max_hp() == 2 && sim.hp() == 2 && sim.dash_upgraded() && sim.all_eggs_collected());
 
   // Derrotar Boss 1 y Boss 2.
   defeat_boss_at(sim, 0, 2264.f, 152.f);
@@ -408,11 +409,18 @@ int main(int argc, char** argv) {
     st.abilities = sim.abilities();
     st.has_next = !game::next_campaign_map("world").empty();
     st.campaign_done = !st.has_next;
+    st.true_ending = st.campaign_done && st.items_total > 0 && st.items >= st.items_total;
+    st.max_hp = sim.max_hp();
+    st.dash_upgraded = sim.dash_upgraded();
     game::EndScreen es;
     es.open(st);
+    CHECK(es.stats().true_ending);
     const auto txt = game::end_screen_text(es);
-    CHECK(txt[0] == "VICTORIA: REINO DESPIERTO");
+    CHECK(txt[0] == "FINAL VERDADERO");
+    CHECK(txt[1] == "REINO RENACIDO: 100% HUEVOS");
     CHECK(txt[2] == "HUEVOS:  6/6");
+    CHECK(txt[4].find("DASH II") != std::string::npos);
+    CHECK(txt[4].find("+1HP") != std::string::npos);
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
   }
 

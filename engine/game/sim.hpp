@@ -74,6 +74,13 @@ class Sim {
   static constexpr int kDashFrames = 10;            // ~0.17 s de embestida sin gravedad
   static constexpr int kDashCooldownFrames = 18;    // ~0.30 s de enfriamiento mínimo
   static constexpr int kDashFlashFrames = 14;       // frames de estela visual
+  // Recompensas por hitos de huevos (collectibles) y daño no letal con +1 HP.
+  static constexpr int kEggsForExtraHp = 2;
+  static constexpr int kEggsForDashUpgrade = 4;
+  static constexpr int kDashUpgradedFrames = 14;
+  static constexpr int kDashUpgradedCooldown = 10;
+  static constexpr int kDashUpgradedCharges = 2;
+  static constexpr int kHitInvulnFrames = 60;
   static constexpr int kWallBreakFlashFrames = 18;  // frames de escombros al romper break_wall
   static constexpr float kWallSlideSpeed = 36.f;    // px/s caída máxima al deslizar en pared
   static constexpr float kWallJumpVx = 138.f;       // px/s impulso horizontal al saltar de pared
@@ -156,6 +163,12 @@ class Sim {
   // respawn / muerte; reset() los vuelve a poner. El goal no los requiere (HUD x/total).
   int collected() const;
   int collectible_total() const;
+  bool all_eggs_collected() const { const int t = collectible_total(); return t > 0 && collected() >= t; }
+  int hp() const { return hp_; }
+  int max_hp() const { return collected() >= kEggsForExtraHp ? 2 : 1; }
+  bool dash_upgraded() const { return collected() >= kEggsForDashUpgrade; }
+  int dash_charges() const { return dash_charges_; }
+  int max_dash_charges() const { return has_ability(kAbilityDash) ? (dash_upgraded() ? kDashUpgradedCharges : 1) : 0; }
   int pickup_flash() const { return pickup_flash_; }
   int invuln() const { return invuln_; }
   int mover_count() const { return int(movers_.size()); }
@@ -227,7 +240,7 @@ class Sim {
   float double_jump_y() const { return double_jump_y_; }
   int ability_flash() const { return ability_flash_; }
   int dash_ticks() const { return dash_ticks_; }
-  bool dash_ready() const { return dash_ready_; }
+  bool dash_ready() const { return dash_charges_ > 0; }
   int dash_dir() const { return dash_dir_; }
   int dash_flash() const { return dash_flash_; }
   int wall_break_flash() const { return wall_break_flash_; }
@@ -280,6 +293,7 @@ class Sim {
   float finish_t_ = 0;  // 0..1, pantalla de fin
   int ckpt_ = -1;       // último checkpoint, -1 = spawn
   int deaths_ = 0;
+  int hp_ = 1;
   int invuln_ = 0;
   int pickup_flash_ = 0;
   uint32_t sfx_ = 0;
@@ -310,7 +324,7 @@ class Sim {
   int dash_ticks_ = 0;
   int dash_cd_ = 0;
   int dash_dir_ = 1;
-  bool dash_ready_ = false;
+  int dash_charges_ = 0;
   int dash_flash_ = 0;
   int wall_break_flash_ = 0;
   float wall_break_x_ = 0, wall_break_y_ = 0;
@@ -357,6 +371,7 @@ class Sim {
   void check_checkpoints();
   void check_hazards();
   void check_collectibles();
+  void take_hit(float src_x, float src_y, bool allow_survive = true);
   void kill();
   void apply_flood();
   uint32_t held_index() const { return ropes_[std::size_t(held_rope_)].first + uint32_t(held_); }

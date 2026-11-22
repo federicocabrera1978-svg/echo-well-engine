@@ -29,6 +29,7 @@ void Sim::build() {
   finish_t_ = 0;
   ckpt_ = -1;
   deaths_ = 0;
+  hp_ = max_hp();
   invuln_ = 0;
   pickup_flash_ = 0;
   sfx_ = 0;
@@ -44,7 +45,7 @@ void Sim::build() {
   dash_ticks_ = 0;
   dash_cd_ = 0;
   dash_dir_ = 1;
-  dash_ready_ = false;
+  dash_charges_ = max_dash_charges();
   dash_flash_ = 0;
   wall_break_flash_ = 0;
   wall_break_x_ = 0;
@@ -281,8 +282,8 @@ void Sim::set_abilities(uint32_t mask) {
   abilities_ = next;
   if (!has_dj) air_jumps_ = 0;
   else if (!had_dj) air_jumps_ = 1;
-  if (!has_dash) { dash_ready_ = false; dash_ticks_ = 0; }
-  else if (!had_dash) dash_ready_ = true;
+  if (!has_dash) { dash_charges_ = 0; dash_ticks_ = 0; }
+  else if (!had_dash) dash_charges_ = max_dash_charges();
   if (!(next & kAbilityWallClimb)) {
     wall_coyote_ = 0;
     wall_lock_ticks_ = 0;
@@ -431,7 +432,8 @@ void Sim::respawn() {
   wind_.reset();
   pending_dialog_ = -1;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
-  dash_ready_ = has_ability(kAbilityDash);
+  dash_charges_ = max_dash_charges();
+  hp_ = max_hp();
   reset_movers();
   reset_bosses(true);  // el boss se cura y vuelve a su lugar (si ya estaba vencido, queda así)
   if (bosses_defeated() && !bosses_.empty()) victory_.mark_done();
@@ -442,6 +444,24 @@ void Sim::respawn() {
     if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, flip_);
   rearm_flips();
   scene_.follow(p.x, p.y, 0.f);
+}
+
+void Sim::take_hit(float src_x, float src_y, bool allow_survive) {
+  (void)src_y;
+  if (invuln_ > 0 || finished_) return;
+  if (hp_ > 1 && allow_survive) {
+    --hp_;
+    invuln_ = kHitInvulnFrames;
+    sfx_ |= ew::audio::kSfxHit;
+    if (held_) release();
+    dash_ticks_ = 0;
+    auto& pl = world_.points()[player_];
+    pl.gscale = flip_ ? -1.f : 1.f;
+    const float push = (pl.pos.x >= src_x ? 1.f : -1.f);
+    pl.set_velocity({push * 85.f * kDt, -down() * 145.f * kDt});
+    return;
+  }
+  kill();
 }
 
 void Sim::kill() {
@@ -539,7 +559,7 @@ void Sim::step(const Input& in) {
   if (held_) {
     // Colgado: recarga doble salto y embestida; ←/→ empujan el nodo, ↑/↓ trepan, saltar o dash sueltan.
     if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-    if (has_ability(kAbilityDash)) dash_ready_ = true;
+    if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
     auto& node = pts[held_index()];
     node.force += Vec2{std::clamp(in.move_x, -1.f, 1.f) * kSwingForce / kHeldInvMass, 0};
     const float seg = ropes_[std::size_t(held_rope_)].seg;
@@ -548,7 +568,7 @@ void Sim::step(const Input& in) {
     if (climb_acc_ <= -seg && held_ > 1) { climb_acc_ = 0; int n = held_ - 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
     else if (climb_acc_ >= seg && held_ < rn) { climb_acc_ = 0; int n = held_ + 1; release(); regrab_cd_ = 0; grab(hr, n, false); }
     else climb_acc_ = std::clamp(climb_acc_, -seg, seg);
-    if (in.dash && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_ready_) {
+    if (in.dash && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_charges_ > 0) {
       release();
     } else if (in.jump) {
       const Vec2 v = pts[held_index()].velocity();
@@ -588,12 +608,12 @@ void Sim::step(const Input& in) {
         interacted = true;
       }
     }
-    if (in.dash && !interacted && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_ready_) {
+    if (in.dash && !interacted && has_ability(kAbilityDash) && dash_ticks_ == 0 && dash_cd_ == 0 && dash_charges_ > 0) {
       dash_dir_ = std::fabs(in.move_x) > 0.1f ? (in.move_x > 0.f ? 1 : -1) : facing_;
       facing_ = dash_dir_;
-      dash_ticks_ = kDashFrames;
-      dash_cd_ = kDashCooldownFrames;
-      dash_ready_ = false;
+      dash_ticks_ = dash_upgraded() ? kDashUpgradedFrames : kDashFrames;
+      dash_cd_ = dash_upgraded() ? kDashUpgradedCooldown : kDashCooldownFrames;
+      --dash_charges_;
       dash_flash_ = kDashFlashFrames;
       sfx_ |= 256u;  // kSfxDash
     }
@@ -619,7 +639,7 @@ void Sim::step(const Input& in) {
       const bool swim = player_in_water();
       if (pl.grounded || swim) {
         if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-        if (has_ability(kAbilityDash)) dash_ready_ = true;
+        if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
         wall_lock_ticks_ = 0;
       }
       wall_sliding_ = false;
@@ -723,7 +743,7 @@ void Sim::step(const Input& in) {
   }
   if (!held_ && world_.points()[player_].grounded) {
     if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_ready_ = true;
+    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
@@ -731,7 +751,7 @@ void Sim::step(const Input& in) {
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
   if (in_w && !held_) {
     if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_ready_ = true;
+    if (dash_ticks_ == 0 && has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
   }
   was_in_water_ = in_w;
   if (world_.points()[player_].grounded || in_w || held_ || dash_ticks_ > 0) {
@@ -841,9 +861,19 @@ void Sim::check_collectibles() {
     if (ents[i].type != "collectible" || ents[i].active) continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
+    const int old_max = max_hp();
+    const bool was_up = dash_upgraded();
     scene_.set_active(i, true);  // agarrado: persiste hasta reset()
     pickup_flash_ = kPickupFlashFrames;
-    sfx_ |= 64u;  // kSfxPickup
+    sfx_ |= ew::audio::kSfxPickup;
+    if (max_hp() > old_max) {
+      hp_ = std::min(max_hp(), hp_ + 1);
+      sfx_ |= ew::audio::kSfxAbility;
+    }
+    if (!was_up && dash_upgraded()) {
+      dash_charges_ = max_dash_charges();
+      sfx_ |= ew::audio::kSfxAbility;
+    }
     trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
   }
 }
@@ -939,10 +969,14 @@ void Sim::check_checkpoints() {
     if (ents[i].type != "checkpoint") continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
-    if (ckpt_ == int(i)) return;  // la gravedad se guarda solo al activarlo
+    if (ckpt_ == int(i)) {
+      if (hp_ < max_hp()) hp_ = max_hp();
+      return;  // la gravedad se guarda solo al activarlo
+    }
     if (ckpt_ >= 0) scene_.set_active(std::size_t(ckpt_), false);
     ckpt_ = int(i);
     ckpt_flip_ = flip_;
+    hp_ = max_hp();
     scene_.set_active(i, true);
     sfx_ |= 4u;  // kSfxCheckpoint
     return;
@@ -960,7 +994,7 @@ void Sim::check_hazards() {
       if (scene_.tile(tx, ty, ew::map::Layer::META) != kMetaHazard) continue;
       const Vec2 c{std::clamp(p.pos.x, tx * ts, (tx + 1) * ts),
                    std::clamp(p.pos.y, ty * ts, (ty + 1) * ts)};
-      if (ew::physics::length(p.pos - c) < r) { kill(); return; }
+      if (ew::physics::length(p.pos - c) < r) { take_hit(c.x, c.y); return; }
     }
   if (p.pos.y > float(scene_.height_px()) + r || p.pos.y < -r) kill();  // caída fuera del mapa
 }
@@ -1230,7 +1264,7 @@ void Sim::collide_bosses() {
       // Rebote: fuera de la caja y con impulso contra su gravedad.
       if (held_) release();
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-      if (has_ability(kAbilityDash)) dash_ready_ = true;
+      if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
       pl.pos.y = d > 0 ? top - r : bot + r;
       pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.9f * kDt});
       if (b.hits >= b.max_hits()) {
@@ -1249,7 +1283,7 @@ void Sim::collide_bosses() {
       return;
     }
     if (invuln_ > 0) continue;
-    kill();
+    take_hit(b.x, b.y - bh * 0.5f);
     return;
   }
   // Bolas de fuego de los bosses: hacen daño salvo durante invuln o i-frames de embestida (Dash).
@@ -1257,7 +1291,7 @@ void Sim::collide_bosses() {
     const float hit_r = r + kFireballRadius;
     for (const auto& fb : fireballs_) {
       const float dx = fb.x - pl.pos.x, dy = fb.y - pl.pos.y;
-      if (dx * dx + dy * dy < hit_r * hit_r) { kill(); return; }
+      if (dx * dx + dy * dy < hit_r * hit_r) { take_hit(fb.x, fb.y); return; }
     }
   }
 }
@@ -1288,7 +1322,7 @@ void Sim::collide_imps() {
       wind_.push_impulse(im.x, im.y, float(im.dir) * 2.0f, 22.f, 0.35f);
       sfx_ |= 1024u;  // kSfxHit
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
-      if (has_ability(kAbilityDash)) dash_ready_ = true;
+      if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
       if (dash_ticks_ == 0 && from_above) {
         pl.pos.y = d > 0 ? top - r : bot + r;
         pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.85f * kDt});
@@ -1296,7 +1330,7 @@ void Sim::collide_imps() {
       return;
     }
     if (invuln_ > 0) continue;
-    kill();
+    take_hit(im.x, im.y - kImpH * 0.5f);
     return;
   }
 }

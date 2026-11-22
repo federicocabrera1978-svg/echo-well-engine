@@ -152,6 +152,11 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - Al mantener dirección hacia una pared sólida en el aire, verificá que el personaje **desliza lentamente** sin caer rápido (`36 px/s` máx.) y puede alternar saltos de pared (`wall-jump`) conservando el **Doble Salto** aéreo disponible.
   - Hacé backtracking a **Zona 1 `(0,0)`** (p. ej. vía `elev_wyrm_pozo` → `owd_wyrm_pozo`), escalá la chimenea vertical del techo (`x=128..152`, inaccesible sin trepar) y verificá que arriba podés recoger **`egg_pozo_secreto`** (completando **`6/6`** huevos en `world`) y leer la estela **`lore_techo`**.
   - Probá también la sala aislada `--map assets/maps/bin/wallclimb.ewmap` (`wall_climb_secret`): la chimenea de `136 px` no se sube con Doble Salto solo, pero sí alternando saltos en pared hasta la meta.
+- [ ] **Recompensas por huevos y Final alternativo (`world`):**
+  - Verificá `1` corazón inicial en el HUD arriba a la izquierda (con `0–1` huevos, cualquier golpe de pinchos o enemigo mata en 1 toque).
+  - Al juntar `2` huevos, verificá que aparece el **`2.º` corazón** en el HUD (`+1HP`), que podés absorber 1 golpe de pinchos o enemigo (`imp` / boss) quedando con `1` corazón e invulnerabilidad temporal (`60` frames), y que tocar un checkpoint o hacer respawn recarga ambos corazones.
+  - Al juntar `4` huevos (con Dash desbloqueado), verificá el ícono dorado-cian de **Dash II** en el HUD y que podés encadenar **`2` embestidas seguidas en el aire** (`14` frames de duración cada una) antes de volver a apoyar.
+  - Al completar `world` con **`6/6` huevos**, verificá la pantalla **`FINAL VERDADERO`** (`REINO RENACIDO: 100% HUEVOS`, marco dorado-cian y etiquetas `DASH II` / `+1HP`), distinta de la victoria estándar (`VICTORIA: REINO DESPIERTO`) al terminar con `< 6` huevos.
 
 ## 4. Guardar partida
 
