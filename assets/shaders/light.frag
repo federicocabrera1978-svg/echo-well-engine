@@ -314,7 +314,7 @@ void main() {
   float diff = max(dot(n, normalize(L)), 0.0);
   // Fondo: ambiente frío más alto (se lee la silueta de la sala) y la luz del player lo
   // roza a medias, así queda detrás del primer plano. Escena: igual que antes.
-  vec3 amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.12), lr);
+  vec3 amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.14), lr);
   vec3 c = albedo * (amb + vec3(1.0, 0.85, 0.6) * diff * att * 2.6 * mix(0.45, 1.0, lr));
   c += albedo * emit * 1.6;
   if (u_boss_burst.z > 0.001 || u_boss_burst.w > 0.001) c = crt_boss_rays(c, px, u_boss_burst);
