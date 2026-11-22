@@ -350,6 +350,11 @@ target_link_libraries(guide_test PRIVATE echo_game)
 add_dependencies(guide_test ew_maps)
 add_test(NAME guide_arrows COMMAND guide_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_HELLO_MAP})
 
+add_executable(mechanisms_crt_test tests/mechanisms_crt_test.cpp)
+target_link_libraries(mechanisms_crt_test PRIVATE echo_game echo_audio)
+add_dependencies(mechanisms_crt_test ew_maps)
+add_test(NAME mechanisms_crt COMMAND mechanisms_crt_test ${EW_SLICE_MAP} ${EW_LEVEL3_MAP})
+
 add_executable(paths_test tests/paths_test.cpp)
 target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 add_test(NAME asset_paths COMMAND paths_test)
