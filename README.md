@@ -130,7 +130,8 @@ Mapa por defecto (`EL REINO DEL POZO`, `assets/maps/src/world.yaml` generado por
 
 ### Física Verlet
 - `ew::physics::World`: puntos con `pos/prev` (Verlet posicional), gravedad 600 px/s², damping, constraints de distancia (`Stick`, con rigidez), pares círculo↔círculo y colisión círculo↔tiles sólidos (empuje por punto más cercano + fricción tangencial, sin rebote). 6 iteraciones por paso.
-- `ew::game::Sim` une `Scene` + `World` a paso fijo 60 Hz: el player es un círculo r=4 que cae, camina (90 px/s) y salta (solo apoyado) contra la capa `COL`; una cuerda de 16 segmentos cuelga del techo y el player la empuja.
+- `ew::game::Sim` une `Scene` + `World` a paso fijo 60 Hz: el player es un círculo r=4 que cae, camina (90 px/s) y salta (apoyado o dentro del margen de coyote time) contra la capa `COL`; una cuerda de 16 segmentos cuelga del techo y el player la empuja.
+- **Game feel (Etapa 12):** **coyote time** (`Sim::kCoyoteFrames = 6` frames al dejar un borde), **jump buffer** (`Sim::kJumpBufferFrames = 6` frames al apretar salto antes de aterrizar), **squash & stretch** (`squash_x`/`squash_y` en `Sim` → `FrameData::player_squash_x`/`player_squash_y`), partículas de polvo (`Sim::DustParticle`, pool hasta `kMaxDust = 24`) al aterrizar, saltar, hacer doble salto o saltar desde pared al trepar (`wall-jump`), y estela de partículas + afterimage residual durante y al salir de la embestida (`Dash`, `Sim::kDashFlashFrames = 14`); cubiertos por el test headless `game_feel` (`tests/game_feel_test.cpp`).
 - `physics_test` (ctest) verifica apoyo en el piso, caminar, salto, paredes y largo de la cuerda.
 
 ### Cuerda jugable

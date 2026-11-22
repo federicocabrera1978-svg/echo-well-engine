@@ -87,6 +87,9 @@ class Sim {
   static constexpr float kWallJumpVy = 232.f;       // px/s impulso vertical al saltar de pared
   static constexpr int kWallCoyoteFrames = 6;       // frames de coyote lateral tras soltar pared
   static constexpr int kWallLockFrames = 8;         // frames de mezcla horizontal suave tras wall-jump
+  static constexpr int kCoyoteFrames = 6;           // frames de coyote time al dejar el suelo
+  static constexpr int kJumpBufferFrames = 6;       // frames de buffer al apretar salto antes de aterrizar
+  static constexpr std::size_t kMaxDust = 24;       // pool máximo de partículas de polvo/estela
   static constexpr int kBossBurstFrames = 180;      // ~3.0 s de rayos catódicos al vencer un boss
   // Boss (type "boss"): (x, y) del YAML = centro de los pies. Caja de kBossW×kBossH px.
   static constexpr float kBossW = 24.f, kBossH = 16.f;
@@ -212,6 +215,9 @@ class Sim {
     bool defeated = false;
     std::size_t ent = 0;
   };
+  struct DustParticle {
+    float x = 0, y = 0, vx = 0, vy = 0, life = 0, max_life = 0, radius = 1.4f, r = 0.8f, g = 0.78f, b = 0.70f;
+  };
   int boss_count() const { return int(bosses_.size()); }
   const Boss& boss(int i) const { return bosses_[std::size_t(i)]; }
   const std::vector<Fireball>& fireballs() const { return fireballs_; }
@@ -266,6 +272,12 @@ class Sim {
   int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
   PlayerAnim player_anim() const { return anim_; }
   int player_anim_frame() const { return anim_frame_; }  // 0..3
+  // Game feel (coyote time, jump buffer, squash & stretch, partículas de polvo).
+  int coyote_ticks() const { return coyote_ticks_; }
+  int jump_buffer_ticks() const { return jump_buf_; }
+  float squash_x() const { return squash_x_; }
+  float squash_y() const { return squash_y_; }
+  const std::vector<DustParticle>& dust() const { return dust_; }
   // Partida guardada: reset() limpio, aplica Entity::active por entidad (puertas, switches,
   // huevos, boss vencido, reliquias), fija checkpoint + gravedad + habilidades y reaparece ahí.
   // `active` debe tener una entrada por entidad (lo valida apply_save en save.hpp).
@@ -332,12 +344,18 @@ class Sim {
   int wall_lock_ticks_ = 0;
   bool wall_sliding_ = false;
   int wall_dir_ = 0;
+  int coyote_ticks_ = 0;
+  int jump_buf_ = 0;
+  float squash_x_ = 1.f;
+  float squash_y_ = 1.f;
+  std::vector<DustParticle> dust_;
   int boss_burst_ = 0;
   float boss_burst_x_ = 0, boss_burst_y_ = 0;
   BossVictorySeq victory_;
   WindField wind_;
   HeroKind hero_ = HeroKind::Lantern;
   bool was_grounded_ = false;
+  ew::physics::Vec2 last_pos_{};
   int facing_ = 1;
   PlayerAnim anim_ = PlayerAnim::Idle;
   int anim_frame_ = 0;
@@ -352,6 +370,8 @@ class Sim {
   void advance_imps();
   void collide_imps();
   void break_walls_on_dash();
+  void spawn_dust(float x, float y, float vx, float vy, float life, float radius, float r, float g, float b);
+  void step_game_feel();
   void update_player_anim(const Input& in);
   void trigger_entity_dialog(std::size_t entity_idx, ew::map::DialogTrigger trig);
   void check_dialogs_proximity();

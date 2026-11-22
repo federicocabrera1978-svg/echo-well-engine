@@ -139,6 +139,8 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
     Uniform4fv(GetUniformLocation(geom_prog_, "u_sprite_rect"), v.sprite_count, v.sprites.data());
     Uniform4fv(GetUniformLocation(geom_prog_, "u_sprite_tint"), v.sprite_count, v.sprite_tint.data());
   }
+  Uniform1i(GetUniformLocation(geom_prog_, "u_player_sprite_idx"), v.player_sprite_idx);
+  Uniform2f(GetUniformLocation(geom_prog_, "u_player_squash"), v.player_squash_x, v.player_squash_y);
   Uniform1i(GetUniformLocation(geom_prog_, "u_water_count"), v.water_count);
   if (v.water_count > 0) {
     Uniform1iv(GetUniformLocation(geom_prog_, "u_water_cols"), v.water_count, v.water_cols.data());
