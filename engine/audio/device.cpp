@@ -58,9 +58,15 @@ void device_play(SfxId id) {
   std::lock_guard<std::mutex> lk(g_mx);
   if (g_mix) g_mix->play(id);
 }
+
+void device_set_music_zone(MusicZone z) {
+  std::lock_guard<std::mutex> lk(g_mx);
+  if (g_mix) g_mix->set_music_zone(z);
+}
 #else
 bool device_start(Mixer&) { return false; }
 void device_stop() {}
 void device_play(SfxId) {}
+void device_set_music_zone(MusicZone) {}
 #endif
 }  // namespace ew::audio

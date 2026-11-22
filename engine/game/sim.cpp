@@ -71,6 +71,7 @@ void Sim::build() {
   anim_frame_ = 0;
   anim_ticks_ = 0;
   air_ticks_ = 0;
+  step_cd_ = 2;
   pending_dialog_ = -1;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
@@ -441,6 +442,7 @@ void Sim::respawn() {
   anim_frame_ = 0;
   anim_ticks_ = 0;
   air_ticks_ = 0;
+  step_cd_ = 2;
   was_grounded_ = false;
   last_pos_ = p;
   wind_.reset();
@@ -493,6 +495,25 @@ bool Sim::player_in_water() const {
   for (const auto& w : water_)
     if (w.contains(p.pos.x, p.pos.y + p.radius)) return true;
   return false;
+}
+
+SurfaceKind Sim::surface_under_feet() const {
+  if (player_in_water()) return SurfaceKind::Water;
+  if (ridden_ >= 0) return SurfaceKind::Metal;
+  const auto& pl = player();
+  const float ts = float(ew::map::kTileSize);
+  const int tx = int(std::floor(pl.pos.x / ts));
+  const int ty = int(std::floor((pl.pos.y + down() * (kPlayerRadius + 2.f)) / ts));
+  const uint16_t vis_raw = scene_.tile(tx, ty, ew::map::Layer::VIS);
+  const uint16_t vis_fam = vis_raw >= 16 ? (vis_raw / 16) : vis_raw;
+  const uint16_t col_tile = scene_.tile(tx, ty, ew::map::Layer::COL);
+  using BT = ew::map::BackdropTheme;
+  const auto theme = static_cast<BT>(scene_.backdrop(scene_.chunk_x(), scene_.chunk_y()).theme);
+  if (vis_fam == 6 || col_tile == 6 || theme == BT::Engranajes) return SurfaceKind::Metal;
+  if (vis_fam == 2 || vis_fam == 3 ||
+      (vis_fam <= 1 && (theme == BT::Pozo || theme == BT::Raices || theme == BT::Nido)))
+    return SurfaceKind::Moss;
+  return SurfaceKind::Stone;
 }
 
 void Sim::grab(int rope, int node, bool flash) {
@@ -867,6 +888,19 @@ void Sim::step(const Input& in) {
   update_player_anim(in);
   {
     const auto& p = world_.points()[player_];
+    if (p.grounded && !held_ && dash_ticks_ == 0 && !finished_ && std::fabs(in.move_x) > 0.1f) {
+      if (--step_cd_ <= 0) {
+        switch (surface_under_feet()) {
+          case SurfaceKind::Stone: sfx_ |= ew::audio::kSfxStepStone; break;
+          case SurfaceKind::Moss:  sfx_ |= ew::audio::kSfxStepMoss;  break;
+          case SurfaceKind::Metal: sfx_ |= ew::audio::kSfxStepMetal; break;
+          case SurfaceKind::Water: sfx_ |= ew::audio::kSfxStepWater; break;
+        }
+        step_cd_ = 14;
+      }
+    } else {
+      step_cd_ = 2;
+    }
     if (!was_grounded_ && p.grounded && !in_w) {
       squash_x_ = 1.26f;
       squash_y_ = 0.76f;

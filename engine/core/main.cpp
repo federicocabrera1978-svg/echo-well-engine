@@ -15,6 +15,7 @@
 #include "game/gamepad.hpp"
 #include "game/hud.hpp"
 #include "game/level_flow.hpp"
+#include "game/music.hpp"
 #include "render/deferred.hpp"
 
 #ifndef EW_SHADER_DIR
@@ -41,10 +42,12 @@ void play_sfx(uint32_t bits) {
   using namespace ew::audio;
   if (!bits) return;
   static constexpr std::pair<uint32_t, SfxId> kMap[] = {
-      {kSfxJump, SfxId::Jump},       {kSfxDie, SfxId::Die},         {kSfxCheckpoint, SfxId::Checkpoint},
-      {kSfxGoal, SfxId::Goal},       {kSfxSwitch, SfxId::Switch},   {kSfxSplash, SfxId::Splash},
-      {kSfxPickup, SfxId::Pickup},   {kSfxAbility, SfxId::Ability}, {kSfxDash, SfxId::Dash},
-      {kSfxBreak, SfxId::Break},     {kSfxHit, SfxId::Hit},         {kSfxBossCrt, SfxId::BossCrt},
+      {kSfxJump, SfxId::Jump},           {kSfxDie, SfxId::Die},             {kSfxCheckpoint, SfxId::Checkpoint},
+      {kSfxGoal, SfxId::Goal},           {kSfxSwitch, SfxId::Switch},       {kSfxSplash, SfxId::Splash},
+      {kSfxPickup, SfxId::Pickup},       {kSfxAbility, SfxId::Ability},     {kSfxDash, SfxId::Dash},
+      {kSfxBreak, SfxId::Break},         {kSfxHit, SfxId::Hit},             {kSfxBossCrt, SfxId::BossCrt},
+      {kSfxStepStone, SfxId::StepStone}, {kSfxStepMoss, SfxId::StepMoss},   {kSfxStepMetal, SfxId::StepMetal},
+      {kSfxStepWater, SfxId::StepWater},
   };
   for (const auto& [bit, id] : kMap)
     if (bits & bit) device_play(id);
@@ -364,7 +367,7 @@ int main(int argc, char** argv) {
       }
     }
 
-    mixer.set_gain(menu.volume_setting());
+    mixer.set_gain(menu.volume_setting() * (menu.open() ? 0.35f : 1.0f));
     mixer.set_mute(menu.muted());
     flow.sim().set_wind_enabled(menu.foliage());
     flow.sim().set_impact_fx_enabled(menu.impact_fx());
@@ -409,7 +412,11 @@ int main(int argc, char** argv) {
       latched_in = {};
       ++sim_steps;
     }
-    if (!nosound) play_sfx(flow.sim().take_sfx());
+    if (!nosound) {
+      play_sfx(flow.sim().take_sfx());
+      ew::audio::device_set_music_zone(demo ? ew::audio::MusicZone::Silence
+                                            : ew::game::music_zone_for(flow.scene(), flow.sim()));
+    }
     if (acc > ew::game::Sim::kDt) acc = 0;
 
     const auto post = flow.post_step(menu, end_screen, dialogue, did_restart);
