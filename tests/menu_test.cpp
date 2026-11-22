@@ -1,5 +1,6 @@
-// Menú de pausa headless: abrir/cerrar, cursor, volumen/mute, acciones.
+// Menú de pausa headless: abrir/cerrar, cursor, volumen/mute, héroe, acciones y texto.
 #include "game/menu.hpp"
+#include "game/menu_text.hpp"
 #include <cmath>
 #include <cstdio>
 #define CHECK(c) do { if (!(c)) { std::printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); return 1; } } while (0)
@@ -114,7 +115,11 @@ int main() {
   for (int i = 0; i < PauseMenu::kBrisa; ++i) { in = {}; in.down = true; b.handle(in); }
   CHECK(b.cursor() == PauseMenu::kBrisa);
   in = {}; in.down = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kHero);
+  in = {}; in.down = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kSalir);
+  in = {}; in.up = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kHero);
   in = {}; in.up = true; b.handle(in);
   CHECK(b.cursor() == PauseMenu::kBrisa);
 
@@ -130,6 +135,64 @@ int main() {
   in = {}; in.confirm = true;
   CHECK(b.handle(in) == MenuAction::None);
   CHECK(b.open() && b.foliage());
+
+  // Héroes: helpers + ciclado en kHero + subpágina de selector + start_only.
+  {
+    HeroKind h = HeroKind::Lantern;
+    CHECK(hero_sprite_col_offset(HeroKind::Lantern) == 0);
+    CHECK(hero_sprite_col_offset(HeroKind::Opossum) == 4);
+    CHECK(hero_sprite_col_offset(HeroKind::Beaver) == 8);
+    CHECK(sanitize_hero(99) == HeroKind::Lantern);
+    CHECK(cycle_hero(HeroKind::Lantern, -1) == HeroKind::Beaver);
+    CHECK(cycle_hero(HeroKind::Beaver, +1) == HeroKind::Lantern);
+    CHECK(hero_from_arg("ZARIGUEYA", h) && h == HeroKind::Opossum);
+    CHECK(hero_from_arg("Beaver", h) && h == HeroKind::Beaver);
+    CHECK(hero_from_arg("sr_farol", h) && h == HeroKind::Lantern);
+    CHECK(!hero_from_arg("dragon", h));
+
+    PauseMenu hm;
+    CHECK(hm.hero() == HeroKind::Lantern && !hm.in_hero_select());
+    hm.open_at(PauseMenu::kHero);
+    in = {}; in.right = true; CHECK(hm.handle(in) == MenuAction::None);
+    CHECK(hm.hero() == HeroKind::Opossum);
+    in = {}; in.left = true; CHECK(hm.handle(in) == MenuAction::None);
+    CHECK(hm.hero() == HeroKind::Lantern);
+
+    // Confirmar en kHero abre page_ == 2; ESC vuelve a page_ == 0.
+    in = {}; in.confirm = true; CHECK(hm.handle(in) == MenuAction::None);
+    CHECK(hm.in_hero_select() && hm.hero_cursor() == 0);
+    in = {}; in.down = true; hm.handle(in);
+    CHECK(hm.hero_cursor() == 1);
+    in = {}; in.toggle = true; CHECK(hm.handle(in) == MenuAction::None);
+    CHECK(hm.open() && !hm.in_hero_select() && hm.hero() == HeroKind::Lantern);
+
+    // Confirmar dentro de page_ == 2 aplica héroe y cierra menú (Resume).
+    in = {}; in.confirm = true; hm.handle(in);
+    in = {}; in.up = true; hm.handle(in);
+    CHECK(hm.hero_cursor() == 2);
+    const auto htxt = hero_select_text(hm);
+    CHECK(htxt[0] == "ELIGE TU HEROE");
+    CHECK(htxt[5] == "> EL CASTOR");
+    CHECK(htxt[11] == "ARRIBA/ABAJO  ENTER JUEGA");
+    in = {}; in.confirm = true;
+    CHECK(hm.handle(in) == MenuAction::Resume);
+    CHECK(!hm.open() && !hm.in_hero_select() && hm.hero() == HeroKind::Beaver);
+
+    // En modo inicio directo, ESC cierra directo al juego manteniendo el héroe actual.
+    hm.open_hero_select(true);
+    CHECK(hm.in_hero_select() && hm.hero_cursor() == 2);
+    in = {}; in.toggle = true;
+    CHECK(hm.handle(in) == MenuAction::Resume);
+    CHECK(!hm.open() && hm.hero() == HeroKind::Beaver);
+
+    // pause_text incluye los 8 ítems, héroe corto, brisa y versión.
+    hm.open_at(PauseMenu::kHero);
+    const auto ptxt = pause_text(hm, "0.1.0");
+    CHECK(ptxt[0] == "PAUSA");
+    CHECK(ptxt[6] == "  BRISA: SI");
+    CHECK(ptxt[7] == "> HEROE: CASTOR");
+    CHECK(ptxt[11] == "V0.1.0");
+  }
 
   std::puts("menu ok");
   return 0;

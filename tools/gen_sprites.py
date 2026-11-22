@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera el atlas de sprites pixel-art PNG 128×128 (8×8 celdas de 16×16 px).
+"""Genera el atlas de sprites pixel-art PNG 256×128 (16×8 celdas de 16×16 px).
 
 Uso:
   python3 tools/gen_sprites.py -o assets/atlas/sprites.png
@@ -7,14 +7,11 @@ Uso:
   python3 tools/gen_sprites.py --ppm sprites.ppm
 
 Layout (16×16 por celda, transparente en A=0, A=1..255 = relieve/altura, >240 = auto-emisión):
-  Fila 0: Idle       (cols 0..3) — Explorador del Farol en reposo mirando a +X
-  Fila 1: Walk       (cols 0..3) — Caminata de 4 cuadros
-  Fila 2: Jump       (cols 0..3) — 0..1 impulso ascendente, 2..3 caída con capa al viento
-  Fila 3: DoubleJump (cols 0..3) — Despliegue de alas dracónicas cian en el aire
-  Fila 4: Climb      (cols 0..3) — Trepando cuerda (brazos y piernas alternados)
-  Fila 5: Swim       (cols 0..3) — Nado horizontal con brazada y reflejos de agua
-  Fila 6: Items      (cols 0..3 Huevo de Dragón con escamas, cols 4..7 Reliquia Alada)
-  Fila 7: Npc/Lore   (cols 0..3 Vigía/Cronista del Farol, cols 4..7 Estela dracónica con runas)
+  Cols 0..3,  filas 0..5: Sr. del Farol (Idle, Walk, Jump, DoubleJump, Climb, Swim)
+  Cols 4..7,  filas 0..5: La Zarigüeya  (Idle, Walk, Jump, DoubleJump, Climb, Swim)
+  Cols 8..11, filas 0..5: El Castor     (Idle, Walk, Jump, DoubleJump, Climb, Swim)
+  Fila 6: Items    (cols 0..3 Huevo de Dragón con escamas, cols 4..7 Reliquia Alada)
+  Fila 7: Npc/Lore (cols 0..3 Vigía/Cronista del Farol, cols 4..7 Estela dracónica con runas)
 
 Sin dependencias externas: PNG vía zlib (stdlib), filtro 0, IHDR/IDAT/IEND.
 """
@@ -27,8 +24,10 @@ import zlib
 from pathlib import Path
 
 CELL = 16
-GRID = 8
-ATLAS = CELL * GRID  # 128
+GRID_W = 16
+GRID_H = 8
+ATLAS_W = CELL * GRID_W  # 256
+ATLAS_H = CELL * GRID_H  # 128
 
 # Paleta protagonista: Explorador del Farol (fantasía oscura D&D + Animal Well)
 HERO_PAL: dict[str, tuple[int, int, int, int]] = {
@@ -48,6 +47,49 @@ HERO_PAL: dict[str, tuple[int, int, int, int]] = {
     "w": (46, 186, 232, 244),   # ala / estela dracónica cian (auto-emisiva)
     "W": (170, 246, 255, 255),  # filo brillante del ala cian
     "a": (90, 210, 238, 225),   # espuma / reflejo aguamarina (nado)
+}
+
+# Paleta protagonista 2: La Zarigüeya (cols 4..7, filas 0..5)
+OPOSSUM_PAL: dict[str, tuple[int, int, int, int]] = {
+    ".": (0, 0, 0, 0),
+    "o": (22, 20, 32, 140),     # contorno oscuro índigo-pizarra
+    "d": (74, 78, 96, 178),     # lomo gris oscuro
+    "g": (138, 144, 162, 210),  # pelaje gris plata medio
+    "h": (186, 194, 212, 228),  # pelaje gris plata claro
+    "w": (238, 232, 218, 232),  # hocico blanco / vientre crema
+    "m": (42, 40, 56, 165),     # máscara oscura facial
+    "p": (236, 134, 156, 208),  # rosa (orejas, nariz, cola prensil)
+    "P": (196, 92, 118, 185),   # rosa sombra (cola prensil)
+    "e": (255, 220, 92, 250),   # ojo dorado brillante (auto-emisivo)
+    "t": (124, 134, 150, 210),  # asa del pequeño farol
+    "f": (100, 220, 248, 246),  # farol celeste brillante (auto-emisivo)
+    "F": (255, 236, 152, 254),  # núcleo dorado del farol (auto-emisivo)
+    "c": (64, 224, 248, 246),   # membrana / ala espectral cian (auto-emisiva)
+    "C": (188, 252, 255, 255),  # filo brillante del ala espectral cian
+    "a": (90, 210, 238, 225),   # espuma / estela aguamarina (nado)
+}
+
+# Paleta protagonista 3: El Castor (cols 8..11, filas 0..5)
+BEAVER_PAL: dict[str, tuple[int, int, int, int]] = {
+    ".": (0, 0, 0, 0),
+    "o": (26, 16, 14, 140),     # contorno marrón profundo
+    "d": (88, 42, 26, 182),     # pelaje castaño-rojizo oscuro
+    "b": (138, 68, 40, 212),    # pelaje castaño-rojizo medio
+    "h": (178, 98, 60, 228),    # brillo de pelaje
+    "w": (226, 198, 162, 220),  # hocico / vientre crema
+    "z": (248, 246, 240, 238),  # dos dientes incisivos blancos
+    "r": (188, 42, 46, 215),    # pañuelo rojo de aventurero
+    "R": (226, 76, 66, 232),    # brillo del pañuelo rojo
+    "e": (255, 196, 72, 250),   # ojo ámbar luminoso (auto-emisivo)
+    "k": (58, 34, 24, 196),     # cola ancha plana / patas marrón oscura
+    "K": (92, 56, 38, 212),     # cuadriculado de cola plana
+    "m": (166, 134, 72, 218),   # latón del farol
+    "l": (255, 168, 52, 248),   # llama cálida del farol (auto-emisiva)
+    "L": (255, 242, 174, 255),  # núcleo brillante del farol (auto-emisivo)
+    "g": (255, 218, 94, 248),   # alas doradas (auto-emisiva)
+    "c": (92, 236, 255, 252),   # filo cian brillante de alas
+    "C": (196, 252, 255, 255),  # destello blanco-cian de alas
+    "a": (90, 210, 238, 225),   # espuma / estela aguamarina (nado)
 }
 
 # Paleta objetos: Huevo de Dragón (cols 0..3) y Reliquia Alada (cols 4..7)
@@ -836,13 +878,907 @@ FRAMES: dict[tuple[int, int], tuple[dict[str, tuple[int, int, int, int]], list[s
         "................",
         "................",
     ]),
+
+    # =========================================================================
+    # La Zarigüeya (cols 4..7, filas 0..5)
+    # =========================================================================
+    # --- Fila 0: Idle (4..7) ---
+    (4, 0): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "....oo..oo......",
+        "....opoopo......",
+        "...odghhdmo.....",
+        "...odgmmewwwo...",
+        "..ooogwwwwwpo...",
+        ".opPodhhwwwt....",
+        ".oPo.odgwwwtfFo.",
+        ".opPoodgwwwtFfo.",
+        "..ooooddwwto....",
+        ".....odoodo.....",
+        ".....opoopo.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (5, 0): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "....oo..oo......",
+        "....opoopo......",
+        "...odghhdmo.....",
+        "...odgmmewwwo...",
+        ".ooo.ogwwwwpo...",
+        ".opPoodhwwwt....",
+        "..oPoodgwwwtFfo.",
+        ".opPoodgwwwtfFo.",
+        "..ooooddwwto....",
+        ".....odoodo.....",
+        ".....opoopo.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (6, 0): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        "....oo..oo......",
+        "....opoopo......",
+        "...odghhdmo.....",
+        "...odgmmewwwo...",
+        "..ooogwwwwwpo...",
+        ".opPodhhwwwtFfo.",
+        ".oPo.odgwwwtfFo.",
+        ".opPooddwwto....",
+        "..oooodoodo.....",
+        ".....opoopo.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (7, 0): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "....oo..oo......",
+        "....opoopo......",
+        "...odghhdmo.....",
+        "...odgmmewwwo...",
+        "..ooogwwwwwpo...",
+        ".opPodhhwwwt....",
+        ".oPo.odgwwwtFFo.",
+        ".opPoodgwwwtffo.",
+        "..ooooddwwto....",
+        ".....odoodo.....",
+        ".....opoopo.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 1: Walk (4..7) — trote ágil con cola balanceándose ---
+    (4, 1): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwwo..",
+        ".....ogwwwwwpo..",
+        ".ooo.odhhwwwt...",
+        "opPoodggwwwtFfo.",
+        ".oPoooddwwtofo..",
+        "..ooo.odoodo....",
+        ".....opoo.opo...",
+        "....opoo...oo...",
+        "....ooo.........",
+        "................",
+        "................",
+    ]),
+    (5, 1): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwwo..",
+        "..oo.ogwwwwwpo..",
+        ".opPoodhhwwwt...",
+        ".oPo.odggwwwtfFo",
+        "..ooooddwwto.o..",
+        "......odoodo....",
+        "......opoopo....",
+        "......oooooo....",
+        "................",
+        "................",
+    ]),
+    (6, 1): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwwo..",
+        ".oo..ogwwwwwpo..",
+        "opPo.odhhwwwt...",
+        ".oPooodggwwwtfFo",
+        "..ooooddwwtoFfo.",
+        ".....odoodo..o..",
+        "....opo..opo....",
+        "....oo....opo...",
+        "..........ooo...",
+        "................",
+        "................",
+    ]),
+    (7, 1): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwwo..",
+        ".ooo.ogwwwwwpo..",
+        "opPoodhhwwwt....",
+        ".oooodggwwwtFfo.",
+        ".....oddwwto.o..",
+        "......odoodo....",
+        ".....opooopo....",
+        ".....ooooooo....",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 2: Jump/Fall (4..5 ascenso, 6..7 descenso) ---
+    (4, 2): (OPOSSUM_PAL, [
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmofFo.",
+        "....odgmmewwFfo.",
+        ".....ogwwwwwpo..",
+        "....odhhwwwto...",
+        "....odggwwwo....",
+        "...oodddwwo.....",
+        "..opPodoodo.....",
+        ".opPo.op.op.....",
+        ".ooo............",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (5, 2): (OPOSSUM_PAL, [
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmoFfo.",
+        "....odgmmewwFFo.",
+        ".....ogwwwwwpo..",
+        "....odhhwwwto...",
+        "...oodggwwwo....",
+        "..opPoddwwo.....",
+        ".opPo.odoodo....",
+        "..oo..opo.opo...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (6, 2): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "....oo..oo......",
+        "....opoopo......",
+        ".oo.odghhdmo..t.",
+        "opPoodgmmewwwfFo",
+        ".oPo.ogwwwwwpFfo",
+        "..oooodhhwwwto..",
+        ".....odggwwwo...",
+        ".....odddwwo....",
+        "....opoodoodo...",
+        "....oo....opo...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (7, 2): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "....oo..oo......",
+        ".oo.opoopo......",
+        "opPoodghhdmo.t..",
+        ".oPo.odgmmewwfFo",
+        "..oo.ogwwwwwpFfo",
+        "....oodhhwwwto..",
+        ".....odggwwwo...",
+        ".....odddwwo....",
+        "....opoodoodo...",
+        "....ooo...opo...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 3: DoubleJump (4..7) — membrana/alas espectrales cian brillantes ---
+    (4, 3): (OPOSSUM_PAL, [
+        "................",
+        ".CC..oo..oo.....",
+        ".cCC.opoopo..t..",
+        "..ccodghhdmofFo.",
+        "..coodgmmewwFfo.",
+        "...codgwwwwwpo..",
+        "...codhhwwwto...",
+        "..ooodggwwwo....",
+        ".opPooddwwo.....",
+        ".ooo.odoodo.....",
+        ".....op..op.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (5, 3): (OPOSSUM_PAL, [
+        "..C.............",
+        ".CCc.oo..oo.....",
+        "cccCCopoopo..t..",
+        ".cCcodghhdmoFfo.",
+        ".cCoodgmmewwFFo.",
+        "..ccodgwwwwwpo..",
+        "...codhhwwwto...",
+        "..ooodggwwwo....",
+        ".opPooddwwo.....",
+        ".ooo.odoodo.....",
+        ".....opo.op.....",
+        ".....c..C.......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (6, 3): (OPOSSUM_PAL, [
+        "................",
+        ".cC..oo..oo.....",
+        "..Ccopoopo...t..",
+        "..ccodghhdmofFo.",
+        "...codgmmewwFfo.",
+        "...oodgwwwwwpo..",
+        "...codhhwwwto...",
+        "..ooodggwwwo....",
+        ".opPooddwwo.....",
+        ".ooo.odoodo.....",
+        "....c.op.C......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (7, 3): (OPOSSUM_PAL, [
+        "................",
+        ".....oo..oo.....",
+        "..c..opoopo..t..",
+        "...codghhdmofFo.",
+        "...oodgmmewwFfo.",
+        "....odgwwwwwpo..",
+        "....odhhwwwto...",
+        "..ooodggwwwo....",
+        ".opPooddwwo.....",
+        ".ooo.odoodo.....",
+        "....c....C......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 4: Climb (4..7) ---
+    (4, 4): (OPOSSUM_PAL, [
+        ".......ot.......",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwpo..",
+        "...todhhwwwto...",
+        "..fFoodggwwwo...",
+        "..Ffooodgwwopo..",
+        "...o.opPoddwo...",
+        ".....oPoodoodo..",
+        "......oo.op.op..",
+        ".........oo..o..",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (5, 4): (OPOSSUM_PAL, [
+        "......t..t......",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwpo..",
+        "....odhhwwwto...",
+        "....odggwwwto...",
+        "....oodgwwwopo..",
+        ".....opPoddt....",
+        ".....oPoodofFo..",
+        "......oo.opFfo..",
+        ".........oo.o...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (6, 4): (OPOSSUM_PAL, [
+        ".......to.......",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwpo..",
+        "....odhhwwwtot..",
+        "....odggwwwfFo..",
+        "...oodgwwwpFfo..",
+        "..opPooddwo.o...",
+        "..oPo.odoodo....",
+        "...oo.op..op....",
+        "......oo...o....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (7, 4): (OPOSSUM_PAL, [
+        "......t..t......",
+        ".....oo..oo.....",
+        ".....opoopo.....",
+        "....odghhdmo....",
+        "....odgmmewwpo..",
+        "....odhhwwwto...",
+        "....odggwwwto...",
+        "....oodgwwwopo..",
+        ".....opPoddt....",
+        ".....oPoodoFfo..",
+        "......oo.opfFo..",
+        ".........oo.o...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 5: Swim (4..7) — nado con cola y estelas ---
+    (4, 5): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmofFo.",
+        "....odgmmewwFfo.",
+        ".oo.odgwwwwwpo..",
+        "opPoodhhwwwto...",
+        "aaoodggwwwo.aa..",
+        ".aa.oopoopoa....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (5, 5): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmoFfo.",
+        "....odgmmewwfFo.",
+        "ooo.odgwwwwwpo..",
+        "pPooddhhwwwto...",
+        ".aaodggwwwoa....",
+        "..aaopoopo.aa...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (6, 5): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmofFo.",
+        "....odgmmewwFfo.",
+        ".oo.odgwwwwwpo..",
+        "opPoodhhwwwto...",
+        ".aaodggwwwoaaa..",
+        "aa..oopoop......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (7, 5): (OPOSSUM_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo..oo.....",
+        ".....opoopo..t..",
+        "....odghhdmoFfo.",
+        "....odgmmewwFFo.",
+        "ooo.odgwwwwwpo..",
+        "pPooddhhwwwto...",
+        "aaaodggwwwo..a..",
+        "...oopoopo..a...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # =========================================================================
+    # El Castor (cols 8..11, filas 0..5)
+    # =========================================================================
+    # --- Fila 0: Idle (8..11) ---
+    (8, 0): (BEAVER_PAL, [
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrro....",
+        ".okKkodbwwbom...",
+        ".oKkKodwwbomLo..",
+        ".okKkodbbbomlo..",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (9, 0): (BEAVER_PAL, [
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrro....",
+        ".oKkKodbwwbom...",
+        ".okKkodwwbomlo..",
+        ".oKkKodbbbomLo..",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (10, 0): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrrom...",
+        ".okKkodbwwbomLo.",
+        ".oKkKodwwbomLo..",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (11, 0): (BEAVER_PAL, [
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrro....",
+        ".okKkodbwwbom...",
+        ".oKkKodwwbomLLo.",
+        ".okKkodbbbomllo.",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 1: Walk (8..11) — paso firme moviendo cola plana ---
+    (8, 1): (BEAVER_PAL, [
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        ".oorRrrrrrro....",
+        "okKk.odbwwbom...",
+        "oKkKoodwwbomLo..",
+        ".ookkodbbbomlo..",
+        "....ookdddoom...",
+        "....oko..oko....",
+        "....ooo..ooo....",
+        "................",
+        "................",
+    ]),
+    (9, 1): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrrom...",
+        ".okKkodbwwbomLo.",
+        ".oKkKodwwbomLo..",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+    (10, 1): (BEAVER_PAL, [
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrro....",
+        ".okKkodbwwbo.m..",
+        ".oKkKodwwbo.mLo.",
+        ".okKkodbbbo.mlo.",
+        "..oookodddo..m..",
+        "....okooooko....",
+        "....ooo..ooo....",
+        "................",
+        "................",
+    ]),
+    (11, 1): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "...odbhbbebbo...",
+        "...odbbbwwwwo...",
+        "...odbbbozzoo...",
+        "..orRrrrrrrom...",
+        ".oKkKodbwwbomlo.",
+        ".okKkodwwbomLo..",
+        "..oookodddoom...",
+        ".....okooko.....",
+        ".....oooooo.....",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 2: Jump/Fall (8..9 ascenso, 10..11 descenso) ---
+    (8, 2): (BEAVER_PAL, [
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.m...",
+        "...odbhbbebbmLo.",
+        "...odbbbwwwwmlo.",
+        "...odbbbozzoom..",
+        "..orRrrrrrro....",
+        "...odbwwbbo.....",
+        "..oodwwbbo......",
+        ".okKkdddo.......",
+        ".oKkKokooko.....",
+        "..ooo.oo.oo.....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (9, 2): (BEAVER_PAL, [
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo.m...",
+        "...odbhbbebbmLo.",
+        "...odbbbwwwwmLo.",
+        "...odbbbozzoom..",
+        "..orRrrrrrro....",
+        "..oodbwwbbo.....",
+        ".okKkdwwbbo.....",
+        ".oKkKodddo......",
+        "..oookooko......",
+        ".....oo.oo......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (10, 2): (BEAVER_PAL, [
+        "................",
+        "................",
+        "....oo.oo.......",
+        "...odhhbdo......",
+        "..odbhbbebbo.m..",
+        "..odbbbwwwwomLo.",
+        ".orRrbbozzoomlo.",
+        ".okKkorrrrrrom..",
+        ".oKkKodbwwbo....",
+        ".okKkodddbo.....",
+        "..oookooko......",
+        "....oko.oko.....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (11, 2): (BEAVER_PAL, [
+        "................",
+        "................",
+        "....oo.oo.......",
+        "...odhhbdo......",
+        "..odbhbbebbo.m..",
+        "..odbbbwwwwomLo.",
+        ".orRrbbozzoomLo.",
+        "okKk.orrrrrrom..",
+        "oKkKoodbwwbo....",
+        ".ookkodddbo.....",
+        ".....okooko.....",
+        "....oko..oko....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 3: DoubleJump (8..11) — alas doradas-cian brillantes ---
+    (8, 3): (BEAVER_PAL, [
+        "................",
+        ".cc..oo.oo......",
+        ".gCCodhhbdo.m...",
+        "..ggdbhbbebbmLo.",
+        "..godbbbwwwwmlo.",
+        "...godbbbozzom..",
+        "...orRrrrrro....",
+        "..oodbwwbbo.....",
+        ".okKkdddbbo.....",
+        "..oookooko......",
+        ".....ok.oko.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (9, 3): (BEAVER_PAL, [
+        ".c..............",
+        "ccg..oo.oo......",
+        "gggCodhhbdo.m...",
+        ".gCgdbhbbebbmLo.",
+        ".gCgodbbbwwwwmLo",
+        "..ggodbbbozzom..",
+        "...orRrrrrro....",
+        "..oodbwwbbo.....",
+        ".okKkdddbbo.....",
+        "..oookooko......",
+        ".....okook......",
+        ".....g.c........",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (10, 3): (BEAVER_PAL, [
+        "................",
+        ".gc..oo.oo......",
+        "..Cgodhhbdo.m...",
+        "..ggdbhbbebbmLo.",
+        "...godbbbwwwwmlo",
+        "....odbbbozzom..",
+        "...orRrrrrro....",
+        "..oodbwwbbo.....",
+        ".okKkdddbbo.....",
+        "..oookooko......",
+        "...g.ok.c.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (11, 3): (BEAVER_PAL, [
+        "................",
+        ".....oo.oo......",
+        "..g..odhhbdo.m..",
+        "...godbbbebbmLo.",
+        "...godbbbwwwwmlo",
+        "....odbbbozzom..",
+        "...orRrrrrro....",
+        "..oodbwwbbo.....",
+        ".okKkdddbbo.....",
+        "..oookooko......",
+        "....g...c.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 4: Climb (8..11) ---
+    (8, 4): (BEAVER_PAL, [
+        ".......om.......",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "....odbhbebo....",
+        "....odbbbzzwo...",
+        "...morRrrrrro...",
+        "..mLoodbwwbdoo..",
+        "..mloodbbbdoko..",
+        "..okKkdddbbo....",
+        "..oKkKookoko....",
+        "...ooo.ok..ok...",
+        ".......ok...o...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (9, 4): (BEAVER_PAL, [
+        "......m..m......",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "....odbhbebo....",
+        "....odbbbzzwo...",
+        "....orRrrrrro...",
+        "...oodbwwbdoo...",
+        "...oodbbbdoko...",
+        "..okKkdddbmo....",
+        "..oKkKookmLo....",
+        "...ooo.ok.km....",
+        ".......ok.ok....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (10, 4): (BEAVER_PAL, [
+        ".......mo.......",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "....odbhbebo....",
+        "....odbbbzzwo...",
+        "....orRrrrrrm...",
+        "...oodbwwbdoolo.",
+        "...ookdbbdomLoo.",
+        "..okKkdddbbo.m..",
+        "..oKkKookoko....",
+        "...ooo.oko.ok...",
+        ".......ok..ok...",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (11, 4): (BEAVER_PAL, [
+        "......m..m......",
+        ".....oo.oo......",
+        "....odhhbdo.....",
+        "....odbhbebo....",
+        "....odbbbzzwo...",
+        "....orRrrrrro...",
+        "...oodbwwbdoo...",
+        "...oodbbbdoko...",
+        "..okKkdddbmo....",
+        "..oKkKookmlo....",
+        "...ooo.ok.km....",
+        ".......ok.ok....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+
+    # --- Fila 5: Swim (8..11) — golpe de cola en el agua ---
+    (8, 5): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo..m..",
+        "...odbhbbebbmLo.",
+        "...odbbbwwwwmlo.",
+        ".okKkodbozzoom..",
+        "okKkoorrrrrro...",
+        "aaokKodbwwboaa..",
+        ".aaookookooa....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (9, 5): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo..m..",
+        "...odbhbbebbmLo.",
+        ".okKkodbbbwwmLo.",
+        "oKkKoodbozzoom..",
+        ".ooo.orrrrrro...",
+        ".aaookdbwwboa...",
+        "..aaokooko.aa...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (10, 5): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo..m..",
+        "...odbhbbebbmLo.",
+        "...odbbbwwwwmlo.",
+        ".oKkKodbozzoom..",
+        "okKkoorrrrrro...",
+        ".aaokKdbwwboaaa.",
+        "aa..ookook......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
+    (11, 5): (BEAVER_PAL, [
+        "................",
+        "................",
+        "................",
+        ".....oo.oo......",
+        "....odhhbdo..m..",
+        "...odbhbbebbmLo.",
+        ".oKkKodbbbwwmLo.",
+        "okKkoodbozzoom..",
+        ".aaa.orrrrrro...",
+        "aaaookdbwwbo.a..",
+        "...ookooko..a...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]),
 }
 
 
 def build() -> bytearray:
-    px = bytearray(ATLAS * ATLAS * 4)
+    px = bytearray(ATLAS_W * ATLAS_H * 4)
     for (col, row), (pal, grid) in FRAMES.items():
-        if not (0 <= col < GRID and 0 <= row < GRID):
+        if not (0 <= col < GRID_W and 0 <= row < GRID_H):
             raise ValueError(f"celda fuera de rango: ({col}, {row})")
         if len(grid) != CELL:
             raise ValueError(f"celda ({col}, {row}) tiene {len(grid)} filas (se esperaban {CELL})")
@@ -852,12 +1788,12 @@ def build() -> bytearray:
                 raise ValueError(f"celda ({col}, {row}) fila {y} mide {len(line)} (se esperaba {CELL})")
             for x, ch in enumerate(line):
                 rgba = pal[ch]
-                i = ((oy + y) * ATLAS + (ox + x)) * 4
+                i = ((oy + y) * ATLAS_W + (ox + x)) * 4
                 px[i : i + 4] = bytes(rgba)
     return px
 
 
-def write_png(path: Path, rgba: bytes, w: int = ATLAS, h: int = ATLAS) -> None:
+def write_png(path: Path, rgba: bytes, w: int = ATLAS_W, h: int = ATLAS_H) -> None:
     def chunk(tag: bytes, data: bytes) -> bytes:
         crc = zlib.crc32(tag + data) & 0xFFFFFFFF
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
@@ -913,7 +1849,7 @@ def read_png_rgba(path: Path) -> tuple[int, int, bytes]:
     return w, h, b"".join(rows)
 
 
-def write_ppm(path: Path, rgba: bytes, w: int = ATLAS, h: int = ATLAS) -> None:
+def write_ppm(path: Path, rgba: bytes, w: int = ATLAS_W, h: int = ATLAS_H) -> None:
     body = bytearray()
     for i in range(0, len(rgba), 4):
         if rgba[i + 3] == 0:
@@ -922,6 +1858,39 @@ def write_ppm(path: Path, rgba: bytes, w: int = ATLAS, h: int = ATLAS) -> None:
             body += rgba[i : i + 3]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(f"P6\n{w} {h}\n255\n".encode("ascii") + body)
+
+
+def verify_cells(rgba: bytes) -> None:
+    def cell_bytes(col: int, row: int) -> bytes:
+        ox, oy = col * CELL, row * CELL
+        out = bytearray()
+        for y in range(CELL):
+            off = ((oy + y) * ATLAS_W + ox) * 4
+            out += rgba[off : off + CELL * 4]
+        return bytes(out)
+
+    def check_group(row: int, c0: int, c1: int) -> None:
+        uniq: set[bytes] = set()
+        for col in range(c0, c1):
+            c = cell_bytes(col, row)
+            for cx, cy in ((0, 0), (CELL - 1, 0), (0, CELL - 1), (CELL - 1, CELL - 1)):
+                if c[(cy * CELL + cx) * 4 + 3] != 0:
+                    raise ValueError(f"celda ({col}, {row}) esquina ({cx},{cy}) no es transparente")
+            opaque = sum(1 for i in range(3, len(c), 4) if c[i] > 0)
+            if opaque < 20:
+                raise ValueError(f"celda ({col}, {row}) tiene solo {opaque} px opacos (< 20)")
+            uniq.add(c)
+        if len(uniq) != (c1 - c0):
+            raise ValueError(f"fila {row} cols {c0}..{c1 - 1} tiene cuadros repetidos")
+
+    for row in range(6):
+        check_group(row, 0, 4)   # Sr. del Farol
+        check_group(row, 4, 8)   # La Zarigüeya
+        check_group(row, 8, 12)  # El Castor
+    check_group(6, 0, 4)
+    check_group(6, 4, 8)
+    check_group(7, 0, 4)
+    check_group(7, 4, 8)
 
 
 def main() -> int:
@@ -934,16 +1903,17 @@ def main() -> int:
         ap.print_help()
         return 2
     rgba = bytes(build())
+    verify_cells(rgba)
     if args.output:
         write_png(args.output, rgba)
-        print(f"gen_sprites: {args.output} ({ATLAS}x{ATLAS}, {len(FRAMES)} sprites)")
+        print(f"gen_sprites: {args.output} ({ATLAS_W}x{ATLAS_H}, {len(FRAMES)} sprites)")
     if args.ppm:
         write_ppm(args.ppm, rgba)
         print(f"gen_sprites: {args.ppm}")
     if args.check:
         w, h, got = read_png_rgba(args.check)
-        if (w, h) != (ATLAS, ATLAS):
-            print(f"FAIL tamaño {w}x{h}, se esperaba {ATLAS}x{ATLAS}", file=sys.stderr)
+        if (w, h) != (ATLAS_W, ATLAS_H):
+            print(f"FAIL tamaño {w}x{h}, se esperaba {ATLAS_W}x{ATLAS_H}", file=sys.stderr)
             return 1
         if got != rgba:
             diffs = sum(1 for a, b in zip(got, rgba) if a != b)

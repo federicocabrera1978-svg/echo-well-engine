@@ -41,7 +41,7 @@ class LevelFlow {
 
   std::string resolve_next_map() const;
   bool load_level(const std::string& path, uint32_t carry_abilities, EndScreen& end_screen, DialogueBox& dialogue,
-                  HudTracker& hud, std::string& err);
+                  HudTracker& hud, std::string& err, HeroKind carry_hero = HeroKind::Lantern);
   bool continue_save(PauseMenu& menu, EndScreen& end_screen, DialogueBox& dialogue, HudTracker& hud,
                      std::string& err);
   void restart_level(EndScreen& end_screen, DialogueBox& dialogue);
@@ -69,6 +69,7 @@ class LevelFlow {
     int ck = -1;
     int items = 0;
     uint32_t abilities = 0;
+    HeroKind hero = HeroKind::Lantern;
     bool boss = false;
     bool muted = false;
     float vol = 0.f;

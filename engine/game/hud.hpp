@@ -37,6 +37,8 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.ctl = 0;
   v.ctl_sel = 0;
   v.ctl_wait = 0;
+  v.hero_select = menu.in_hero_select() ? 1 : 0;
+  v.hero_cursor = menu.hero_cursor();
   v.end_screen = 0;
   v.end_sel = 0;
   v.end_has_next = 0;
@@ -44,16 +46,15 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.dlg_more = 0;
   v.ctl_txt = {};
 
-  if (menu.open() && !menu.in_controls()) {  // versión abajo a la derecha del menú
-    std::array<std::string, kTxtRows> t{};
-    t[kTxtRows - 1] = "V" + std::string(version_str);
-    v.ctl_txt = pack_text(t);
-  }
-  if (menu.in_controls()) {
+  if (menu.in_hero_select()) {
+    v.ctl_txt = pack_text(hero_select_text(menu));
+  } else if (menu.in_controls()) {
     v.ctl = 1;
     v.ctl_sel = menu.ctl_cursor() + 1;
     v.ctl_wait = menu.waiting() ? 1 : 0;
     v.ctl_txt = pack_text(controls_text(menu));
+  } else if (menu.open()) {
+    v.ctl_txt = pack_text(pause_text(menu, version_str));
   }
   if (!menu.open() && end_screen.open()) {
     v.end_screen = 1;

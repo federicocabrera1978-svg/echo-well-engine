@@ -79,6 +79,7 @@ std::vector<uint8_t> encode_save(const SaveData& d) {
     for (int8_t p : b.pad[std::size_t(a)]) put_u8(pl, uint8_t(p));
   }
   put_u32(pl, d.abilities & kAbilityAll);
+  put_u8(pl, uint8_t(sanitize_hero(uint8_t(d.hero))));
 
   std::vector<uint8_t> out = {'E', 'W', 'S', 'V'};
   put_u16(out, kSaveVersion);
@@ -151,6 +152,12 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
     if (!r.ok) return SaveError::BadSize;
     if (d.abilities & ~kAbilityAll) return SaveError::BadField;
   }
+  if (ver >= 4) {
+    const uint8_t hv = r.u8();
+    if (!r.ok) return SaveError::BadSize;
+    if (hv >= uint8_t(kHeroCount)) return SaveError::BadField;
+    d.hero = HeroKind(hv);
+  }
   if (r.i != psz) return SaveError::BadSize;  // sin bytes de más
   out = std::move(d);
   return SaveError::None;
@@ -163,6 +170,7 @@ SaveData capture_save(const Sim& sim) {
   d.checkpoint = sim.checkpoint_index();
   d.flipped = sim.checkpoint_flipped();
   d.abilities = sim.abilities();
+  d.hero = sim.hero();
   d.active.reserve(sc.entities().size());
   for (const auto& e : sc.entities()) d.active.push_back(e.active ? 1 : 0);
   return d;
@@ -172,9 +180,11 @@ SaveError apply_save(Sim& sim, const SaveData& d) {
   auto& sc = sim.scene();
   const auto& ents = sc.entities();
   if (d.abilities & ~kAbilityAll) return SaveError::BadField;
+  if (uint8_t(d.hero) >= uint8_t(kHeroCount)) return SaveError::BadField;
   if (d.map != sc.map().string_at(1) || d.active.size() != ents.size()) return SaveError::Mismatch;
   if (d.checkpoint >= 0 && ents[std::size_t(d.checkpoint)].type != "checkpoint") return SaveError::Mismatch;
   sim.load_state(d.checkpoint, d.flipped, d.active, d.abilities);
+  sim.set_hero(d.hero);
   return SaveError::None;
 }
 

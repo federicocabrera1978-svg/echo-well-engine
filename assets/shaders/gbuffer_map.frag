@@ -9,7 +9,7 @@ layout(location = 0) out vec4 o_albedo;
 layout(location = 1) out vec4 o_normal;
 uniform usampler2D u_tiles;
 uniform sampler2D u_atlas;  // 128×128 RGBA8: 16×16 tiles de 8×8, id = VIS; A = altura
-uniform sampler2D u_sprites; // 128×128 RGBA8: 8×8 celdas de 16×16, A = relieve (>0.94 auto-emisión)
+uniform sampler2D u_sprites; // 256×128 RGBA8: 16×8 celdas de 16×16, A = relieve (>0.94 auto-emisión)
 uniform float u_time;
 uniform vec2 u_cam;    // esquina superior izquierda de la vista (px mundo)
 uniform vec2 u_chunk;  // origen del vecindario 3×3 de chunks (120×69 tiles, px mundo)
@@ -1439,7 +1439,7 @@ void main() {
       int raw_r = int(floor(abs(sr.w) + 0.5));
       bool flip_x = sr.z < -0.5;
       bool flip_y = sr.w < -0.5;
-      int col = clamp(flip_x ? raw_c - 1 : raw_c, 0, 7);
+      int col = clamp(flip_x ? raw_c - 1 : raw_c, 0, 15);
       int row = clamp(flip_y ? raw_r - 1 : raw_r, 0, 7);
       int lx = int(rel.x), ly = int(rel.y);
       ivec2 sl = ivec2(flip_x ? 15 - lx : lx, flip_y ? 15 - ly : ly);

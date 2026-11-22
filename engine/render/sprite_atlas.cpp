@@ -15,7 +15,7 @@ void put_px(std::vector<uint8_t>& px, int cx, int cy, int x, int y, Color c) {
   if (x < 0 || y < 0 || x >= kSpriteCellPx || y >= kSpriteCellPx) return;
   const int gx = cx * kSpriteCellPx + x;
   const int gy = cy * kSpriteCellPx + y;
-  uint8_t* p = &px[(std::size_t(gy) * kSpriteAtlasPx + std::size_t(gx)) * 4];
+  uint8_t* p = &px[(std::size_t(gy) * kSpriteAtlasW + std::size_t(gx)) * 4];
   p[0] = c.r; p[1] = c.g; p[2] = c.b; p[3] = c.a;
 }
 
@@ -83,6 +83,175 @@ void draw_hero_pose(std::vector<uint8_t>& px, int col, int row) {
       put_px(px, col, row, 3 - (i / 2), 3 + i, (col & 1) ? kWingHi : kWing);
       put_px(px, col, row, 2, 4 + i, kWing);
     }
+  }
+}
+
+void draw_opossum_pose(std::vector<uint8_t>& px, int col, int row) {
+  constexpr Color kOutline{22, 20, 32, 140};
+  constexpr Color kBackDark{74, 78, 96, 178};
+  constexpr Color kFurMid{138, 144, 162, 210};
+  constexpr Color kFurHigh{186, 194, 212, 228};
+  constexpr Color kCream{238, 232, 218, 232};
+  constexpr Color kMask{42, 40, 56, 165};
+  constexpr Color kPink{236, 134, 156, 208};
+  constexpr Color kPinkDark{196, 92, 118, 185};
+  constexpr Color kEye{255, 220, 92, 250};
+  constexpr Color kStrap{124, 134, 150, 210};
+  constexpr Color kLanternCyan{100, 220, 248, 246};
+  constexpr Color kLanternGold{255, 236, 152, 254};
+  constexpr Color kWing{64, 224, 248, 246};
+  constexpr Color kWingHi{188, 252, 255, 255};
+  constexpr Color kWater{90, 210, 238, 225};
+
+  const int f = col & 3;
+  const int bob = (row == 0 && f == 2) || (row == 1 && (f == 1 || f == 3)) ? 1 : 0;
+  const int dy = (row == 2 || row == 3) ? -1 : (row == 5 ? 1 : bob);
+
+  // Orejas redondeadas con interior rosa
+  fill_rect(px, col, row, 4, 2 + dy, 2, 2, kOutline);
+  fill_rect(px, col, row, 8, 2 + dy, 2, 2, kOutline);
+  put_px(px, col, row, 5, 3 + dy, kPink);
+  put_px(px, col, row, 8, 3 + dy, kPink);
+
+  // Cabeza gris plata, máscara oscura y hocico blanco puntiagudo con nariz rosa
+  fill_rect(px, col, row, 3, 4 + dy, 7, 3, kOutline);
+  fill_rect(px, col, row, 4, 4 + dy, 4, 1, kBackDark);
+  fill_rect(px, col, row, 5, 4 + dy, 2, 1, kFurHigh);
+  fill_rect(px, col, row, 4, 5 + dy, 2, 1, kFurMid);
+  fill_rect(px, col, row, 6, 5 + dy, 2, 1, kMask);
+  put_px(px, col, row, 7, 5 + dy, kEye);
+  fill_rect(px, col, row, 8, 5 + dy, 4, 2, kCream);
+  put_px(px, col, row, 12, 6 + dy, kPink);
+
+  // Cuerpo con lomo oscuro, flanco gris plata y vientre crema
+  fill_rect(px, col, row, 4, 7 + dy, 6, 4, kOutline);
+  fill_rect(px, col, row, 5, 7 + dy, 2, 3, kBackDark);
+  fill_rect(px, col, row, 6, 7 + dy, 2, 3, kFurMid);
+  fill_rect(px, col, row, 8, 7 + dy, 2, 3, kCream);
+
+  // Cola prensil rosa larga y enroscada detrás
+  const int tail_y = 7 + dy + (f == 1 ? 1 : 0) - (row == 2 && f >= 2 ? 2 : 0);
+  fill_rect(px, col, row, 1, tail_y, 3, 3, kOutline);
+  put_px(px, col, row, 2, tail_y + 1, kPink);
+  put_px(px, col, row, 1, tail_y + 1, kPinkDark);
+  put_px(px, col, row, 2, tail_y + 2, kPink);
+  put_px(px, col, row, 3, tail_y + 2, kPinkDark);
+
+  // Patas rosas según pose
+  const int stride = (row == 1) ? ((f == 0) ? -1 : (f == 2 ? 1 : 0)) : 0;
+  fill_rect(px, col, row, 5 + stride, 11 + dy, 2, 2, kPink);
+  fill_rect(px, col, row, 8 - stride, 11 + dy, 2, 2, kPink);
+
+  if (row == 4) {  // trepando cuerda
+    put_px(px, col, row, 7, 1 + (f & 1), kPink);
+    put_px(px, col, row, 8, 1 + ((f + 1) & 1), kPink);
+  }
+  if (row == 5) {  // nado con estelas de agua
+    fill_rect(px, col, row, 1 + (f & 1), 10, 3, 1, kWater);
+    fill_rect(px, col, row, 10 - (f & 1), 10, 3, 1, kLanternCyan);
+  }
+
+  // Pequeño farol celeste-dorado colgando
+  const int lx = 11 + (row == 1 && f == 2 ? 1 : 0);
+  const int ly = 7 + dy - (row == 2 ? 2 : 0);
+  put_px(px, col, row, lx, ly, kStrap);
+  put_px(px, col, row, lx, ly + 1, (f & 1) ? kLanternGold : kLanternCyan);
+  put_px(px, col, row, lx, ly + 2, (f & 2) ? kLanternCyan : kLanternGold);
+
+  // Alas espectrales cian en Doble Salto (row 3)
+  if (row == 3) {
+    const int spread = 3 - (f & 1);
+    for (int i = 0; i <= spread; ++i) {
+      put_px(px, col, row, 3 - (i / 2), 2 + i, (f & 1) ? kWingHi : kWing);
+      put_px(px, col, row, 2, 3 + i, kWing);
+    }
+    if (f == 3) put_px(px, col, row, 4, 10, kWing);
+  }
+}
+
+void draw_beaver_pose(std::vector<uint8_t>& px, int col, int row) {
+  constexpr Color kOutline{26, 16, 14, 140};
+  constexpr Color kFurDark{88, 42, 26, 182};
+  constexpr Color kFurMid{138, 68, 40, 212};
+  constexpr Color kFurHigh{178, 98, 60, 228};
+  constexpr Color kCream{226, 198, 162, 220};
+  constexpr Color kTeeth{248, 246, 240, 238};
+  constexpr Color kScarf{188, 42, 46, 215};
+  constexpr Color kScarfHi{226, 76, 66, 232};
+  constexpr Color kEye{255, 196, 72, 250};
+  constexpr Color kTailDark{58, 34, 24, 196};
+  constexpr Color kTailGrid{92, 56, 38, 212};
+  constexpr Color kBrass{166, 134, 72, 218};
+  constexpr Color kFlame{255, 168, 52, 248};
+  constexpr Color kCore{255, 242, 174, 255};
+  constexpr Color kWingGold{255, 218, 94, 248};
+  constexpr Color kWingCyan{92, 236, 255, 252};
+  constexpr Color kWater{90, 210, 238, 225};
+
+  const int f = col & 3;
+  const int bob = (row == 0 && f == 2) || (row == 1 && (f == 1 || f == 3)) ? 1 : 0;
+  const int dy = (row == 2 || row == 3) ? -1 : (row == 5 ? 1 : bob);
+
+  // Orejas redondas chiquitas
+  put_px(px, col, row, 5, 2 + dy, kOutline);
+  put_px(px, col, row, 6, 2 + dy, kFurDark);
+  put_px(px, col, row, 8, 2 + dy, kOutline);
+  put_px(px, col, row, 9, 2 + dy, kFurDark);
+
+  // Cabeza castaño-rojiza + ojo ámbar + hocico crema + dos dientes incisivos blancos
+  fill_rect(px, col, row, 3, 3 + dy, 8, 4, kOutline);
+  fill_rect(px, col, row, 4, 3 + dy, 5, 2, kFurMid);
+  fill_rect(px, col, row, 5, 3 + dy, 3, 1, kFurHigh);
+  put_px(px, col, row, 8, 4 + dy, kEye);
+  fill_rect(px, col, row, 8, 5 + dy, 4, 1, kCream);
+  put_px(px, col, row, 9, 6 + dy, kTeeth);
+  put_px(px, col, row, 10, 6 + dy, kTeeth);
+
+  // Pañuelo rojo de aventurero
+  fill_rect(px, col, row, 3, 7 + dy, 7, 1, kScarf);
+  put_px(px, col, row, 2 + (f & 1), 7 + dy, kScarfHi);
+
+  // Cuerpo robusto castaño-rojizo con panza crema
+  fill_rect(px, col, row, 4, 8 + dy, 6, 4, kOutline);
+  fill_rect(px, col, row, 5, 8 + dy, 3, 3, kFurDark);
+  fill_rect(px, col, row, 8, 8 + dy, 2, 3, kCream);
+
+  // Cola ancha plana cuadriculada marrón oscura detrás
+  const int ty = 8 + dy - (row == 2 && f >= 2 ? 1 : 0) + (row == 5 ? (f & 1) : 0);
+  fill_rect(px, col, row, 1, ty, 4, 3, kOutline);
+  for (int y = 0; y < 3; ++y)
+    for (int x = 0; x < 3; ++x)
+      put_px(px, col, row, 1 + x, ty + y, ((x + y + (f & 1)) & 1) ? kTailGrid : kTailDark);
+
+  // Patas
+  const int stride = (row == 1) ? ((f == 0) ? -1 : (f == 2 ? 1 : 0)) : 0;
+  fill_rect(px, col, row, 5 + stride, 12 + dy, 2, 2, kTailDark);
+  fill_rect(px, col, row, 8 - stride, 12 + dy, 2, 2, kTailDark);
+
+  if (row == 4) {  // trepando cuerda
+    put_px(px, col, row, 7, 1 + (f & 1), kFurMid);
+    put_px(px, col, row, 8, 1 + ((f + 1) & 1), kFurMid);
+  }
+  if (row == 5) {  // golpe de cola en el agua
+    fill_rect(px, col, row, 1 + (f & 1), 10, 4, 1, kWater);
+    fill_rect(px, col, row, 10 - (f & 1), 10, 3, 1, kWingCyan);
+  }
+
+  // Farol de latón cálido
+  const int lx = 11 + (row == 1 && f == 2 ? 1 : 0);
+  const int ly = 8 + dy - (row == 2 ? 2 : 0);
+  put_px(px, col, row, lx, ly, kBrass);
+  put_px(px, col, row, lx, ly + 1, (f & 1) ? kCore : kFlame);
+  put_px(px, col, row, lx, ly + 2, (f & 2) ? kFlame : kCore);
+
+  // Alas doradas-cian brillantes en Doble Salto (row 3)
+  if (row == 3) {
+    const int spread = 3 - (f & 1);
+    for (int i = 0; i <= spread; ++i) {
+      put_px(px, col, row, 3 - (i / 2), 2 + i, (f & 1) ? kWingCyan : kWingGold);
+      put_px(px, col, row, 2, 3 + i, kWingGold);
+    }
+    if (f == 3) put_px(px, col, row, 4, 11, kWingCyan);
   }
 }
 
@@ -175,19 +344,34 @@ void draw_lore_frame(std::vector<uint8_t>& px, int col) {
 AtlasLoad procedural() { return {build_sprite_atlas(), AtlasSource::Procedural}; }
 
 AtlasLoad from_rgba(const uint8_t* img, int w, int h) {
-  if (!img || w != kSpriteAtlasPx || h != kSpriteAtlasPx) return procedural();
-  AtlasLoad a;
-  a.px.assign(img, img + std::size_t(kSpriteAtlasPx) * kSpriteAtlasPx * 4);
-  a.source = AtlasSource::Png;
-  return a;
+  if (!img) return procedural();
+  if (w == kSpriteAtlasW && h == kSpriteAtlasH) {
+    AtlasLoad a;
+    a.px.assign(img, img + std::size_t(kSpriteAtlasW) * kSpriteAtlasH * 4);
+    a.source = AtlasSource::Png;
+    return a;
+  }
+  // Retrocompatibilidad: PNG legacy 128×128 se pega en cols 0..7 sobre el atlas 256×128 procedural.
+  if (w == 128 && h == 128) {
+    AtlasLoad a{build_sprite_atlas(), AtlasSource::Png};
+    for (int y = 0; y < 128; ++y) {
+      const uint8_t* src = img + std::size_t(y) * 128 * 4;
+      uint8_t* dst = &a.px[std::size_t(y) * kSpriteAtlasW * 4];
+      std::copy_n(src, std::size_t(128) * 4, dst);
+    }
+    return a;
+  }
+  return procedural();
 }
 }  // namespace
 
 std::vector<uint8_t> build_sprite_atlas() {
-  std::vector<uint8_t> px(std::size_t(kSpriteAtlasPx) * kSpriteAtlasPx * 4, 0);
-  for (int row = 0; row <= int(SpriteRow::Swim); ++row)
-    for (int col = 0; col < 4; ++col)
-      draw_hero_pose(px, col, row);
+  std::vector<uint8_t> px(std::size_t(kSpriteAtlasW) * kSpriteAtlasH * 4, 0);
+  for (int row = 0; row <= int(SpriteRow::Swim); ++row) {
+    for (int col = 0; col < 4; ++col) draw_hero_pose(px, col, row);
+    for (int col = 4; col < 8; ++col) draw_opossum_pose(px, col, row);
+    for (int col = 8; col < 12; ++col) draw_beaver_pose(px, col, row);
+  }
   for (int col = 0; col < 4; ++col) draw_egg_frame(px, col);
   for (int col = 4; col < 8; ++col) draw_relic_frame(px, col);
   for (int col = 0; col < 4; ++col) draw_npc_frame(px, col);

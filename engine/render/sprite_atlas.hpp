@@ -5,14 +5,20 @@
 #include <cstdint>
 #include <vector>
 
-// Atlas de sprites pixel-art (sin GL): 8×8 celdas de 16×16 px -> textura RGBA8 128×128.
-// Filas: 0 Idle, 1 Walk, 2 Jump, 3 DoubleJump, 4 Climb, 5 Swim (protagonista), 6 Objetos (huevo/reliquia),
-//        7 NPC (Vigía/Cronista, cols 0..3) y Estela dracónica (cols 4..7).
+// Atlas de sprites pixel-art (sin GL): 16×8 celdas de 16×16 px -> textura RGBA8 256×128.
+// Filas 0..5: 0 Idle, 1 Walk, 2 Jump, 3 DoubleJump, 4 Climb, 5 Swim
+//   - cols 0..3:  Sr. del Farol
+//   - cols 4..7:  La Zarigüeya
+//   - cols 8..11: El Castor
+// Fila 6: Objetos (cols 0..3 huevo, cols 4..7 reliquia alada).
+// Fila 7: NPC (Vigía/Cronista, cols 0..3) y Estela dracónica (cols 4..7).
 // Alpha: 0 = transparente, 1..255 = altura/relieve para el normal pass (>240 = auto-emisión suave).
 namespace ew::render {
 inline constexpr int kSpriteCellPx = 16;
-inline constexpr int kSpriteGrid = 8;
-inline constexpr int kSpriteAtlasPx = kSpriteCellPx * kSpriteGrid;  // 128
+inline constexpr int kSpriteGridW = 16;
+inline constexpr int kSpriteGridH = 8;
+inline constexpr int kSpriteAtlasW = kSpriteCellPx * kSpriteGridW;  // 256
+inline constexpr int kSpriteAtlasH = kSpriteCellPx * kSpriteGridH;  // 128
 
 enum class SpriteRow : int {
   Idle = 0,
@@ -27,13 +33,14 @@ enum class SpriteRow : int {
 
 struct SpriteUV { int x, y; };
 constexpr SpriteUV sprite_uv(int col, int row) {
-  return {(col & 7) * kSpriteCellPx, (row & 7) * kSpriteCellPx};
+  return {(col & 15) * kSpriteCellPx, (row & 7) * kSpriteCellPx};
 }
 
-// Genera el atlas procedural de respaldo (128×128×4 bytes, fila 0 arriba). Determinístico.
+// Genera el atlas procedural de respaldo (256×128×4 bytes, fila 0 arriba). Determinístico.
 std::vector<uint8_t> build_sprite_atlas();
 
-// Carga un PNG RGBA de 128×128. Si falta, está corrupto o difiere en tamaño, devuelve el procedural.
+// Carga un PNG RGBA de 256×128 (o legacy 128×128 pegado en cols 0..7 sobre el procedural 256×128).
+// Si falta, está corrupto o difiere en tamaño, devuelve el procedural.
 AtlasLoad load_sprite_atlas_mem(const void* data, std::size_t n);
 AtlasLoad load_sprite_atlas_file(const char* path);
 }  // namespace ew::render
