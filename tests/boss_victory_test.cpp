@@ -4,6 +4,7 @@
 #include "game/boss_victory.hpp"
 #include "game/save.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -310,9 +311,9 @@ int main(int argc, char** argv) {
   if (test_unit_sequence() != 0) return 1;
 
   const LevelBossSpec specs[] = {
-      {argv[1], "ck_boss", 2264.f, 152.f, 2264.f, 152.f, BossKind::Watcher, "SELLO DE LA ASCENSION"},
-      {argv[2], "ck_boss2", 984.f, 152.f, 984.f, 152.f, BossKind::Guardian2, "SELLO DE LAS CATACUMBAS"},
-      {argv[3], "ck_wyrm_arena", 664.f, 152.f, 648.f, 88.f, BossKind::Wyrm, "CORONA DE LA PUREZA"},
+      {argv[1], "ck_boss", 2264.f, 152.f, 2264.f, 152.f, BossKind::Watcher, game::kVictoryWatcherSpeaker.data()},
+      {argv[2], "ck_boss2", 984.f, 152.f, 984.f, 152.f, BossKind::Guardian2, game::kVictoryGuardian2Speaker.data()},
+      {argv[3], "ck_wyrm_arena", 664.f, 152.f, 648.f, 88.f, BossKind::Wyrm, game::kVictoryWyrmSpeaker.data()},
   };
   for (const auto& spec : specs) {
     if (test_sim_boss_victory(spec) != 0) return 1;

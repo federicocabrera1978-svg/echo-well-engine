@@ -2,12 +2,13 @@
 // 1. Progresión de campaña slice -> level2 -> level3 y resolución de mapas (campaign.hpp).
 // 2. Chequeo anti-softlock de spawn y de todos los checkpoints en los 3 niveles (sin META 4 ni aplastamiento).
 // 3. Transferencia de habilidades entre niveles, round-trip save.ewsv v3 y SFX de Dash / Break / Hit.
-// 4. Cierre de campaña en level3 con EndScreen ("VICTORIA: REINO DESPIERTO" y rango S).
+// 4. Cierre de campaña en level3 con EndScreen (story::kEndTitleVictory y rango S).
 #include "audio/sfx.hpp"
 #include "game/campaign.hpp"
 #include "game/end_screen.hpp"
 #include "game/save.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <cstdio>
 #include <string>
@@ -93,10 +94,10 @@ int main(int argc, char** argv) {
     Sim sim2(s2);
     CHECK(sim2.boss_count() == 1 && sim2.boss(0).guardian2 && !sim2.boss(0).dragon);
     CHECK(sim2.boss(0).speed() > Sim::kBossSpeed);
-    CHECK(s2.dialogs()[0].text.find("IMPEDIMENTO") != std::string::npos);
-    CHECK(s2.dialogs()[0].text.find("CORAZON PURO") != std::string::npos);
-    CHECK(s2.dialogs()[2].text.find("DE ALLI UNA VEZ VINISTE") != std::string::npos);
-    CHECK(s2.dialogs()[2].text.find("PUREZA") != std::string::npos);
+    CHECK(s2.dialogs()[0].text.find("SIERPE") != std::string::npos);
+    CHECK(s2.dialogs()[0].text.find("NIDADAS") != std::string::npos);
+    CHECK(s2.dialogs()[2].text.find("HUEVOS DE DRAGON") != std::string::npos);
+    CHECK(s2.dialogs()[2].text.find("GUARDIANES") != std::string::npos);
     sim2.set_abilities(kAbilityDoubleJump | kAbilityDash);
     const int wall_i = find_ent(s2, "wall_guardian");
     const int egg1_i = find_ent(s2, "egg_catacomb_1");
@@ -144,8 +145,8 @@ int main(int argc, char** argv) {
     std::string err;
     CHECK(s3.load(level3_path, err));
     Sim sim3(s3);
-    CHECK(s3.dialogs()[0].text.find("DE ALLI UNA VEZ VINISTE") != std::string::npos);
-    CHECK(s3.dialogs()[0].text.find("PUREZA") != std::string::npos);
+    CHECK(s3.dialogs()[0].text.find("WYRM") != std::string::npos);
+    CHECK(s3.dialogs()[0].text.find("GUARDIAN DEL ULTIMO SELLO") != std::string::npos);
     sim3.set_abilities(carried_abilities);
     CHECK(sim3.has_ability(kAbilityDoubleJump));
     CHECK(sim3.has_ability(kAbilityDash));
@@ -190,7 +191,7 @@ int main(int argc, char** argv) {
     st.campaign_done = !st.has_next;
     es.open(st);
     const auto txt = end_screen_text(es);
-    CHECK(txt[0] == "VICTORIA: REINO DESPIERTO");
+    CHECK(txt[0] == kEndTitleVictory);
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
   }
 

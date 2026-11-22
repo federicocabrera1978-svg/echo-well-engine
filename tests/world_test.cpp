@@ -8,6 +8,7 @@
 #include "game/end_screen.hpp"
 #include "game/save.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -399,7 +400,7 @@ int main(int argc, char** argv) {
   // Campaña y EndScreen para "world".
   CHECK(game::find_campaign_level("world") != nullptr);
   CHECK(game::next_campaign_map("world").empty());
-  CHECK(game::level_title("world") == "EL REINO DEL POZO");
+  CHECK(game::level_title("world") == game::kWorldTitle);
   {
     game::EndStats st;
     st.title = game::level_title("world");
@@ -416,8 +417,8 @@ int main(int argc, char** argv) {
     es.open(st);
     CHECK(es.stats().true_ending);
     const auto txt = game::end_screen_text(es);
-    CHECK(txt[0] == "FINAL VERDADERO");
-    CHECK(txt[1] == "REINO RENACIDO: 100% HUEVOS");
+    CHECK(txt[0] == game::kEndTitleTrue);
+    CHECK(txt[1] == game::kEndSubtitleTrue);
     CHECK(txt[2] == "HUEVOS:  6/6");
     CHECK(txt[4].find("DASH II") != std::string::npos);
     CHECK(txt[4].find("+1HP") != std::string::npos);

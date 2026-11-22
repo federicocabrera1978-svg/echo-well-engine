@@ -115,7 +115,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   (aviso) y salta. Se le pega cayéndole encima: 3 pisotones. Cada golpe lo acelera y lo hace parpadear.
   Tocarlo de costado te mata y morir lo cura. Al vencerlo se abre la puerta de la derecha y
   corre la secuencia ordenada de victoria: animación CRT + destello + partículas + sacudida (~3,0 s) →
-  pausa breve (~0,75 s) con jugador libre en cámara lenta → diálogo de salida (`SELLO DE LA ASCENSION`,
+  pausa breve (~0,75 s) con jugador libre en cámara lenta → diálogo de salida (`SELLO DEL POZO`,
   que no se repite al reiniciar/cargar con el boss ya vencido).
 - [ ] **Secuencia CRT post-boss en los 3 bosses (`slice`, `level2`, `level3`).** Al derrotar al
   Vigilante de `slice` (3 pisotones), a `boss_catacomb` en `level2` (3 pisotones) o al
@@ -123,7 +123,8 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   (~3,0 s / 180 frames de desintegración en scanlines + destello + 14 chispas radiales +
   sacudida de cámara + sonido CRT `BossCrt`), luego pausa breve en cámara lenta donde
   seguís pudiendo moverte libremente (~0,75 s) y recién al terminar aparece una sola vez el
-  diálogo de salida (`SELLO DE LA ASCENSION`, `SELLO DE LAS CATACUMBAS` o `CORONA DE LA PUREZA`).
+  diálogo de salida (`SELLO DEL POZO`, `SELLO DE LAS CATACUMBAS` o `CORONA DEL WYRM`).
+- [ ] **Historia y tono (*Calabozos y Dragones*) + salto de diálogos.** Verificá que todos los carteles, NPCs, estelas, ecos de huevos y diálogos de boss mantienen el lore de dragones/nidadas (cualquier diálogo se avanza con `Enter`/`Espacio`/`E` y se puede saltear/cerrar de inmediato con `Esc`, validado también por el test headless `story_tone`).
 - [ ] **Fondos y arte dark fantasy.** Cada pantalla tiene su fondo (`slice` conserva pozo, raíces, roca con
   brasas, cisterna, nichos, engranajes, invertido y arena; `level2` suma `cripta`, `abismo`, `guarida` y `santuario`).
   Los tiles muestran mampostería, ladrillos, madera remachada y musgo renovados, y los pinchos `META 4` se ven como
@@ -153,7 +154,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
 - [ ] **Nivel 3 — La Guarida del Wyrm (`level3`, 3×2 salas finales):**
   1. En `(0,0)`, recogé o conservá Doble Salto + Dash, rompé `wall_entry` embistiendo y saltá sobre el foso hacia `(1,0)`.
   2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3`, rompé `wall_secret3` hacia `(0,1)`, derrotá al diablillo `imp_santuario` embistiendo con Dash o con pisotón para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
-  3. Subí de vuelta a `(1,0)`, observando en el **mini-mapa** arriba a la derecha cómo se ilumina cada sala visitada; entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y ver la pantalla de victoria final (**`VICTORIA: REINO DESPIERTO`** con tiempo y rango **S/A/B**).
+  3. Subí de vuelta a `(1,0)`, observando en el **mini-mapa** arriba a la derecha cómo se ilumina cada sala visitada; entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y ver la pantalla de victoria final (**`VICTORIA: EL WYRM CAYO`** con tiempo y rango **S/A/B**).
 - [ ] **Atajos, puertas de un solo sentido (`one_way_door`) y ascensores (`elevator`) en `world` (`8×3`):**
   - **`owd_wyrm_cat_l` (entre `(3,2)` y `(4,2)`, Las Catacumbas ↔ La Guarida del Wyrm):** desde la derecha (Zona 2, Las Catacumbas) **no se abre** ni al empujar ni al pulsar E/X/↓ (suena clink metálico); al llegar por la izquierda desde Zona 3 (La Guarida del Wyrm) **se abre de forma permanente** dejando libre el atajo.
   - **`owd_wyrm_pozo` (en `(1,0)`, El Pozo):** desde la izquierda (lado inicial de El Pozo) **no se abre**; al subir desde Zona 3 por la derecha **se abre de forma permanente** y conserva su estado abierto tras morir, R corto y al recargar `save.ewsv`.
@@ -168,7 +169,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - Verificá `1` corazón inicial en el HUD arriba a la izquierda (con `0–1` huevos, cualquier golpe de pinchos o enemigo mata en 1 toque).
   - Al juntar `2` huevos, verificá que aparece el **`2.º` corazón** en el HUD (`+1HP`), que podés absorber 1 golpe de pinchos o enemigo (`imp` / boss) quedando con `1` corazón e invulnerabilidad temporal (`60` frames), y que tocar un checkpoint o hacer respawn recarga ambos corazones.
   - Al juntar `4` huevos (con Dash desbloqueado), verificá el ícono dorado-cian de **Dash II** en el HUD y que podés encadenar **`2` embestidas seguidas en el aire** (`14` frames de duración cada una) antes de volver a apoyar.
-  - Al completar `world` con **`6/6` huevos**, verificá la pantalla **`FINAL VERDADERO`** (`REINO RENACIDO: 100% HUEVOS`, marco dorado-cian y etiquetas `DASH II` / `+1HP`), distinta de la victoria estándar (`VICTORIA: REINO DESPIERTO`) al terminar con `< 6` huevos.
+  - Al completar `world` con **`6/6` huevos**, verificá la pantalla **`FINAL VERDADERO`** (`NIDADA A SALVO: TODOS LOS HUEVOS`, marco dorado-cian y etiquetas `DASH II` / `+1HP`), distinta de la victoria estándar (`VICTORIA: EL WYRM CAYO`) al terminar con `< 6` huevos.
 
 ## 4. Guardar partida
 

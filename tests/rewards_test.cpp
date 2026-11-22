@@ -8,6 +8,7 @@
 #include "game/level_flow.hpp"
 #include "game/scene.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <cstdio>
 #include <string>
@@ -262,8 +263,8 @@ int main(int argc, char** argv) {
     CHECK(es.stats().campaign_done && es.stats().true_ending);
     CHECK(es.stats().max_hp == 2 && es.stats().dash_upgraded);
     const auto txt = game::end_screen_text(es);
-    CHECK(txt[0] == "FINAL VERDADERO");
-    CHECK(txt[1] == "REINO RENACIDO: 100% HUEVOS");
+    CHECK(txt[0] == game::kEndTitleTrue);
+    CHECK(txt[1] == game::kEndSubtitleTrue);
     CHECK(txt[4].size() <= std::size_t(game::kTxtCols));
     CHECK(txt[4].find("DASH II") != std::string::npos);
     CHECK(txt[4].find("+1HP") != std::string::npos);
@@ -272,7 +273,7 @@ int main(int argc, char** argv) {
     CHECK(fv_end.end_true == 1);
   }
 
-  // 4b) 5/6 en world -> campaign_done = true pero true_ending = false ("VICTORIA: REINO DESPIERTO")
+  // 4b) 5/6 en world -> campaign_done = true pero true_ending = false (kEndTitleVictory)
   {
     LevelFlow flow;
     LevelFlowConfig cfg;
@@ -295,7 +296,7 @@ int main(int argc, char** argv) {
     CHECK(post.opened_end && es.open());
     CHECK(es.stats().campaign_done && !es.stats().true_ending);
     const auto txt = game::end_screen_text(es);
-    CHECK(txt[0] == "VICTORIA: REINO DESPIERTO");
+    CHECK(txt[0] == game::kEndTitleVictory);
     CHECK(txt[1] == game::level_title("world"));
     FrameData fv_end;
     HudTracker ht;
