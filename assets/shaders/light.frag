@@ -32,7 +32,13 @@ uniform float u_items_flash; // 0..1 destello al agarrar
 uniform int u_abilities;       // bitmask de habilidades desbloqueadas
 uniform float u_ability_flash; // 0..1 destello al desbloquear
 uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
-uniform int u_map_vis;         // bitmask de chunks visitados
+uniform int u_map_vis;         // bitmask de chunks visitados (bits 0..31)
+uniform int u_map_vis_hi;      // bitmask de chunks visitados (bits 32..63)
+uniform int u_map_doors;       // bitmask de puertas/muros cerrados (bits 0..31)
+uniform int u_map_doors_hi;    // bitmask de puertas/muros cerrados (bits 32..63)
+uniform int u_map_eggs;        // bitmask de huevos pendientes (bits 0..31)
+uniform int u_map_eggs_hi;     // bitmask de huevos pendientes (bits 32..63)
+uniform int u_map_pct;         // porcentaje explorado 0..100
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
@@ -42,10 +48,18 @@ float glyph5(int bits, vec2 p) {
   return float((bits >> (c.y * 5 + c.x)) & 1);
 }
 
-// Dígitos 0-9 (mismos glifos que el menú) y '/'.
+bool mask_bit(int lo, int hi, int bit) {
+  if (bit < 0 || bit >= 64) return false;
+  uint word = (bit < 32) ? uint(lo) : uint(hi);
+  int shift = (bit < 32) ? bit : (bit - 32);
+  return ((word >> uint(shift)) & 1u) != 0u;
+}
+
+// Dígitos 0-9 (mismos glifos que el menú), '/' y '%'.
 const int DIG[10] = int[](15324974, 14815428, 32584238, 16267791, 8682793,
                           16268351, 15252526, 2167071, 15252014, 15235630);
 const int GSLASH = 1118480;
+const int GPERCENT = 27070835;
 
 // Fuente completa (menu_text.hpp: A-Z, 0-9, '>', ' ', '-', '?', '/', '<', '.', ':', '!', ',', ''' ).
 const int FONT[47] = int[](18415150, 16301615, 31491134, 16303663, 32554047, 1096767, 15266878, 18415153, 32641183, 6594844, 9604265, 32539681, 18405233, 18667121, 15255086, 1097263, 23385646, 9616943, 16267326, 4329631, 15255089, 4539953, 18732593, 18157905, 4329809, 32575775, 15324974, 14815428, 32584238, 16267791, 8682793, 16268351, 15252526, 2167071, 15252014, 15235630, 1154145, 0, 31744, 4207150, 1118480, 8521864, 4194304, 131200, 4198532, 2228224, 132);
@@ -385,32 +399,53 @@ vec3 hud_abilities(vec3 c, vec2 px) {
   return c;
 }
 
-// Mini-mapa exploratorio en esquina superior derecha (y <= 14 px para mapas de hasta 2 filas).
+// Mini-mapa exploratorio Metroidvania en esquina superior derecha:
+// oculta salas no visitadas, marca puertas cerradas / huevos pendientes y muestra % explorado.
 vec3 hud_minimap(vec3 c, vec2 px) {
   int w = clamp(int(u_map_grid.x + 0.5), 1, 8), h = clamp(int(u_map_grid.y + 0.5), 1, 4);
   int cur_x = int(floor(u_map_grid.z + 0.5)), cur_y = int(floor(u_map_grid.w + 0.5));
   if (w * h <= 1) return c;
-  float bw = float(w) * 5.0 + 3.0, bh = float(h) * 4.0 + 3.0;
-  vec2 org = vec2(317.0 - bw, 3.0);
-  if (px.x >= org.x && px.x <= org.x + bw && px.y >= org.y && px.y <= org.y + bh) {
+  float box_w = max(float(w) * 6.0 + 3.0, 29.0);
+  float box_h = float(h) * 5.0 + 11.0;
+  vec2 org = vec2(317.0 - box_w, 3.0);
+  if (px.x >= org.x && px.x < org.x + box_w && px.y >= org.y && px.y < org.y + box_h) {
     c = mix(c, vec3(0.03, 0.03, 0.05), 0.62);
-    vec2 rel = px - org - vec2(2.0, 2.0);
+    vec2 grid_org = org + vec2(box_w - float(w) * 6.0 - 1.0, 2.0);
+    vec2 rel = px - grid_org;
     if (rel.x >= 0.0 && rel.y >= 0.0) {
-      int gx = int(floor(rel.x / 5.0)), gy = int(floor(rel.y / 4.0));
-      vec2 cell = rel - vec2(float(gx) * 5.0, float(gy) * 4.0);
-      if (gx < w && gy < h && cell.x < 4.0 && cell.y < 3.0) {
+      int gx = int(floor(rel.x / 6.0)), gy = int(floor(rel.y / 5.0));
+      vec2 cell = rel - vec2(float(gx) * 6.0, float(gy) * 5.0);
+      if (gx < w && gy < h && cell.x < 5.0 && cell.y < 4.0) {
         int bit = gy * w + gx;
-        bool vis = (bit < 31) && ((uint(u_map_vis) >> uint(bit)) & 1u) != 0u;
+        bool vis = mask_bit(u_map_vis, u_map_vis_hi, bit);
         bool cur = (gx == cur_x && gy == cur_y);
-        if (cur) {
-          float p = 0.85 + 0.15 * sin(u_time * 5.0);
-          c = vec3(1.0, 0.88, 0.36) * p;
-        } else if (vis) {
-          c = vec3(0.32, 0.44, 0.56);
-        } else {
-          c = vec3(0.11, 0.12, 0.17);
+        if (vis || cur) {
+          if (cur) {
+            float p = 0.85 + 0.15 * sin(u_time * 5.0);
+            c = vec3(1.0, 0.88, 0.36) * p;
+          } else {
+            c = vec3(0.30, 0.45, 0.60);
+          }
+          ivec2 cp = ivec2(floor(cell));
+          if (mask_bit(u_map_doors, u_map_doors_hi, bit) && cp.x >= 3 && cp.y <= 1) {
+            c = vec3(0.96, 0.24, 0.34);
+          }
+          if (mask_bit(u_map_eggs, u_map_eggs_hi, bit) && cp.x <= 1 && cp.y >= 2) {
+            c = cur ? vec3(1.0, 0.99, 0.88) : vec3(1.0, 0.86, 0.28);
+          }
         }
       }
+    }
+    int pct = clamp(u_map_pct, 0, 100);
+    float tx = org.x + box_w - 7.0;
+    float ty = org.y + float(h) * 5.0 + 4.0;
+    float g = glyph5(GPERCENT, px - vec2(tx, ty));
+    g = max(g, glyph5(DIG[pct % 10], px - vec2(tx - 6.0, ty)));
+    if (pct >= 10) g = max(g, glyph5(DIG[(pct / 10) % 10], px - vec2(tx - 12.0, ty)));
+    if (pct >= 100) g = max(g, glyph5(DIG[pct / 100], px - vec2(tx - 18.0, ty)));
+    if (g > 0.0) {
+      vec3 tc = (pct == 100) ? vec3(1.0, 0.88, 0.40) : vec3(0.78, 0.88, 0.96);
+      c = mix(c, tc, g);
     }
   }
   return c;
