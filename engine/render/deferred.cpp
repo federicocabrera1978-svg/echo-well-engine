@@ -190,7 +190,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform4f(GetUniformLocation(light_prog_, "u_map_grid"),
             float(v.map_w), float(v.map_h), float(v.cur_cx), float(v.cur_cy));
   Uniform1i(GetUniformLocation(light_prog_, "u_map_vis"), int(v.visited_mask));
-  Uniform4f(GetUniformLocation(light_prog_, "u_boss_burst"), v.boss_burst_x, v.boss_burst_y, v.boss_burst_t, 0.f);
+  Uniform4f(GetUniformLocation(light_prog_, "u_boss_burst"), v.boss_burst_x, v.boss_burst_y, v.boss_burst_t, v.boss_flash);
   ActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, albedo_);
   ActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, normal_);
   glDrawArrays(GL_TRIANGLES, 0, 3);

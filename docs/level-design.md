@@ -192,6 +192,18 @@ de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
 - Para pegarle: esperá a que camine hacia vos, saltá cuando esté a ~40 px y caele en la
   cabeza. Mapa de prueba: `assets/maps/src/boss.yaml` (`boss_test`, que incluye una pelea
   jugada con input).
+- **Secuencia ordenada de victoria (`BossVictorySeq`, probada en `boss_victory_test`)**: al dar el
+  golpe final en cualquiera de los 3 bosses (`slice`, `level2`, `level3`) se abren las
+  puertas linkeadas y corre en orden estricto:
+  1. **Animación de derrota (`DefeatAnim`, 3.0 s por defecto):** desintegración CRT en
+     scanlines, destello de pantalla (`flash_alpha`), 14 partículas/chispas radiales,
+     sacudida amortiguada de cámara (`shake_amp = 2.5` px) y sonido `kSfxBossCrt`.
+  2. **Pausa dramática (`AftermathPause`, 0.75 s por defecto):** sin CRT ni sacudida, con
+     el jugador libre para moverse en cámara lenta (`slow_mo_scale = 0.55`).
+  3. **Diálogo de salida (`ReadyForDialog` → `Done`):** se dispara una única vez al
+     terminar la pausa (`SELLO DE LA ASCENSION` en `slice`, `SELLO DE LAS CATACUMBAS` en
+     `level2` y `CORONA DE LA PUREZA` en `level3`); reaparecer o cargar partida con el boss
+     ya vencido deja la secuencia en `Done` y no repite el diálogo.
 
 ## Fondos (backdrops)
 
