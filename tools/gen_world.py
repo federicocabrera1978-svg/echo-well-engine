@@ -69,12 +69,22 @@ def build_world_yaml() -> str:
         r("VIS", 239, 0, 1, 17, 17),
         r("COL", 199, 8, 1, 15, 1),
         r("VIS", 199, 8, 1, 15, 17),
-        # Chunk (0,0): pileta inicial
+        # Chunk (0,0): pileta inicial y cámara secreta superior (chimenea x=128..152)
         r("META", 29, 17, 8, 3, 2),
         r("COL", 28, 17, 1, 3, 1),
         r("VIS", 28, 17, 1, 3, 17),
         r("COL", 37, 17, 1, 3, 1),
         r("VIS", 37, 17, 1, 3, 17),
+        r("COL", 4, 1, 16, 1, 1),
+        r("VIS", 4, 1, 16, 1, 15),
+        r("COL", 4, 2, 1, 4, 1),
+        r("VIS", 4, 2, 1, 4, 15),
+        r("COL", 4, 6, 12, 1, 3),
+        r("VIS", 4, 6, 12, 1, 5),
+        r("COL", 15, 7, 1, 9, 1),
+        r("VIS", 15, 7, 1, 9, 15),
+        r("COL", 19, 1, 1, 15, 1),
+        r("VIS", 19, 1, 1, 15, 15),
         # Chunk (1,0): pared alta con atajo inferior owd_wyrm_pozo (tx=51, ty=17..19) y eje elev_wyrm_pozo (tx=60..62)
         r("COL", 50, 8, 2, 9, 1),
         r("VIS", 50, 8, 2, 9, 17),
@@ -313,6 +323,8 @@ def build_world_yaml() -> str:
         ent("spawn", "player_spawn", 32, 152),
         ent("npc_vigia", "npc", 64, 152),
         ent("switch_start", "switch", 96, 152),
+        ent("egg_pozo_secreto", "collectible", 56, 40),
+        ent("lore_techo", "lore", 96, 40),
         ent("door_start", "door", 200, 136),
         ent("owd_wyrm_pozo", "one_way_door", 408, 136),
         ent("ck_ledge", "checkpoint", 536, 56),
@@ -375,6 +387,7 @@ def build_world_yaml() -> str:
         ent("sw_seal3", "switch", 504, 520),
         ent("lore_wyrm", "lore", 464, 520),
         ent("egg_wyrm_2", "collectible", 384, 456),
+        ent("rel_wall_climb", "ability_wall_climb", 24, 520),
         ent("lore_abismo", "lore", 48, 520),
         ent("ck_atajo3", "checkpoint", 560, 336),
         ent("elev_wyrm_pozo", "elevator", 480, 328, "w: 3, h: 1, to_x: 480, to_y: 160, speed: 56, pause: 0.5, tile: 6"),
@@ -445,22 +458,24 @@ def build_world_yaml() -> str:
         backdrops.append(f"  - {{cx: {cx}, cy: {cy}, theme: {theme}, seed: {seed}}}")
 
     dialogs += [
-        '  - {entity: npc_vigia,       trigger: interact, speaker: "VIGIA DEL FAROL",             text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO VOLVERAS SI DEMUESTRAS/QUE ALLI PERTENECES.|CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"}',
-        '  - {entity: egg_well,        trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE",        text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE TU CORAZON PURO:/NO DESISTAS EN SUBIR!"}',
+        '  - {entity: npc_vigia,        trigger: interact, speaker: "VIGIA DEL FAROL",             text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO VOLVERAS SI DEMUESTRAS/QUE ALLI PERTENECES.|CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"}',
+        '  - {entity: egg_pozo_secreto, trigger: pickup,   speaker: "ECO: HUEVO DE LA ALTURA",     text: "OCULTO SOBRE EL TECHO DEL POZO,/SU CASCARA GUARDA ECOS ANTIGUOS.|SOLO QUIEN TREPA LOS MUROS/ALCANZA LA CUMBRE OLVIDADA."}',
+        '  - {entity: lore_techo,       trigger: interact, speaker: "ESTELA DE LA BOVEDA",         text: "DESDE EL ABISMO DE ORIENTE/TRAJERON LAS GARRAS DE PIEDRA.|SUBE DONDE NACIO EL POZO/Y COMPLETA LA NIDADA."}',
+        '  - {entity: egg_well,         trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE",        text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE TU CORAZON PURO:/NO DESISTAS EN SUBIR!"}',
         '  - {entity: npc_cronista,    trigger: interact, speaker: "CRONISTA DE LAS CATACUMBAS",  text: "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|DESCIENDE AL FOSO POR LAS ALAS/Y SUBE DONDE PERTENECES!"}',
         '  - {entity: egg_cat_1,       trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO",         text: "LA NIDADA NO ERA UN TESORO:/ERA EL FUTURO DEL REINO.|LLEVA SU CALOR HACIA ARRIBA/CON UN CORAZON PURO!"}',
         '  - {entity: rel_double_jump, trigger: pickup,   speaker: "RELIQUIA: ALAS DE DRAGON",    text: "ADQUIRISTE LAS ALAS DE DRAGON!/EL DOBLE SALTO ES TUYO.|PULSA SALTO OTRA VEZ EN EL AIRE/PARA ASCENDER A LAS REPISAS!"}',
         '  - {entity: lore_santuario2, trigger: interact, speaker: "ESTELA DEL SANTUARIO",        text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO SI DEMUESTRAS QUE ALLI/PERTENECES SE ABRIRA EL PASO.|ACTIVA EL SELLO Y DESBLOQUEA/EL ASCENSOR DE RETORNO!"}',
-        '  - {entity: egg_cat_2,       trigger: pickup,   speaker: "ECO: HUEVO DE BRASA",         text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA PIEDRA.|FUE OCULTADO EN EL SANTUARIO/LEJOS DEL OJO DE LA BESTIA."} ',
+        '  - {entity: egg_cat_2,       trigger: pickup,   speaker: "ECO: HUEVO DE BRASA",         text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA PIEDRA.|FUE OCULTADO EN EL SANTUARIO/LEJOS DEL OJO DE LA BESTIA."}',
         '  - {entity: rel_dash,        trigger: pickup,   speaker: "RELIQUIA: GARRA DE BRASA",    text: "EL IMPETU DEL WYRM ARDE/EN TU EMBESTIDA!|PULSA E, X O K PARA EMBESTIR/Y ROMPER MUROS AGRIETADOS."}',
         '  - {entity: npc_centinela,   trigger: interact, speaker: "CENTINELA DEL FAROL",         text: "EL WYRM ES EL ULTIMO BOSS/QUE IMPIDE TU ASCENSION.|BAJO SU GUARIDA AGUARDA/EL ASCENSOR DE REGRESO AL POZO.|DEMUESTRA QUE ALLI PERTENECES:/VENCE AL BOSS CON TU PUREZA!"}',
         '  - {entity: egg_wyrm_1,      trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO",       text: "SU LATIDO RESPONDE AL POZO:/EL FAROL RECONOCE TU PUREZA."}',
         '  - {entity: lore_wyrm,       trigger: interact, speaker: "CRONICA DEL WYRM",            text: "TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|4 PISOTONES SOBRE SU CORONA:/VENCE A LOS BOSS CON PUREZA!"}',
-        '  - {entity: egg_wyrm_2,      trigger: pickup,   speaker: "ECO: ULTIMO HUEVO",           text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."}',
-        '  - {entity: lore_abismo,     trigger: interact, speaker: "ESTELA DEL PUENTE ANTIGUO",   text: "ANTES DEL POZO, LOS ALADOS/CRUZABAN ESTE PUENTE DE PIEDRA.|EL REINO DESPERTARA CUANDO/LOS TRES GUARDIANES CAIGAN."}',
+        '  - {entity: egg_wyrm_2,       trigger: pickup,   speaker: "ECO: ULTIMO HUEVO",           text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."}',
+        '  - {entity: rel_wall_climb,   trigger: pickup,   speaker: "RELIQUIA: GARRAS DEL POZO",   text: "ADQUIRISTE ESCALADA EN PARED!/DESLIZATE Y SALTA ENTRE MUROS.|VUELVE AL INICIO DE EL POZO:/SU TECHO ESCONDE UN SECRETO!"}',
+        '  - {entity: lore_abismo,      trigger: interact, speaker: "ESTELA DEL PUENTE ANTIGUO",   text: "ANTES DEL POZO, LOS ALADOS/CRUZABAN ESTE PUENTE DE PIEDRA.|EL REINO DESPERTARA CUANDO/LOS TRES GUARDIANES CAIGAN."}',
     ]
-    # Quitar espacio sobrante de la línea egg_cat_2
-    dialogs[6] = dialogs[6].rstrip()
+    dialogs = [d.rstrip() for d in dialogs]
 
     guides += [
         "  - {kind: shaft, x: 2504, up_x: 1940, split_y: 184, y_top: 152, y_bot: 320}",

@@ -1,0 +1,39 @@
+# Mapa de prueba para la habilidad Trepar y Salto en Pared (kAbilityWallClimb, Etapa 10).
+# 1x1 chunk (320x184 px). Chimenea vertical de 136 px (piso y=168 -> repisa y=32),
+# inalcanzable con salto simple o doble salto; exige alternar wall-jumps hasta la meta.
+name: wallclimb
+size_chunks: [1, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  # Techo, piso y paredes exteriores
+  - {layer: COL, x: 0,  y: 0,  w: 40, h: 1,  tile: 1}
+  - {layer: VIS, x: 0,  y: 0,  w: 40, h: 1,  tile: 15}
+  - {layer: COL, x: 0,  y: 21, w: 40, h: 2,  tile: 1}
+  - {layer: VIS, x: 0,  y: 21, w: 40, h: 2,  tile: 17}
+  - {layer: COL, x: 0,  y: 0,  w: 1,  h: 23, tile: 1}
+  - {layer: VIS, x: 0,  y: 0,  w: 1,  h: 23, tile: 15}
+  - {layer: COL, x: 39, y: 0,  w: 1,  h: 23, tile: 1}
+  - {layer: VIS, x: 39, y: 0,  w: 1,  h: 23, tile: 15}
+  # Chimenea vertical (x=160..184, 24 px de ancho; altura 136 px de y=168 a y=32)
+  # Pared izquierda sellada arriba con entrada inferior (y=144..168)
+  - {layer: COL, x: 19, y: 1,  w: 1,  h: 17, tile: 1}
+  - {layer: VIS, x: 19, y: 1,  w: 1,  h: 17, tile: 15}
+  # Pared derecha hasta el piso y repisa superior hacia la meta
+  - {layer: COL, x: 23, y: 4,  w: 1,  h: 17, tile: 1}
+  - {layer: VIS, x: 23, y: 4,  w: 1,  h: 17, tile: 15}
+  - {layer: COL, x: 23, y: 4,  w: 16, h: 1,  tile: 1}
+  - {layer: VIS, x: 23, y: 4,  w: 16, h: 1,  tile: 5}
+  # Zona de meta arriba de la chimenea
+  - {layer: META, x: 34, y: 1, w: 3,  h: 3,  tile: 3}
+
+entities:
+  - {name: spawn,          type: player_spawn,       x: 32,  y: 160}
+  - {name: rel_wall_climb, type: ability_wall_climb, x: 96,  y: 160}
+  - {name: ck_base,        type: checkpoint,         x: 128, y: 160}
+  - {name: goal,           type: goal,               x: 280, y: 24}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: pozo}

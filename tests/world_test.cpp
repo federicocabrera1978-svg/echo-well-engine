@@ -76,14 +76,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // --- 1) Invariantes estructurales 8x3 (24 chunks), 5 huevos, 3 bosses, contención de agua ---
+  // --- 1) Invariantes estructurales 8x3 (24 chunks), 6 huevos, 3 bosses, contención de agua ---
   CHECK(scene.width_px() == 2560 && scene.height_px() == 552);
   CHECK(scene.map().header().map_w_chunks == 8 && scene.map().header().map_h_chunks == 3);
   CHECK(scene.map().chunk_count() == 24);
   CHECK(scene.map().backdrops().size() == 24);
 
   Sim sim(scene);
-  CHECK(sim.collectible_total() == 5 && sim.collected() == 0);
+  CHECK(sim.collectible_total() == 6 && sim.collected() == 0);
   CHECK(sim.boss_count() == 3 && !sim.bosses_defeated());
   CHECK(sim.rope_count() == 4 && sim.water().size() == 6);
   CHECK(sim.mover_count() == 7);
@@ -276,19 +276,90 @@ int main(int argc, char** argv) {
   CHECK(pozo_opened && owd_pozo->active && !scene.door_blocks(51, 17));
   CHECK(sim.player().pos.x < 404.f && sim.deaths() == 0);
 
-  // --- 7) Derrotar Boss 1, Boss 2 y Wyrm -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
-  sim.reset();
-  sim.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash);
+  // --- 7) rel_wall_climb en (0,2) + secreto en techo de Zona 1 (0,0) inaccesible sin trepar ---
+  {
+    const auto* rel_wc = find_name(scene, "rel_wall_climb");
+    const auto* egg_sec = find_name(scene, "egg_pozo_secreto");
+    const auto* lore_t = find_name(scene, "lore_techo");
+    CHECK(rel_wc && rel_wc->type == "ability_wall_climb");
+    CHECK(rel_wc->x >= 0.f && rel_wc->x < 320.f && rel_wc->y >= 368.f && rel_wc->y < 552.f);
+    CHECK(egg_sec && egg_sec->type == "collectible");
+    CHECK(egg_sec->x >= 0.f && egg_sec->x < 320.f && egg_sec->y >= 0.f && egg_sec->y < 184.f);
+    CHECK(lore_t && lore_t->type == "lore");
+    CHECK(lore_t->x >= 0.f && lore_t->x < 320.f && lore_t->y >= 0.f && lore_t->y < 184.f);
 
-  // Recoger los 5 huevos y activar checkpoints/puertas clave.
-  for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2"}) {
+    // Entrar a (0,2) desde (1,2), cruzar el puente sobre pinchos y recoger rel_wall_climb.
+    sim.reset();
+    sim.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash);
+    place(sim, 336.f, 520.f);
+    for (int i = 0; i < 15; ++i) sim.step({});
+    for (int i = 0; i < 280 && !sim.has_ability(game::kAbilityWallClimb); ++i) {
+      Input in;
+      in.move_x = -1.f;
+      if (sim.player().grounded && (sim.player().pos.x < 244.f && sim.player().pos.x > 218.f)) in.jump = true;
+      sim.step(in);
+    }
+    CHECK(sim.has_ability(game::kAbilityWallClimb) && rel_wc->active && sim.deaths() == 0);
+    CHECK(scene.chunk_x() == 0 && scene.chunk_y() == 2);
+
+    // Sin kAbilityWallClimb (solo Doble Salto), la chimenea de Zona 1 (0,0) NO alcanza la cámara superior.
+    Scene s_dj;
+    CHECK(s_dj.load(argv[1], err));
+    Sim sim_dj(s_dj);
+    sim_dj.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash);
+    place(sim_dj, 140.f, 156.f);
+    for (int i = 0; i < 15; ++i) sim_dj.step({});
+    float min_y_dj = 999.f;
+    { Input j; j.jump = true; j.move_x = 1.f; sim_dj.step(j); }
+    for (int i = 0; i < 60; ++i) {
+      Input in;
+      in.move_x = (i % 20 < 10) ? 1.f : -1.f;
+      in.jump = (i == 18);
+      sim_dj.step(in);
+      min_y_dj = std::fmin(min_y_dj, sim_dj.player().pos.y);
+    }
+    CHECK(min_y_dj > 54.f);
+    CHECK(!find_name(s_dj, "egg_pozo_secreto")->active);
+
+    // Volviendo a Zona 1 (0,0) con kAbilityWallClimb se trepa la chimenea (x=128..152) y se recoge egg_pozo_secreto.
+    place(sim, 140.f, 156.f);
+    for (int i = 0; i < 15; ++i) sim.step({});
+    CHECK(sim.player().grounded);
+    { Input j; j.jump = true; j.move_x = 1.f; sim.step(j); }
+    int push_dir = 1;
+    bool in_chamber = false;
+    for (int i = 0; i < 320 && !egg_sec->active; ++i) {
+      Input in;
+      if (sim.player().pos.y < 46.f) {
+        in_chamber = true;
+        in.move_x = -1.f;
+      } else {
+        in.move_x = float(push_dir);
+        const bool touch_r = (push_dir > 0) && (sim.player().pos.x >= 147.f);
+        const bool touch_l = (push_dir < 0) && (sim.player().pos.x <= 133.f);
+        if ((touch_r || touch_l) && (i % 9 == 0)) {
+          in.jump = true;
+          push_dir = -push_dir;
+        }
+      }
+      sim.step(in);
+    }
+    CHECK(in_chamber && egg_sec->active && sim.collected() == 1);
+  }
+
+  // --- 8) Derrotar Boss 1, Boss 2 y Wyrm -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
+  sim.reset();
+  sim.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb);
+
+  // Recoger los 6 huevos y activar checkpoints/puertas clave.
+  for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto"}) {
     const auto* eg = find_name(scene, egg_name);
     CHECK(eg);
     place(sim, eg->x, eg->y);
     sim.step({});
     CHECK(eg->active);
   }
-  CHECK(sim.collected() == 5);
+  CHECK(sim.collected() == 6);
 
   // Derrotar Boss 1 y Boss 2.
   defeat_boss_at(sim, 0, 2264.f, 152.f);
@@ -341,11 +412,11 @@ int main(int argc, char** argv) {
     es.open(st);
     const auto txt = game::end_screen_text(es);
     CHECK(txt[0] == "VICTORIA: REINO DESPIERTO");
-    CHECK(txt[2] == "HUEVOS:  5/5");
+    CHECK(txt[2] == "HUEVOS:  6/6");
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
   }
 
-  // Persistencia save.ewsv sobre world.ewmap (incluyendo atajos y ascensor).
+  // Persistencia save.ewsv sobre world.ewmap (incluyendo atajos, ascensor y kAbilityWallClimb).
   const auto bytes = game::encode_save(game::capture_save(sim));
   game::SaveData decoded;
   CHECK(game::decode_save(bytes.data(), bytes.size(), decoded) == game::SaveError::None);
@@ -355,9 +426,9 @@ int main(int argc, char** argv) {
   CHECK(s2.load(argv[1], err));
   Sim sim2(s2);
   CHECK(game::apply_save(sim2, decoded) == game::SaveError::None);
-  CHECK(sim2.collected() == 5);
+  CHECK(sim2.collected() == 6);
   CHECK(sim2.bosses_defeated());
-  CHECK(sim2.has_ability(game::kAbilityDoubleJump | game::kAbilityDash));
+  CHECK(sim2.has_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb));
   CHECK(find_name(s2, "elev_cat_pozo")->active);
   CHECK(find_name(s2, "owd_wyrm_cat_l")->active && !s2.door_blocks(160, 63));
   CHECK(find_name(s2, "owd_wyrm_pozo")->active && !s2.door_blocks(51, 17));

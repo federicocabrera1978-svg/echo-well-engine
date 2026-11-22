@@ -87,6 +87,10 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
     if (!abs.empty()) abs += " + ";
     abs += "DASH";
   }
+  if (s.abilities & kAbilityWallClimb) {
+    if (!abs.empty()) abs += " + ";
+    abs += "ESCALADA";
+  }
   t[4] = "HABILIDADES: " + (abs.empty() ? std::string("NINGUNA") : abs);
   if (s.elapsed_sec > 0.f || s.campaign_done) {
     const int secs = s.elapsed_sec > 0.f ? int(s.elapsed_sec) : 0;

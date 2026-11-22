@@ -376,25 +376,42 @@ vec3 hud_items(vec3 c, vec2 px) {
 // Íconos discretos de habilidades desbloqueadas (debajo del HUD de huevos, o arriba si no hay huevos).
 vec3 hud_abilities(vec3 c, vec2 px) {
   float top = u_items_total > 0 ? 17.0 : 3.0;
-  float right = (u_abilities & 2) != 0 ? 29.0 : 17.0;
+  int slots = ((u_abilities & 1) != 0 ? 1 : 0)
+            + ((u_abilities & 2) != 0 ? 1 : 0)
+            + ((u_abilities & 4) != 0 ? 1 : 0);
+  float right = max(5.0 + float(slots) * 12.0, 17.0);
   if (px.x >= 3.0 && px.x <= right && px.y >= top && px.y <= top + 11.0)
     c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
   float flash = clamp(u_ability_flash, 0.0, 1.0);
+  float ax = 6.0;
   if ((u_abilities & 1) != 0) {
-    ivec2 p = ivec2(floor(px - vec2(6.0, top + 2.0)));
+    ivec2 p = ivec2(floor(px - vec2(ax, top + 2.0)));
     if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 6) {
       int dx = abs(p.x - 4);
       bool icon = (p.y <= 3 && dx == p.y) || (p.y >= 3 && dx == (p.y - 3));
       if (icon) c = mix(vec3(0.45, 0.92, 1.0), vec3(1.0), flash * 0.65);
     }
+    ax += 12.0;
   }
   if ((u_abilities & 2) != 0) {
-    ivec2 p = ivec2(floor(px - vec2(18.0, top + 2.0)));
+    ivec2 p = ivec2(floor(px - vec2(ax, top + 2.0)));
     if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 6) {
       int dy = abs(p.y - 3);
       bool arrow = (dy == 0 && p.x <= 6) || (p.x >= 4 && (p.x - 4) == (3 - dy));
       if (arrow) c = mix(vec3(1.0, 0.55, 0.22), vec3(1.0), flash * 0.65);
     }
+    ax += 12.0;
+  }
+  if ((u_abilities & 4) != 0) {
+    ivec2 p = ivec2(floor(px - vec2(ax, top + 2.0)));
+    if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 6) {
+      bool claw = (p.x == 1) ||
+                  (p.y == 3 && p.x >= 3 && p.x <= 6) ||
+                  ((p.y == 1 || p.y == 5) && p.x >= 3 && p.x <= 4) ||
+                  ((p.y == 2 || p.y == 4) && p.x == 5);
+      if (claw) c = mix(vec3(0.32, 0.95, 0.58), vec3(1.0), flash * 0.65);
+    }
+    ax += 12.0;
   }
   return c;
 }

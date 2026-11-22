@@ -33,6 +33,16 @@ rects:
   - {layer: VIS , x: 28 , y: 17, w: 1  , h: 3 , tile: 17}
   - {layer: COL , x: 37 , y: 17, w: 1  , h: 3 , tile: 1}
   - {layer: VIS , x: 37 , y: 17, w: 1  , h: 3 , tile: 17}
+  - {layer: COL , x: 4  , y: 1 , w: 16 , h: 1 , tile: 1}
+  - {layer: VIS , x: 4  , y: 1 , w: 16 , h: 1 , tile: 15}
+  - {layer: COL , x: 4  , y: 2 , w: 1  , h: 4 , tile: 1}
+  - {layer: VIS , x: 4  , y: 2 , w: 1  , h: 4 , tile: 15}
+  - {layer: COL , x: 4  , y: 6 , w: 12 , h: 1 , tile: 3}
+  - {layer: VIS , x: 4  , y: 6 , w: 12 , h: 1 , tile: 5}
+  - {layer: COL , x: 15 , y: 7 , w: 1  , h: 9 , tile: 1}
+  - {layer: VIS , x: 15 , y: 7 , w: 1  , h: 9 , tile: 15}
+  - {layer: COL , x: 19 , y: 1 , w: 1  , h: 15, tile: 1}
+  - {layer: VIS , x: 19 , y: 1 , w: 1  , h: 15, tile: 15}
   - {layer: COL , x: 50 , y: 8 , w: 2  , h: 9 , tile: 1}
   - {layer: VIS , x: 50 , y: 8 , w: 2  , h: 9 , tile: 17}
   - {layer: COL , x: 52 , y: 8 , w: 49 , h: 1 , tile: 3}
@@ -238,6 +248,8 @@ entities:
   - {name: spawn, type: player_spawn, x: 32, y: 152}
   - {name: npc_vigia, type: npc, x: 64, y: 152}
   - {name: switch_start, type: switch, x: 96, y: 152}
+  - {name: egg_pozo_secreto, type: collectible, x: 56, y: 40}
+  - {name: lore_techo, type: lore, x: 96, y: 40}
   - {name: door_start, type: door, x: 200, y: 136}
   - {name: owd_wyrm_pozo, type: one_way_door, x: 408, y: 136}
   - {name: ck_ledge, type: checkpoint, x: 536, y: 56}
@@ -300,6 +312,7 @@ entities:
   - {name: sw_seal3, type: switch, x: 504, y: 520}
   - {name: lore_wyrm, type: lore, x: 464, y: 520}
   - {name: egg_wyrm_2, type: collectible, x: 384, y: 456}
+  - {name: rel_wall_climb, type: ability_wall_climb, x: 24, y: 520}
   - {name: lore_abismo, type: lore, x: 48, y: 520}
   - {name: ck_atajo3, type: checkpoint, x: 560, y: 336}
   - {name: elev_wyrm_pozo, type: elevator, x: 480, y: 328, w: 3, h: 1, to_x: 480, to_y: 160, speed: 56, pause: 0.5, tile: 6}
@@ -360,8 +373,10 @@ backdrops:
   - {cx: 7, cy: 2, theme: cisterna, seed: 105}
 
 dialogs:
-  - {entity: npc_vigia,       trigger: interact, speaker: "VIGIA DEL FAROL",             text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO VOLVERAS SI DEMUESTRAS/QUE ALLI PERTENECES.|CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"}
-  - {entity: egg_well,        trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE",        text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE TU CORAZON PURO:/NO DESISTAS EN SUBIR!"}
+  - {entity: npc_vigia,        trigger: interact, speaker: "VIGIA DEL FAROL",             text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO VOLVERAS SI DEMUESTRAS/QUE ALLI PERTENECES.|CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"}
+  - {entity: egg_pozo_secreto, trigger: pickup,   speaker: "ECO: HUEVO DE LA ALTURA",     text: "OCULTO SOBRE EL TECHO DEL POZO,/SU CASCARA GUARDA ECOS ANTIGUOS.|SOLO QUIEN TREPA LOS MUROS/ALCANZA LA CUMBRE OLVIDADA."}
+  - {entity: lore_techo,       trigger: interact, speaker: "ESTELA DE LA BOVEDA",         text: "DESDE EL ABISMO DE ORIENTE/TRAJERON LAS GARRAS DE PIEDRA.|SUBE DONDE NACIO EL POZO/Y COMPLETA LA NIDADA."}
+  - {entity: egg_well,         trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE",        text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE TU CORAZON PURO:/NO DESISTAS EN SUBIR!"}
   - {entity: npc_cronista,    trigger: interact, speaker: "CRONISTA DE LAS CATACUMBAS",  text: "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|DESCIENDE AL FOSO POR LAS ALAS/Y SUBE DONDE PERTENECES!"}
   - {entity: egg_cat_1,       trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO",         text: "LA NIDADA NO ERA UN TESORO:/ERA EL FUTURO DEL REINO.|LLEVA SU CALOR HACIA ARRIBA/CON UN CORAZON PURO!"}
   - {entity: rel_double_jump, trigger: pickup,   speaker: "RELIQUIA: ALAS DE DRAGON",    text: "ADQUIRISTE LAS ALAS DE DRAGON!/EL DOBLE SALTO ES TUYO.|PULSA SALTO OTRA VEZ EN EL AIRE/PARA ASCENDER A LAS REPISAS!"}
@@ -371,8 +386,9 @@ dialogs:
   - {entity: npc_centinela,   trigger: interact, speaker: "CENTINELA DEL FAROL",         text: "EL WYRM ES EL ULTIMO BOSS/QUE IMPIDE TU ASCENSION.|BAJO SU GUARIDA AGUARDA/EL ASCENSOR DE REGRESO AL POZO.|DEMUESTRA QUE ALLI PERTENECES:/VENCE AL BOSS CON TU PUREZA!"}
   - {entity: egg_wyrm_1,      trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO",       text: "SU LATIDO RESPONDE AL POZO:/EL FAROL RECONOCE TU PUREZA."}
   - {entity: lore_wyrm,       trigger: interact, speaker: "CRONICA DEL WYRM",            text: "TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|4 PISOTONES SOBRE SU CORONA:/VENCE A LOS BOSS CON PUREZA!"}
-  - {entity: egg_wyrm_2,      trigger: pickup,   speaker: "ECO: ULTIMO HUEVO",           text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."}
-  - {entity: lore_abismo,     trigger: interact, speaker: "ESTELA DEL PUENTE ANTIGUO",   text: "ANTES DEL POZO, LOS ALADOS/CRUZABAN ESTE PUENTE DE PIEDRA.|EL REINO DESPERTARA CUANDO/LOS TRES GUARDIANES CAIGAN."}
+  - {entity: egg_wyrm_2,       trigger: pickup,   speaker: "ECO: ULTIMO HUEVO",           text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."}
+  - {entity: rel_wall_climb,   trigger: pickup,   speaker: "RELIQUIA: GARRAS DEL POZO",   text: "ADQUIRISTE ESCALADA EN PARED!/DESLIZATE Y SALTA ENTRE MUROS.|VUELVE AL INICIO DE EL POZO:/SU TECHO ESCONDE UN SECRETO!"}
+  - {entity: lore_abismo,      trigger: interact, speaker: "ESTELA DEL PUENTE ANTIGUO",   text: "ANTES DEL POZO, LOS ALADOS/CRUZABAN ESTE PUENTE DE PIEDRA.|EL REINO DESPERTARA CUANDO/LOS TRES GUARDIANES CAIGAN."}
 
 guide:
   - {kind: shaft, x: 2504, up_x: 1940, split_y: 184, y_top: 152, y_bot: 320}
