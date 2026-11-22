@@ -18,6 +18,7 @@ Spec spec(SfxId id) {
     case SfxId::Dash:       return {760.f,  0.11f, 0.33f, 3};
     case SfxId::Break:      return {175.f,  0.22f, 0.38f, 2};
     case SfxId::Hit:        return {420.f,  0.14f, 0.35f, 1};
+    case SfxId::BossCrt:    return {880.f,  0.85f, 0.44f, 4};
     default:                return {440.f,  0.10f, 0.25f, 0};
   }
 }
@@ -64,6 +65,15 @@ void Mixer::render(float* out, int frames, int rate) {
         const float u = std::clamp(v.t / std::max(0.001f, v.dur), 0.f, 1.f);
         const float sw = 6.28318530718f * (v.freq * (1.f - 0.45f * u)) * v.t;
         s = 0.7f * std::sin(sw) + 0.3f * ((v.t * 149.f) - std::floor(v.t * 149.f) - 0.5f);
+      }
+      if (v.kind == 4) {  // descarga y resonancia de rayos catódicos (CRT) al vencer a un boss
+        const float u = std::clamp(v.t / std::max(0.001f, v.dur), 0.f, 1.f);
+        const float sweep = v.freq * (0.55f + 0.65f * std::sin(u * 5.2f) + 0.35f * (1.f - u));
+        const float ph1 = 6.28318530718f * sweep * v.t;
+        const float flyback = std::sin(6.28318530718f * (v.freq * 2.75f) * v.t);
+        const float pulse = 0.70f + 0.30f * std::sin(6.28318530718f * 32.f * v.t);
+        const float spark = (v.t * 211.f) - std::floor(v.t * 211.f) - 0.5f;
+        s = pulse * (0.55f * std::sin(ph1) + 0.28f * flyback + 0.17f * spark);
       }
       acc += v.amp * env * s;
       v.t += dt;

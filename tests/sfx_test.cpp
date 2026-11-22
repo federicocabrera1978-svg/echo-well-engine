@@ -56,15 +56,16 @@ int main() {
   mv.render(bv.data(), 64);
   for (int i = 0; i < 64; ++i) CHECK(bv[i] == 0.f);
   CHECK(mv.gain() == 0.f);
-  // Habilidad desbloqueada, Dash, Break y Hit: pico válido y fin limpio.
-  for (SfxId id : {SfxId::Ability, SfxId::Dash, SfxId::Break, SfxId::Hit}) {
+  // Habilidad desbloqueada, Dash, Break, Hit y BossCrt (rayos catódicos): pico válido y fin limpio.
+  std::vector<float> buf_long(kRate, 0.f);  // 1.0 s para cubrir BossCrt (0.85 s)
+  for (SfxId id : {SfxId::Ability, SfxId::Dash, SfxId::Break, SfxId::Hit, SfxId::BossCrt}) {
     Mixer ma;
     ma.play(id);
     CHECK(ma.active() == 1);
-    std::fill(buf.begin(), buf.end(), 0.f);
-    ma.render(buf.data(), int(buf.size()));
+    std::fill(buf_long.begin(), buf_long.end(), 0.f);
+    ma.render(buf_long.data(), int(buf_long.size()));
     float pa = 0;
-    for (float s : buf) pa = std::fmax(pa, std::fabs(s));
+    for (float s : buf_long) pa = std::fmax(pa, std::fabs(s));
     CHECK(pa > 0.05f && pa <= 1.f);
     CHECK(ma.active() == 0);
   }

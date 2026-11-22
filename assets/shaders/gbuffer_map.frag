@@ -540,6 +540,162 @@ void main() {
     albedo = atlas_texel(cv.g, l).rgb * 0.35;  // decorado de fondo (VIS sin COL)
   }
   if (solid || cv.g != 0u) { emit = 0.0; lr = 1.0; }
+  // Flora subterránea (pasto animado, enredaderas), bichos (de suelo y alados) y elementos
+  // exploratorios/artísticos (estelas rúnicas, candelabros, cristales y relicarios) en cada sala.
+  if (!solid && inside) {
+    ivec2 c_nb = clamp(ivec2(floor(local / vec2(320.0, 184.0))), ivec2(0), ivec2(2));
+    int nb_idx = c_nb.y * 3 + c_nb.x;
+    int r_theme = u_bg_theme[nb_idx];
+    float r_seed = float(u_bg_seed[nb_idx] % 997) + 1.0;
+    if (r_theme != 9) {
+      vec2 corg = u_chunk + vec2(c_nb) * vec2(320.0, 184.0);
+      vec2 rq = floor(world - corg);
+      float wx = floor(world.x);
+      bool floor_1 = (t.y + 1 < 69) && (texelFetch(u_tiles, ivec2(t.x, t.y + 1), 0).r != 0u);
+      bool floor_2 = !floor_1 && (t.y + 2 < 69) && (texelFetch(u_tiles, ivec2(t.x, t.y + 2), 0).r != 0u);
+      bool ceil_1  = (t.y > 0) && (texelFetch(u_tiles, ivec2(t.x, t.y - 1), 0).r != 0u);
+      bool near_mech = false;
+      for (int mi = 0; mi < u_marker_count; ++mi) {
+        if (u_markers[mi].w >= 1.5 && u_markers[mi].w <= 3.5 &&
+            abs(world.x - u_markers[mi].x) <= 11.0 && abs(world.y - u_markers[mi].y) <= 18.0) {
+          near_mech = true;
+          break;
+        }
+      }
+
+      // 1) Elementos exploratorios y artísticos de sala (cada 6 tiles sobre pisos sólidos: 8×14 px)
+      if (!near_mech && (floor_1 || floor_2) && int(mod(float(t.x), 6.0)) == 2 && t.x + 1 < 120) {
+        int base_ty = floor_1 ? (t.y + 1) : (t.y + 2);
+        bool wide_ok = texelFetch(u_tiles, ivec2(t.x + 1, base_ty), 0).r != 0u;
+        if (wide_ok) {
+          float py = float(floor_1 ? (7 - l.y) : (15 - l.y));
+          float lx = float(l.x);
+          int pkind = int(mod(float(t.x / 6 + base_ty), 4.0));
+          bool pdrawn = false;
+          vec3 pcol = vec3(0.0);
+          float pemit = 0.0;
+          if (pkind == 0 && py < 13.0 && lx >= 2.0 && lx <= 5.0) {
+            // Estela / tótem rúnico con inscripciones encendidas
+            pdrawn = true;
+            bool rune = (lx >= 3.0 && lx <= 4.0 && (py == 4.0 || py == 7.0 || py == 10.0));
+            pcol = rune ? vec3(0.38, 0.90, 0.98) : vec3(0.24, 0.25, 0.32);
+            pemit = rune ? 0.55 : 0.0;
+          } else if (pkind == 1 && py < 13.0) {
+            // Candelabro de hierro forjado con 3 llamas titilantes
+            float fl = floor(sin(u_time * 9.0 + lx * 2.1) * 0.6 + 0.5);
+            bool stem = (lx >= 3.0 && lx <= 4.0 && py <= 8.0);
+            bool arm  = (py >= 7.0 && py <= 8.0 && lx >= 1.0 && lx <= 6.0);
+            bool wax  = ((lx == 1.0 || lx == 4.0 || lx == 6.0) && py >= 9.0 && py <= 10.0);
+            bool fire = ((lx == 1.0 || lx == 4.0 || lx == 6.0) && py >= 11.0 && py <= 11.0 + fl);
+            if (stem || arm || wax || fire) {
+              pdrawn = true;
+              pcol = fire ? vec3(1.0, 0.72, 0.22) : (wax ? vec3(0.82, 0.76, 0.64) : vec3(0.20, 0.18, 0.24));
+              pemit = fire ? 0.82 : 0.0;
+            }
+          } else if (pkind == 2 && py < 11.0) {
+            // Geoda de cristales arcanos y hongos bioluminiscentes
+            bool sh1 = (lx >= 1.0 && lx <= 2.0 && py <= 6.0);
+            bool sh2 = (lx >= 3.0 && lx <= 4.0 && py <= 9.0);
+            bool sh3 = (lx >= 5.0 && lx <= 6.0 && py <= 5.0);
+            if (sh1 || sh2 || sh3) {
+              pdrawn = true;
+              pcol = sh2 ? vec3(0.42, 0.85, 0.96) : vec3(0.68, 0.36, 0.88);
+              pemit = (py >= 5.0) ? 0.52 : 0.22;
+            }
+          } else if (pkind == 3 && py < 13.0) {
+            // Pedestal antiguo con espada ancestral clavada
+            bool ped = (py <= 3.0 && lx >= 1.0 && lx <= 6.0);
+            bool blade = (py >= 4.0 && py <= 11.0 && lx >= 3.0 && lx <= 4.0);
+            bool guard = (py == 8.0 && lx >= 2.0 && lx <= 5.0);
+            if (ped || blade || guard) {
+              pdrawn = true;
+              pcol = guard ? vec3(0.88, 0.70, 0.26) : (blade ? vec3(0.64, 0.72, 0.82) : vec3(0.26, 0.24, 0.28));
+              pemit = guard ? 0.35 : 0.0;
+            }
+          }
+          if (pdrawn) {
+            albedo = pcol;
+            n = normalize(vec3((lx - 3.5) * 0.18, -0.25, 1.0));
+            depth = 0.46;
+            emit = pemit;
+            lr = 1.0;
+          }
+        }
+      }
+
+      // 2) Pasto animado y flores/esporas sobre cada piso y repisa (floor_1; despejado alrededor de switches/checkpoints)
+      if (floor_1 && !near_mech) {
+        float py = float(7 - l.y);
+        float sway = floor(sin(u_time * 2.8 + wx * 0.26 + r_seed) * 1.4);
+        float h_rnd = hash12(vec2(wx, float(t.y)));
+        float bh = 2.0 + floor(h_rnd * 4.5);  // 2..6 px de altura
+        bool blade = (py <= bh) && (mod(wx + (py >= 2.0 ? sway : 0.0), 2.0) < 1.35);
+        if (blade) {
+          float tip = clamp(py / max(1.0, bh), 0.0, 1.0);
+          bool spore = (h_rnd > 0.82 && py >= bh - 0.5);
+          albedo = spore ? vec3(0.52, 0.96, 0.76)
+                         : mix(vec3(0.10, 0.28, 0.16), vec3(0.30, 0.68, 0.38), tip);
+          n = normalize(vec3(sway * 0.22, -0.45, 1.0));
+          depth = 0.43;
+          emit = spore ? 0.42 : 0.0;
+          lr = 1.0;
+        }
+        // 3) Bichos de suelo (escarabajos luminosos que caminan entre el pasto cada 32 px)
+        float seg = floor(wx / 32.0);
+        float b_spd = 1.5 + fract(seg * 0.37 + r_seed * 0.1) * 0.9;
+        float bx = floor(seg * 32.0 + 16.0 + sin(u_time * b_spd + seg * 2.3) * 9.0);
+        float bdir = cos(u_time * b_spd + seg * 2.3) >= 0.0 ? 1.0 : -1.0;
+        float dx = (wx - bx) * bdir;
+        if (abs(dx) <= 2.0 && py >= 0.0 && py <= 2.5) {
+          bool legs = (py == 0.0 && mod(wx + floor(u_time * 10.0), 2.0) < 1.0);
+          bool shell = (py >= 1.0 && py <= 2.0 && abs(dx) <= 1.5);
+          bool ant = (py == 2.0 && dx == 2.0);
+          if (legs || shell || ant) {
+            bool glow_tail = (shell && dx < -0.2);
+            albedo = glow_tail ? vec3(0.48, 0.98, 0.62)
+                               : (shell ? vec3(0.54, 0.34, 0.66) : vec3(0.18, 0.15, 0.22));
+            n = normalize(vec3(dx * 0.25 * bdir, -0.4, 1.0));
+            depth = 0.41;
+            emit = glow_tail ? 0.72 : 0.0;
+            lr = 1.0;
+          }
+        }
+      }
+
+      // 4) Enredaderas y musgo colgante bajo techos (ceil_1)
+      if (ceil_1) {
+        float cy = float(l.y);
+        float sway = floor(sin(u_time * 2.4 + wx * 0.22 + r_seed) * 1.2);
+        float vh = 1.0 + floor(hash12(vec2(wx + 17.0, float(t.y))) * 4.5);
+        if (cy <= vh && mod(wx + sway, 3.0) < 1.4) {
+          bool dew = (cy >= vh - 0.5 && hash12(vec2(wx, float(t.y) + 9.0)) > 0.78);
+          albedo = dew ? vec3(0.46, 0.92, 0.88) : mix(vec3(0.10, 0.26, 0.16), vec3(0.24, 0.54, 0.32), cy / 5.0);
+          n = normalize(vec3(sway * 0.2, 0.4, 1.0));
+          depth = 0.44;
+          emit = dew ? 0.38 : 0.0;
+          lr = 1.0;
+        }
+      }
+
+      // 5) Bichos alados en el aire de cada sala (polillas dracónicas y luciérnagas con alas batientes)
+      for (int bi = 0; bi < 4; ++bi) {
+        float fk = float(bi);
+        float bx = floor(42.0 + fk * 76.0 + sin(u_time * (1.2 + fk * 0.22) + r_seed + fk * 2.1) * 24.0);
+        float by = floor(38.0 + mod(fk * 33.0 + r_seed * 7.0, 76.0) + cos(u_time * (1.7 + fk * 0.28) + fk) * 13.0);
+        float flap = floor(sin(u_time * 18.0 + fk * 2.3) * 1.4);
+        vec2 bd = rq - vec2(bx, by);
+        bool body = (abs(bd.x) < 0.8 && abs(bd.y) <= 1.0);
+        bool wing = (abs(abs(bd.x) - 1.5) <= 0.8 && abs(bd.y - flap) <= 1.0);
+        if (body || wing) {
+          albedo = body ? vec3(1.0, 0.88, 0.38) : ((bi % 2 == 0) ? vec3(0.45, 0.92, 0.98) : vec3(0.96, 0.52, 0.24));
+          n = vec3(0.0, 0.0, 1.0);
+          depth = 0.42;
+          emit = body ? 0.80 : 0.52;
+          lr = 1.0;
+        }
+      }
+    }
+  }
   // Agua: columna por columna, desde la superficie Hooke hasta el fondo.
   for (int b = 0; b < u_water_count; ++b) {
     int nc = u_water_cols[b];
@@ -612,16 +768,112 @@ void main() {
       }
     }
   }
-  // Marcadores (actores)
+  // Marcadores (actores, santuarios de checkpoint, abre-puertas y flechas guía)
   for (int i = 0; i < u_marker_count; ++i) {
     vec4 m = u_markers[i];
     vec2 d = world - m.xy;
-    bool hit = m.w < 0.5 ? dot(d, d) <= m.z * m.z : max(abs(d.x), abs(d.y)) <= m.z;
-    if (hit) {
-      albedo = u_marker_colors[i];
-      n = m.w < 0.5 && m.z > 1.5 ? normalize(vec3(d.x / m.z, -d.y / m.z, 1.0)) : vec3(0.0, 0.0, 1.0);
-      depth = 0.3;
-      emit = 0.0; lr = 1.0;
+    if (m.w < 1.5) {
+      bool hit = m.w < 0.5 ? dot(d, d) <= m.z * m.z : max(abs(d.x), abs(d.y)) <= m.z;
+      if (hit) {
+        albedo = u_marker_colors[i];
+        n = m.w < 0.5 && m.z > 1.5 ? normalize(vec3(d.x / m.z, -d.y / m.z, 1.0)) : vec3(0.0, 0.0, 1.0);
+        depth = 0.3;
+        emit = 0.0; lr = 1.0;
+      }
+    } else if (m.w < 2.5) {
+      // shape == 2: Santuario de Checkpoint pixel-art (13×20 px, cristal cian inactivo / llama esmeralda-dorada activo)
+      float fx = floor(world.x - m.x);
+      float fy = floor(world.y - m.y);
+      if (abs(fx) <= 6.0 && fy >= -13.0 && fy <= 7.0) {
+        bool is_on = u_marker_colors[i].g > 0.8;
+        float bob = floor(sin(u_time * 4.5 + m.x * 0.1) * 1.2);
+        float by = fy + 9.0 - bob;
+        vec3 gem_c = is_on ? vec3(0.28, 1.0, 0.58) : vec3(0.28, 0.88, 1.0);
+        vec3 core_c = is_on ? vec3(1.0, 0.96, 0.55) : vec3(0.86, 0.98, 1.0);
+        bool base = (fy >= 4.0 && fy <= 7.0 && abs(fx) <= (fy >= 6.0 ? 6.0 : 4.5));
+        bool pillar = (fy >= -4.0 && fy < 4.0 && abs(fx) <= (abs(fy + 1.0) <= 1.0 ? 4.5 : 2.5));
+        float gd = abs(fx) + abs(by);
+        bool gem = (fy >= -13.0 && fy <= -4.0 && gd <= 3.5);
+        bool halo = (fy >= -13.0 && fy <= -4.0 && abs(length(vec2(fx, by)) - 4.8) < 0.75);
+        if (gem || halo || pillar || base) {
+          if (gem) {
+            albedo = (gd <= 1.5) ? core_c : gem_c;
+            emit = (gd <= 1.5) ? 0.98 : 0.82;
+          } else if (halo) {
+            albedo = gem_c;
+            emit = is_on ? 0.85 : 0.55;
+          } else if (pillar) {
+            bool rune = (abs(fx) <= 0.8 && fy >= -3.0 && fy <= 2.0);
+            albedo = rune ? gem_c : (abs(fx) >= 2.0 ? vec3(0.18, 0.20, 0.26) : vec3(0.32, 0.35, 0.44));
+            emit = rune ? (is_on ? 0.85 : 0.55) : 0.0;
+          } else {
+            bool trim = (fy == 4.0 || fy == 6.0) && abs(fx) <= 3.5;
+            albedo = trim ? (is_on ? vec3(0.88, 0.74, 0.28) : vec3(0.26, 0.54, 0.68)) : vec3(0.22, 0.24, 0.30);
+            emit = trim ? 0.30 : 0.0;
+          }
+          n = normalize(vec3(fx * 0.14, (fy - 2.0) * 0.08, 1.0));
+          depth = 0.29;
+          lr = 1.0;
+        }
+      }
+    } else if (m.w < 3.5) {
+      // shape == 3: Abre-puertas / Switch pixel-art elevado (11×18 px, orbe ámbar pulsante / verde encendido)
+      float fx = floor(world.x - m.x);
+      float fy = floor(world.y - m.y);
+      if (abs(fx) <= 6.0 && fy >= -11.0 && fy <= 7.0) {
+        bool is_on = u_marker_colors[i].g > 0.8;
+        vec3 orb_c = is_on ? vec3(0.24, 1.0, 0.52) : vec3(1.0, 0.56, 0.12);
+        vec3 core_c = is_on ? vec3(0.88, 1.0, 0.82) : vec3(1.0, 0.94, 0.55);
+        float tilt = is_on ? 1.5 : -1.5;
+        float ox = tilt, oy = -6.0;
+        float od = length(vec2(fx - ox, fy - oy));
+        bool orb = (od <= 3.2);
+        bool ring = (!is_on && abs(od - (4.4 + 0.5 * sin(u_time * 6.0))) < 0.7);
+        bool shaft = (fy >= -3.0 && fy < 3.0 && abs(fx - tilt * ((3.0 - fy) / 6.0)) <= 1.0);
+        bool ped = (fy >= 3.0 && fy <= 7.0 && abs(fx) <= (fy >= 5.0 ? 5.0 : 3.5));
+        if (orb || ring || shaft || ped) {
+          if (orb) {
+            albedo = (od <= 1.4) ? core_c : orb_c;
+            emit = 0.95;
+          } else if (ring) {
+            albedo = vec3(1.0, 0.78, 0.25);
+            emit = 0.85;
+          } else if (shaft) {
+            albedo = vec3(0.72, 0.76, 0.84);
+            emit = 0.15;
+          } else {
+            bool led = (fy == 5.0 && abs(fx) <= 2.5);
+            albedo = led ? orb_c : vec3(0.28, 0.26, 0.34);
+            emit = led ? 0.80 : 0.0;
+          }
+          n = normalize(vec3(fx * 0.15, (fy - 2.0) * 0.1, 1.0));
+          depth = 0.285;
+          lr = 1.0;
+        }
+      }
+    } else if (m.w < 4.5) {
+      // shape == 4: Flecha guía pixel-art (indica hacia dónde ir para accionar puertas pendientes)
+      vec2 rel = floor(world - m.xy);
+      if (abs(rel.x) <= 6.0 && abs(rel.y) <= 6.0) {
+        vec2 dir_v = u_marker_colors[i].xy;
+        float len_v = max(0.001, length(dir_v));
+        vec2 fwd = dir_v / len_v;
+        vec2 perp = vec2(-fwd.y, fwd.x);
+        float along = dot(rel, fwd);
+        float side = abs(dot(rel, perp));
+        bool head = (along >= -0.5 && along <= 4.8 && side <= (4.8 - along) * 0.95);
+        bool tail = (along >= -4.5 && along < 0.2 && side <= 1.45);
+        if (head || tail) {
+          bool border = (head && side > (4.8 - along) * 0.95 - 0.85) || (tail && (side > 0.85 || along < -3.7));
+          bool cyan_style = u_marker_colors[i].z > 0.5;
+          vec3 fill_c = cyan_style ? vec3(0.38, 0.96, 1.0) : vec3(1.0, 0.86, 0.24);
+          albedo = border ? vec3(0.14, 0.10, 0.08) : fill_c;
+          n = vec3(0.0, 0.0, 1.0);
+          depth = 0.26;
+          emit = border ? 0.25 : 0.95;
+          lr = 1.0;
+        }
+      }
     }
   }
   // Bosses pixel-art (Coloso del Sello 24×16 y Wyrm Ancestral 32×22) con corona dorada de pureza.

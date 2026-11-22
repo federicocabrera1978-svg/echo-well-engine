@@ -162,6 +162,22 @@ int main(int argc, char** argv) {
     CHECK(sim3.imp(0).defeated);
     CHECK((sim3.take_sfx() & ew::audio::kSfxHit) != 0u);
 
+    // Derrotar al Wyrm activa el estallido visual y sonoro de rayos catódicos (kSfxBossCrt + boss_burst).
+    for (int hit = 0; hit < Sim::kDragonHits && !sim3.bosses_defeated(); ++hit) {
+      for (int f = 0; f < 120 && (sim3.boss(0).hurt > 0.f || sim3.boss(0).phase == 2 || sim3.dash_ticks() > 0); ++f) {
+        move_to(sim3, 648.f, 88.f);
+        sim3.step({});
+      }
+      const auto& b = sim3.boss(0);
+      auto& pl = sim3.world().points()[sim3.player_index()];
+      pl.pos = {b.x, b.y - Sim::kDragonH - Sim::kPlayerRadius + 1.5f};
+      pl.prev = {pl.pos.x, pl.pos.y - 2.f};
+      sim3.step({});
+    }
+    CHECK(sim3.bosses_defeated());
+    CHECK(sim3.boss_burst() > 0);
+    CHECK((sim3.take_sfx() & ew::audio::kSfxBossCrt) != 0u);
+
     EndScreen es;
     EndStats st;
     st.title = level_title(s3.map().string_at(1));
