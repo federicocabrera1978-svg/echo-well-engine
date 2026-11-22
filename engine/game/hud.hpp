@@ -5,6 +5,7 @@
 #include "game/frame_view.hpp"
 #include "game/menu.hpp"
 #include "game/menu_text.hpp"
+#include "game/minimap.hpp"
 #include "game/scene.hpp"
 #include "game/sim.hpp"
 
@@ -83,11 +84,18 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   }
   v.abilities = int(ab);
   v.ability_flash = float(sim.ability_flash()) / float(Sim::kAbilityFlashFrames);
-  v.map_w = scene.map().header().map_w_chunks;
-  v.map_h = scene.map().header().map_h_chunks;
-  v.cur_cx = scene.chunk_x();
-  v.cur_cy = scene.chunk_y();
-  v.visited_mask = uint32_t(scene.visited_chunks() & 0xFFFFFFFFu);
+  const MinimapState mm = compute_minimap(scene);
+  v.map_w = mm.map_w;
+  v.map_h = mm.map_h;
+  v.cur_cx = mm.cur_cx;
+  v.cur_cy = mm.cur_cy;
+  v.visited_mask = uint32_t(mm.visited_mask & 0xFFFFFFFFu);
+  v.visited_mask_hi = uint32_t((mm.visited_mask >> 32) & 0xFFFFFFFFu);
+  v.blocked_doors_lo = uint32_t(mm.blocked_doors_mask & 0xFFFFFFFFu);
+  v.blocked_doors_hi = uint32_t((mm.blocked_doors_mask >> 32) & 0xFFFFFFFFu);
+  v.missing_eggs_lo = uint32_t(mm.missing_eggs_mask & 0xFFFFFFFFu);
+  v.missing_eggs_hi = uint32_t((mm.missing_eggs_mask >> 32) & 0xFFFFFFFFu);
+  v.explored_pct = mm.explored_pct;
   return ev;
 }
 

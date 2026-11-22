@@ -72,9 +72,14 @@ struct FrameData {
   // HUD de habilidades (light pass): bitmask kAbility* + destello 0..1 al desbloquear.
   int abilities = 0;
   float ability_flash = 0;
-  // Mini-mapa exploratorio (light pass): grilla de chunks, chunk activo y bitmask visitado.
+  // Mini-mapa exploratorio (light pass): grilla de chunks, chunk activo, bitmasks de
+  // visitados, puertas/muros cerrados, huevos pendientes y porcentaje explorado.
   int map_w = 0, map_h = 0, cur_cx = 0, cur_cy = 0;
   uint32_t visited_mask = 0;
+  uint32_t visited_mask_hi = 0;
+  uint32_t blocked_doors_lo = 0, blocked_doors_hi = 0;
+  uint32_t missing_eggs_lo = 0, missing_eggs_hi = 0;
+  int explored_pct = 0;
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;
