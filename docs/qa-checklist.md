@@ -130,6 +130,9 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   púas pixel-art de acero y punta carmesí con alto contraste sobre el fondo.
   Verificá en particular que el fondo del Hub `c10` (`abismo`, `(1,0)` de `level2`) tenga lectura clara y contraste suficiente frente al primer plano y los bordes del pozo.
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
+- [ ] **Iluminación dinámica (Farol, Antorchas, Cristales y Lava).**
+  - Verificá que en zonas oscuras (`Cripta`, `Abismo`, `Guarida`, `Pozo`) la luz ambiental baja según el bioma y el farol del protagonista ilumina dinámicamente paredes, relieves y tiles cercanos al moverse, girar o invertir gravedad.
+  - Verificá antorchas titilando junto a muros en `Pozo`/`Cripta`/`Santuario`, brillos cian/violeta de cristales en *Las Catacumbas* y resplandor cálido de lava/brasas en *La Guarida del Wyrm*, además de la luz dinámica de las bolas de fuego del dragón y el cambio de color en altares (`checkpoint`), palancas y reliquias sin recoger.
 - [ ] **Pasto, brisa e interacción ambiental (`BRISA SI/NO`).**
   - Verificá sobre pisos y repisas el **pasto pixel-art con variantes** (despejado alrededor de palancas `shape 3` y altares `shape 2` vía `near_mech` para no taparlos) y, en Las Catacumbas (`level2`), los **hongos y flores** bioluminiscentes.
   - Verificá la **brisa global con ondas viajeras** recorriendo la sala y la reacción local al **caminar** (estela en los pies), **aterrizar** de un salto, **embestir con Dash** y al **caer/aterrizar enemigos y bosses** (coloso, `imp`, Wyrm).

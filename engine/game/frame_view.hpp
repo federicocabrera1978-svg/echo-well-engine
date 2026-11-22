@@ -23,6 +23,7 @@ inline constexpr int kMaxBosses = 4;
 inline constexpr int kMaxWaterCols = 64;
 inline constexpr int kMaxWaterBodies = 4;
 inline constexpr int kMaxMovers = 8;
+inline constexpr int kMaxPointLights = 12;
 inline constexpr int kTilesW = 120, kTilesH = 69;  // 3×3 chunks de 40×23
 
 // Lo que el juego le pasa al renderer cada frame (coords de mundo en px, y hacia abajo).
@@ -50,6 +51,11 @@ struct FrameData {
   std::array<float, kMaxWaterBodies * 4> water_rect{};
   std::array<float, kMaxWaterBodies * kMaxWaterCols> water_surface{};
   float light_x = 160, light_y = 90;         // luz principal (px mundo)
+  float ambient_darkness = 0.f;              // oscuridad ambiental del bioma (0..1)
+  float lantern_radius = 125.f;              // radio del farol principal (px mundo)
+  int point_light_count = 0;
+  std::array<float, kMaxPointLights * 4> point_light_pos{};  // (x_world, y_world, radius, kind)
+  std::array<float, kMaxPointLights * 4> point_light_col{};  // (r, g, b, phase)
   float fade = 0;                            // 0..1 pantalla de meta (light pass)
   int end_screen = 0;                        // 1 = pantalla de final interactiva (usa ctl_txt)
   int end_sel = 0;                           // opción seleccionada 0..3
@@ -307,6 +313,9 @@ inline void push_hazards(FrameData& v, Scene& s) {
   }
 }
 
+// Implementada en game/lighting.hpp (incluida al final para permitir cualquier orden de #include).
+inline void collect_room_lights(FrameData& v, const Scene& scene, const Sim& sim, float time_s);
+
 // Empaqueta cámara, vecindario 3×3, entidades, física, bosses, protagonista, agua, luz y viento.
 inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float time_s, bool demo,
                               bool overlay_open, bool show_player_guide = false, int preview_hero_sel = -1) {
@@ -500,8 +509,7 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     for (int i = 0; i < n; ++i)
       v.water_surface[std::size_t(b * kMaxWaterCols + i)] = w.surface_col(i);
   }
-  v.light_x = px;
-  v.light_y = py;
+  collect_room_lights(v, scene, sim, time_s);
   v.fade = sim.finish_t();
   v.foliage_enabled = sim.wind_enabled() ? 1 : 0;
   v.wind_gust = sim.wind().current_gust(uint32_t(v.bg_seed[4]));
@@ -509,3 +517,5 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
 }
 
 }  // namespace ew::game
+
+#include "game/lighting.hpp"

@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include <algorithm>
+#include <array>
 #include "render/sprite_atlas.hpp"
 #include "render/tile_atlas.hpp"
 #include <fstream>
@@ -179,6 +180,19 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_end_has_next"), v.end_has_next);
   Uniform1i(GetUniformLocation(light_prog_, "u_end_true"), v.end_true);
   Uniform2f(GetUniformLocation(light_prog_, "u_light"), v.light_x - v.cam_x, v.light_y - v.cam_y);
+  Uniform1f(GetUniformLocation(light_prog_, "u_amb_dark"), v.ambient_darkness);
+  Uniform1f(GetUniformLocation(light_prog_, "u_lantern_rad"), v.lantern_radius);
+  const int pl_count = std::clamp(v.point_light_count, 0, ew::game::kMaxPointLights);
+  Uniform1i(GetUniformLocation(light_prog_, "u_pl_count"), pl_count);
+  if (pl_count > 0) {
+    std::array<float, ew::game::kMaxPointLights * 4> pl_pos = v.point_light_pos;
+    for (int i = 0; i < pl_count; ++i) {
+      pl_pos[std::size_t(i) * 4 + 0] -= v.cam_x;
+      pl_pos[std::size_t(i) * 4 + 1] -= v.cam_y;
+    }
+    Uniform4fv(GetUniformLocation(light_prog_, "u_pl_pos"), pl_count, pl_pos.data());
+    Uniform4fv(GetUniformLocation(light_prog_, "u_pl_col"), pl_count, v.point_light_col.data());
+  }
   Uniform1i(GetUniformLocation(light_prog_, "u_pause"), v.pause);
   Uniform1i(GetUniformLocation(light_prog_, "u_sel"), v.pause_sel);
   Uniform1f(GetUniformLocation(light_prog_, "u_vol"), v.pause_vol);

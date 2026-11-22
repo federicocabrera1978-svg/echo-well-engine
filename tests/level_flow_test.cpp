@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
       }
     }
     CHECK(!has_player_orbit_arrow);
-    CHECK(std::fabs(v.light_x - flow.sim().player().pos.x) < 1e-3f);
-    CHECK(std::fabs(v.light_y - flow.sim().player().pos.y) < 1e-3f);
+    CHECK(std::fabs(v.light_x - (flow.sim().player().pos.x + float(flow.sim().player_facing()) * 4.f)) < 1e-3f);
+    CHECK(std::fabs(v.light_y - (flow.sim().player().pos.y - 8.f * flow.sim().down())) < 1e-3f);
     CHECK(v.foliage_enabled == 1);
 
     // Culling fuera de vista y tope kMaxMarkers / kMaxSprites

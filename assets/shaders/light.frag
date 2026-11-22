@@ -13,6 +13,11 @@ uniform int u_end_sel; // opción seleccionada 0..3
 uniform int u_end_has_next; // 1 = hay siguiente nivel
 uniform int u_end_true;     // 1 = final verdadero (100% huevos)
 uniform vec2 u_light;  // px de vista, y hacia abajo
+uniform float u_amb_dark;
+uniform float u_lantern_rad;
+uniform int u_pl_count;
+uniform vec4 u_pl_pos[12];
+uniform vec4 u_pl_col[12];
 uniform int u_pause;   // 1 = menú de pausa
 uniform int u_sel;     // ítem seleccionado 0..7
 uniform int u_has_save; // 1 = hay partida guardada (CONTINUAR habilitado)
@@ -572,13 +577,85 @@ void main() {
   vec2 lp = u_light + vec2(0.0, -10.0 + sin(u_time * 3.0));
   vec3 L = vec3((lp - px) * vec2(1.0, -1.0), 24.0);  // a espacio y-arriba de las normales
   float d = length(L);
-  float att = 1.0 / (1.0 + 0.0008 * d * d);
+  float att = 1.0 / (1.0 + (d * d) / max(u_lantern_rad * u_lantern_rad * 0.14, 400.0));
   float diff = max(dot(n, normalize(L)), 0.0);
-  // Fondo: ambiente frío más alto (se lee la silueta de la sala) y la luz del player lo
-  // roza a medias, así queda detrás del primer plano. Escena: igual que antes.
-  vec3 amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.14), lr);
-  vec3 c = albedo * (amb + vec3(1.0, 0.85, 0.6) * diff * att * 2.6 * mix(0.45, 1.0, lr));
+  // Fondo: ambiente frío más alto (se lee la silueta de la sala) escalado por oscuridad del bioma.
+  float dark = clamp(u_amb_dark, 0.0, 1.0);
+  vec3 fg_amb = vec3(mix(0.16, 0.055, dark));
+  vec3 bg_amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.22, 0.25, 0.34), dark);
+  vec3 amb = mix(bg_amb, fg_amb, lr);
+  vec3 lit = amb + vec3(1.0, 0.85, 0.6) * diff * att * 2.6 * mix(0.45, 1.0, lr);
+  vec3 halo = vec3(1.0, 0.84, 0.56) * exp(-d * 0.032) * 0.09;
+
+  // Luces puntuales multipunto: 0=Torch, 1=Crystal, 2=Lava, 3=Shrine.
+  int pl_n = min(u_pl_count, 12);
+  vec3 core_emissive = vec3(0.0);
+  for (int i = 0; i < 12; ++i) {
+    if (i >= pl_n) break;
+    vec4 plp = u_pl_pos[i];
+    vec4 plc = u_pl_col[i];
+    vec2 ppos = plp.xy;
+    float rad = plp.z;
+    int kind = int(floor(plp.w + 0.5));
+    float ph = plc.w;
+
+    float flick = 1.0;
+    if (kind == 0) {
+      flick = 0.86 + 0.09 * sin(u_time * 9.5 + ph * 3.1) + 0.05 * sin(u_time * 17.3 + ph * 5.7);
+    } else if (kind == 1) {
+      flick = 0.85 + 0.15 * sin(u_time * 2.1 + ph);
+    } else if (kind == 2) {
+      flick = 0.84 + 0.16 * sin(u_time * 1.45 + ph * 1.7 + 0.4 * sin(u_time * 0.7 + ph));
+    } else {
+      flick = 0.92 + 0.08 * sin(u_time * 3.2 + ph);
+    }
+
+    float pd = length(ppos - px);
+    if (pd < rad) {
+      float falloff = pow(clamp(1.0 - pd / max(rad, 1.0), 0.0, 1.0), 1.65);
+      vec3 pL = normalize(vec3((ppos - px) * vec2(1.0, -1.0), 22.0));
+      float pdiff = max(dot(n, pL), 0.0);
+      lit += plc.rgb * pdiff * falloff * flick * 1.9 * mix(0.55, 1.0, lr);
+      halo += plc.rgb * exp(-pd * 0.12) * falloff * flick * 0.10;
+    }
+
+    if (lr < 0.5 && pd < 10.0) {
+      vec2 dpx = floor(px) - floor(ppos);
+      if (kind == 0) {
+        float sway = step(0.15, sin(u_time * 9.5 + ph * 3.1));
+        if (dpx.x >= 0.0 && dpx.x <= 1.0 && dpx.y >= 1.0 && dpx.y <= 2.0) {
+          core_emissive = max(core_emissive, dpx.y == 1.0 ? vec3(0.42, 0.28, 0.16) : vec3(0.24, 0.16, 0.11));
+        } else if (dpx.y == 0.0 && dpx.x >= 0.0 && dpx.x <= 1.0) {
+          core_emissive = max(core_emissive, vec3(1.0, 0.94, 0.62) * flick);
+        } else if (dpx.y == -1.0 && dpx.x >= 0.0 && dpx.x <= 1.0) {
+          core_emissive = max(core_emissive, vec3(1.0, 0.62, 0.18) * flick);
+        } else if (dpx.y == -2.0 && dpx.x == sway && sin(u_time * 14.0 + ph * 5.0) > -0.35) {
+          core_emissive = max(core_emissive, vec3(1.0, 0.42, 0.10) * flick);
+        }
+      } else if (kind == 1 && rad > 38.0) {
+        if (dpx.x >= 0.0 && dpx.x <= 1.0 && dpx.y >= -1.0 && dpx.y <= 1.0 &&
+            !(dpx.x == 1.0 && dpx.y == -1.0)) {
+          bool glint = (dpx.x == 0.0 && dpx.y == -1.0) || (dpx.x == 1.0 && dpx.y == 0.0);
+          vec3 ccol = glint ? mix(plc.rgb, vec3(1.0), 0.65) : plc.rgb * 0.92;
+          core_emissive = max(core_emissive, ccol * (0.85 + 0.35 * flick));
+        }
+      } else if (kind == 2 && rad > 48.0) {
+        if (abs(dpx.x) <= 2.0 && dpx.y >= 1.0 && dpx.y <= 3.0) {
+          bool hot = abs(dpx.x) <= 1.0 && dpx.y == 2.0;
+          vec3 lcol = hot ? vec3(1.0, 0.72, 0.22) : vec3(0.95, 0.32, 0.08);
+          core_emissive = max(core_emissive, lcol * (0.85 + 0.30 * flick));
+        }
+        float spark_y = -floor(mod(u_time * 4.5 + ph * 3.0, 4.0));
+        if (dpx.x == 0.0 && dpx.y == spark_y) {
+          core_emissive = max(core_emissive, vec3(1.0, 0.64, 0.18) * flick);
+        }
+      }
+    }
+  }
+
+  vec3 c = albedo * lit + halo + core_emissive;
   c += albedo * emit * 1.6;
+  c = clamp(c, 0.0, 1.0);
   if (u_boss_burst.z > 0.001 || u_boss_burst.w > 0.001) c = crt_boss_rays(c, px, u_boss_burst);
 
   if (u_fade > 0.0 && u_hero_sel == 0) {
