@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
     shader_dir = ew::core::parent_path(vert);
   }
   if (map_path == EW_DEFAULT_MAP)
-    map_path = ew::core::pick_asset(root, "assets/maps/bin/slice.ewmap", EW_DEFAULT_MAP);
+    map_path = ew::core::pick_asset(root, "assets/maps/bin/world.ewmap", EW_DEFAULT_MAP);
   if (atlas_path.empty()) atlas_path = ew::core::pick_asset(root, "assets/atlas/tiles.png", EW_DEFAULT_ATLAS);
   if (sprites_path.empty()) sprites_path = ew::core::pick_asset(root, "assets/atlas/sprites.png", EW_DEFAULT_SPRITES);
 

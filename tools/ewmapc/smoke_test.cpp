@@ -86,7 +86,8 @@ int main(int argc, char** argv) {
     CHECK(mv.w_tiles >= 1 && mv.h_tiles >= 1 && mv.w_tiles <= kMaxMoverTiles && mv.h_tiles <= kMaxMoverTiles);
     CHECK(mv.n_wp >= 2 && mv.n_wp <= kMaxMoverWaypoints);
     CHECK(mv.speed > 0 && mv.pause >= 0);
-    CHECK(m.string_at(m.entities()[mv.entity].type_str) == "mover");
+    const auto mt = m.string_at(m.entities()[mv.entity].type_str);
+    CHECK(mt == "mover" || mt == "elevator");
   }
 
   // Fondos: chunk dentro del mapa, tema conocido, sin chunks repetidos (los mismos límites que ewmapc).

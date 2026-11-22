@@ -1,6 +1,6 @@
 # Checklist de QA — Echo Well v0.1.0
 
-Versión de prueba para QA de la campaña Metroidvania completa: **3 niveles interconectados** (`slice` → `level2` → `level3`), habilidades desbloqueables (**Doble Salto** y **Dash**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
+Versión de prueba para QA del mundo Metroidvania unificado (**`world.ewmap`**, grilla `8×3`: **El Pozo → Las Catacumbas → La Guarida del Wyrm** con atajos de un solo sentido y ascensores; el ejecutable arranca ahí por defecto, mientras los capítulos sueltos `slice`, `level2` y `level3` siguen probándose con `--map`), habilidades desbloqueables (**Doble Salto** y **Dash**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
 
 Antes de empezar, anotá la versión: `echo_engine --version` (tiene que decir `v0.1.0`).
 También aparece en el título de la ventana y abajo a la derecha del menú de pausa.
@@ -17,7 +17,7 @@ iniciar sesión en GitHub para descargarlos.
 
 Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `ewmapc`,
 `ewmap_smoke`, `assets/shaders/`, `assets/atlas/tiles.png`, `assets/atlas/sprites.png`,
-`assets/maps/bin/{slice,level2,level3,hello,room,mover,gravity,boss,ability,dash}.ewmap`, `README.md`, `DIST.txt` y
+`assets/maps/bin/{world,slice,level2,level3,hello,room,mover,gravity,boss,ability,dash}.ewmap`, `README.md`, `DIST.txt` y
 `docs/qa-checklist.md` (este archivo).
 
 ### Linux (x86_64)
@@ -43,7 +43,7 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
 | `--hero farol\|zarigueya\|castor` | elige el personaje inicial directo sin abrir el selector |
-| `--map assets/maps/bin/level2.ewmap` | carga directo el Nivel 2 "Las Catacumbas" (también `level3`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`) |
+| `--map assets/maps/bin/slice.ewmap` | carga directo el capítulo suelto (`slice`, `level2`, `level3`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`); por defecto arranca en `world.ewmap` |
 | `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
 La consola (terminal en Linux; en Windows abrí `cmd` y corré `echo_engine.exe` desde ahí)
@@ -79,7 +79,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
 - [ ] **Selector de 3 personajes (`Sr. del Farol`, `La Zarigüeya`, `El Castor`) y objetos.** Verificá que al arrancar sin partida guardada se abre **`ELIGE TU HEROE`** con retratos animados en vivo (↑/↓ o W/S elige, Enter/Espacio confirma, Esc cierra), y que desde Pausa → **`HEROE`** podés cambiar de personaje en cualquier momento (o iniciando con `--hero farol|zarigueya|castor`). Probá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto (`245 px/s`), trepada en cuerda, nado y parpadeo post-respawn en los 3 héroes; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados, la reliquia de Doble Salto como emblema alado cian y la de Dash como reliquia ígnea dorado-carmesí.
 - [ ] **Lectura visual limpia sin flecha junto al protagonista.** Verificá que no aparece ninguna flecha orbitando al lado del personaje (los abre-puertas sin accionar conservan únicamente su indicador `↓` arriba). La lógica de cálculo basada en la sección `GUIDE` (`engine/game/guide.hpp`) sigue cubierta por `guide_arrows`.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
-- [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `slice`, `level2`, `level3`).**
+- [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `world`, `slice`, `level2`, `level3`).**
   - Las salas no visitadas permanecen **ocultas** (sin revelarse en la grilla hasta entrar a ellas).
   - Al explorar nuevos chunks, cada sala visitada se revela en el mini-mapa (resaltando la sala actual) y se actualiza el contador de **porcentaje explorado (`%`)** hasta `100%` al recorrer todo el mapa.
   - En las salas ya visitadas con puertas cerradas (`door` / `one_way_door`) o muros agrietados intactos (`break_wall`) aparece un **marcador carmesí**, que desaparece al abrir la puerta o romper el muro.
@@ -142,6 +142,11 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   1. En `(0,0)`, recogé o conservá Doble Salto + Dash, rompé `wall_entry` embistiendo y saltá sobre el foso hacia `(1,0)`.
   2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3`, rompé `wall_secret3` hacia `(0,1)`, derrotá al diablillo `imp_santuario` embistiendo con Dash o con pisotón para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
   3. Subí de vuelta a `(1,0)`, observando en el **mini-mapa** arriba a la derecha cómo se ilumina cada sala visitada; entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y ver la pantalla de victoria final (**`VICTORIA: REINO DESPIERTO`** con tiempo y rango **S/A/B**).
+- [ ] **Atajos, puertas de un solo sentido (`one_way_door`) y ascensores (`elevator`) en `world` (`8×3`):**
+  - **`owd_wyrm_cat_l` (entre `(3,2)` y `(4,2)`, Las Catacumbas ↔ La Guarida del Wyrm):** desde la derecha (Zona 2, Las Catacumbas) **no se abre** ni al empujar ni al pulsar E/X/↓ (suena clink metálico); al llegar por la izquierda desde Zona 3 (La Guarida del Wyrm) **se abre de forma permanente** dejando libre el atajo.
+  - **`owd_wyrm_pozo` (en `(1,0)`, El Pozo):** desde la izquierda (lado inicial de El Pozo) **no se abre**; al subir desde Zona 3 por la derecha **se abre de forma permanente** y conserva su estado abierto tras morir, R corto y al recargar `save.ewsv`.
+  - **`sw_elev_cat` → `elev_cat_pozo` (entre `(6,1)` y `(6,0)`):** verificá que `elev_cat_pozo` arranca bloqueado (sellando el piso en `(6,0)`), que al activar `sw_elev_cat` en `(6,1)` se desbloquea, se puede llamar con E/X/↓ desde arriba o abajo y te **sube directo a `(6,0)` en El Pozo** sin aplastarte ni invertir la gravedad.
+  - **`elev_wyrm_pozo` (conecta `(1,1) ↔ (1,0)` cerca del inicio):** verificá que arranca desbloqueado, sube desde `(1,1)` hacia la alcoba de `(1,0)` al pisarlo (y responde al llamado con E/X/↓ desde cualquiera de los dos extremos) para abrir `owd_wyrm_pozo` hacia el inicio.
 
 ## 4. Guardar partida
 

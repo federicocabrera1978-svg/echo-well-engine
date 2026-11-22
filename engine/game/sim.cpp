@@ -1,5 +1,6 @@
 #include "game/sim.hpp"
 
+#include "audio/sfx.hpp"
 #include "game/hero.hpp"
 
 #include <algorithm>
@@ -73,13 +74,17 @@ void Sim::build() {
   for (const auto& w : scene_.map().water())
     water_.emplace_back(float(w.x), float(w.y), float(w.w), float(w.h), w.stiffness, w.damping);
   const auto ents = scene_.map().entities();
+  const auto links = scene_.map().links();
   for (const auto& rec : scene_.map().movers()) {
     if (rec.entity >= ents.size()) continue;
-    if (scene_.map().string_at(ents[rec.entity].type_str) != "mover") continue;
+    const auto type = scene_.map().string_at(ents[rec.entity].type_str);
+    if (type != "mover" && type != "elevator") continue;
     if (rec.n_wp < 2 || rec.n_wp > ew::map::kMaxMoverWaypoints) continue;
     if (rec.w_tiles < 1 || rec.h_tiles < 1) continue;
     if (!(rec.speed > 0.f)) continue;
     MoverState m;
+    m.is_elevator = (type == "elevator");
+    m.ent = rec.entity;
     m.w = float(rec.w_tiles * ew::map::kTileSize);
     m.h = float(rec.h_tiles * ew::map::kTileSize);
     m.speed = rec.speed;
@@ -87,12 +92,26 @@ void Sim::build() {
     m.tile = rec.tile;
     m.wp.reserve(rec.n_wp);
     for (uint16_t i = 0; i < rec.n_wp; ++i) m.wp.push_back({float(rec.wp_x[i]), float(rec.wp_y[i])});
+    m.wp0_x = m.wp[0].x;
+    m.wp0_y = m.wp[0].y;
+    m.wp1_x = m.wp[1].x;
+    m.wp1_y = m.wp[1].y;
     m.x = m.prev_x = m.wp[0].x;
     m.y = m.prev_y = m.wp[0].y;
     m.seg = 0;
     m.dir = 1;
     m.dist = 0;
     m.wait = 0;
+    m.elev_target = 0;
+    m.elev_at = 0;
+    m.elev_wait = 0.f;
+    if (m.is_elevator) {
+      bool has_link = false;
+      for (const auto& l : links) {
+        if (l.to_entity == m.ent) { has_link = true; break; }
+      }
+      scene_.set_active(m.ent, !has_link);
+    }
     movers_.push_back(std::move(m));
   }
   rearm_flips();
@@ -312,6 +331,9 @@ void Sim::reset_movers() {
     m.dir = 1;
     m.dist = 0;
     m.wait = 0;
+    m.elev_at = 0;
+    m.elev_target = 0;
+    m.elev_wait = 0.f;
   }
 }
 
@@ -327,7 +349,7 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
   for (std::size_t i = 0; i < ents.size() && i < active.size(); ++i) {
     if (!active[i]) continue;
     scene_.set_active(i, true);
-    if (ents[i].type == "door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
+    if (ents[i].type == "door" || ents[i].type == "one_way_door") scene_.entities_mut()[i].anim = 1.f;  // abierta, sin animación
     if (ents[i].type == "ability_double_jump") ab |= kAbilityDoubleJump;
     if (ents[i].type == "ability_dash") ab |= kAbilityDash;
   }
@@ -526,11 +548,11 @@ void Sim::step(const Input& in) {
 
   auto& pl = pts[player_];
   if (!held_) {
-    // Interacción (switch / diálogo) tiene prioridad sobre el Dash cuando están en la misma tecla.
+    // Interacción (switch / diálogo / puerta unidireccional / ascensor) tiene prioridad sobre el Dash.
     bool interacted = false;
     if (in.interact) {
       if (scene_.interact(pl.pos.x, pl.pos.y) >= 0) {
-        sfx_ |= 16u;  // kSfxSwitch
+        sfx_ |= ew::audio::kSfxSwitch;
         interacted = true;
       } else if (const int dlg = nearby_interact_dialog(); dlg >= 0) {
         auto& d = scene_.dialogs_mut()[std::size_t(dlg)];
@@ -538,7 +560,16 @@ void Sim::step(const Input& in) {
         const auto& ent = scene_.entities()[d.entity];
         if (ent.type == "npc" || ent.type == "lore") scene_.set_active(d.entity, true);
         pending_dialog_ = dlg;
-        sfx_ |= 16u;
+        sfx_ |= ew::audio::kSfxSwitch;
+        interacted = true;
+      } else if (const int ow = scene_.try_open_one_way(pl.pos.x, pl.pos.y, false); ow >= 0) {
+        sfx_ |= ew::audio::kSfxSwitch;
+        interacted = true;
+      } else if (ow == -2) {
+        sfx_ |= ew::audio::kSfxHit;
+        interacted = true;
+      } else if (call_elevator(pl.pos.x, pl.pos.y)) {
+        sfx_ |= ew::audio::kSfxSwitch;
         interacted = true;
       }
     }
@@ -581,6 +612,9 @@ void Sim::step(const Input& in) {
       }
       pl.set_velocity(v);
     }
+  }
+  if (scene_.try_open_one_way(pts[player_].pos.x, pts[player_].pos.y, true) >= 0) {
+    sfx_ |= ew::audio::kSfxSwitch;
   }
   apply_flood();
   elapsed_sec_ += kDt;
@@ -846,7 +880,7 @@ void Sim::apply_flood() {
   for (const auto& e : scene_.entities())
     if (e.type == "flood_switch" && e.active) { on = true; break; }
   for (auto& w : water_) {
-    if (w.x() < 400.f) continue;  // la pileta del inicio no se inunda
+    if (w.x() < 400.f || w.x() >= 1280.f || w.initial_rest_y() >= 184.f) continue;  // solo la cisterna del Pozo se inunda
     const float tgt = on ? kFloodRestY : w.initial_rest_y();
     const float y = w.rest_y();
     const float dy = tgt - y;
@@ -856,12 +890,67 @@ void Sim::apply_flood() {
   }
 }
 
+bool Sim::call_elevator(float px, float py) {
+  const auto& ents = scene_.entities();
+  for (auto& m : movers_) {
+    if (!m.is_elevator || m.wp.size() < 2) continue;
+    if (m.ent >= ents.size() || !ents[m.ent].active) continue;
+    if (std::fabs(px - (m.x + m.w * 0.5f)) > 28.f) continue;
+    const float d0 = std::fabs(py - m.wp[0].y);
+    const float d1 = std::fabs(py - m.wp[1].y);
+    if (std::min(d0, d1) > 32.f) continue;
+    const int closest = (d0 <= d1) ? 0 : 1;
+    if (m.elev_target == closest && m.x == m.wp[std::size_t(closest)].x &&
+        m.y == m.wp[std::size_t(closest)].y)
+      continue;
+    m.elev_target = closest;
+    m.elev_wait = 0.f;
+    return true;
+  }
+  return false;
+}
+
 void Sim::advance_movers() {
   using ew::physics::length;
-  for (auto& m : movers_) {
+  for (std::size_t i = 0; i < movers_.size(); ++i) {
+    auto& m = movers_[i];
     m.prev_x = m.x;
     m.prev_y = m.y;
     if (m.wp.size() < 2 || !(m.speed > 0.f)) continue;
+    if (m.is_elevator) {
+      if (m.ent >= scene_.entities().size() || !scene_.entities()[m.ent].active) {
+        m.x = m.wp[0].x;
+        m.y = m.wp[0].y;
+        m.elev_at = m.elev_target = 0;
+        m.elev_wait = 0.f;
+        continue;
+      }
+      const auto& tgt = m.wp[std::size_t(m.elev_target)];
+      if (m.x == tgt.x && m.y == tgt.y) {
+        m.elev_at = m.elev_target;
+        if (m.elev_wait > 0.f) {
+          m.elev_wait = std::max(0.f, m.elev_wait - kDt);
+        } else if (ridden_ == int(i)) {
+          m.elev_target = 1 - m.elev_at;
+        }
+      }
+      const auto& dst = m.wp[std::size_t(m.elev_target)];
+      if (m.x != dst.x || m.y != dst.y) {
+        const float dx = dst.x - m.x, dy = dst.y - m.y;
+        const float dist = std::hypot(dx, dy);
+        const float step = m.speed * kDt;
+        if (dist <= step) {
+          m.x = dst.x;
+          m.y = dst.y;
+          m.elev_at = m.elev_target;
+          m.elev_wait = std::max(m.pause, 0.65f);
+        } else {
+          m.x += (dx / dist) * step;
+          m.y += (dy / dist) * step;
+        }
+      }
+      continue;
+    }
     const int n = int(m.wp.size());
     float leftover = kDt;
     int guard = 0;

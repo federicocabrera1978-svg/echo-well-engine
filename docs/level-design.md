@@ -118,6 +118,7 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | `player_spawn` | Punto de aparición (obligatorio). R largo / menú “inicio” vuelven acá. |
 | `switch` | Palanca abre-puertas elevada (`shape 3`, ámbar con flecha `shape 4` encima mientras `!active` → verde al activarse; despeja el pasto cercano con `near_mech`). Se activa a ≤ `Scene::kSwitchReach` (14 px) con E / X / ↓ / botón. |
 | `door` | Bloquea un hueco de 1×3 tiles (`kDoorWTiles` × `kDoorHTiles`), esquina sup. izq. en (x, y). Sólida mientras `anim < kDoorSolidUntil` (0.5). |
+| `one_way_door` | Puerta de atajo de 1×3 tiles (`kDoorWTiles` × `kDoorHTiles`), esquina sup. izq. en `(x, y)`. Evaluada por `Scene::try_open_one_way(x, y, push_touch)`: bloquea el paso desde su lado cerrado (interactuar desde ese lado devuelve `-2` y emite `kSfxHit`) y se abre permanentemente (`active = true`, `kSfxSwitch`) al empujar o pulsar E / X / ↓ desde la **derecha** por defecto, o desde la **izquierda** si el nombre termina en `_l` o contiene `_from_left` (`one_way_unlocks_from_left`). Persiste tras muerte / R corto y en `save.ewsv` (carga con `anim = 1`). |
 | `checkpoint` | Altar de santuario (`shape 2`, cristal cian inactivo `(0.25, 0.55, 0.70)` → llama verde `(0.30, 1.0, 0.55)` al activarse; despeja el pasto cercano con `near_mech`). Al acercarse ≤ `Sim::kCheckpointReach` (20 px) queda como reaparición (y guarda la gravedad actual). R corto o morir vuelven acá. |
 | `flood_switch` | Como `switch` (`shape 3`, también se puede linkear a puertas). Activo, sube las piletas con **`x ≥ 400`** hasta `Sim::kFloodRestY` (72 px) a `kFloodSpeed` (48 px/s). Al apagarse, bajan a su `y` inicial. |
 | `goal` | Meta, alcance `Sim::kGoalReach` (16 px) o pisar `META` 3. No exige collectibles. |
@@ -127,6 +128,7 @@ Posición en **px**, `name` único (lo usan los `links`). El compilador acepta c
 | `ability_dash` | Reliquia ígnea dorado-carmesí (alcance `Sim::kAbilityReach`, 12 px) que desbloquea **Embestida / Dash** (`kAbilityDash`). Con **E / X / K / Shift der.** (o **X / B** en pad) impulsa horizontalmente a `Sim::kDashSpeed` (240 px/s) durante `Sim::kDashFrames` (10 pasos) sin caída por gravedad (normal o invertida); 1 embestida aérea recargable al pisar suelo, nadar o colgarse. Si hay un switch o diálogo interactivo al alcance, E/X prioriza la interacción y no dispara Dash. Mapa de prueba: `assets/maps/src/dash.yaml` (`dash_test`). |
 | `break_wall` | Muro agrietado rompible de **1×3 tiles** (`kDoorWTiles` × `kDoorHTiles`, esquina sup. izq. en `(x, y)`). Sólido mientras `!active`; al embestirlo con **Dash**, se destruye (`active = true`), suelta escombros y libera el paso. Persiste tras morir, R corto y en `save.ewsv` v4 (retrocompatible con v1–v3); se restaura con R largo. |
 | `mover` | Plataforma sólida de `w`×`h` **tiles** que recorre waypoints en ping-pong, a `speed` px/s (default 40) con `pause` s en cada extremo (default 0.5). `(x, y)` es la esquina **sup. izq.** (px) y el primer waypoint. El segundo sale de `to_x`/`to_y`, o una ruta más larga con `path: "x y x y ..."` (hasta 8 puntos en total, sin comas). `tile` es el id fuente del atlas (default 6, metal). Se dibuja con el atlas, con autotile 4 vecinos dentro del rect. El player parado encima viaja con ella (carry). No se atraviesa desde arriba, de costado ni desde abajo. **Aplastamiento:** la plataforma empuja; si después de empujar el player queda metido en un tile sólido o en otra plataforma, muere y reaparece en el checkpoint. `reset()` (R largo) y `respawn()` (R corto o muerte) la devuelven al primer waypoint. La cuerda colisiona contra ella; el agua no se toca. |
+| `elevator` | Ascensor sólido que comparte `MoverRecord` en la sección `MOVER` del `.ewmap` (`w`×`h` en tiles, `speed`, `pause`, `tile` y dos waypoints vía `to_x`/`to_y` o `path`). *Link locking:* si aparece como destino en `links:` (`l.to_entity == m.ent`), arranca bloqueado (`active = false`, fijo en `wp[0]`) hasta activar el `switch` enlazado (`Scene::set_linked`); sin link arranca desbloqueado (`active = true`). Una vez desbloqueado, viaja entre `wp[0]` y `wp[1]` al pararse encima (`ridden_`, tras pausa `>= 0.65 s`) o al llamarlo desde arriba/abajo con E / X / ↓ vía `Sim::call_elevator(px, py)` (alcance `<= 28 px` en X, `<= 32 px` en Y). `respawn()` lo devuelve a `wp[0]` manteniendo el desbloqueo; `reset()` (R largo) restaura el bloqueo inicial. |
 
 | `gravity_flip` | Orbe que **invierte la gravedad del player** al tocarlo (centro a ≤ `Sim::kFlipReach`, 10 px). Cada toque alterna normal ↔ invertida; el orbe se rearma cuando el player se aleja más de `Sim::kFlipRearm` (18 px), así que quedarse encima no lo repite. Con gravedad invertida el player cae hacia arriba, el techo funciona como piso (salto, `grounded`, carry de un `mover` por su cara de abajo, aplastamiento contra el piso) y se dibuja con los pies arriba. Ver “Gravedad invertida” abajo. |
 
@@ -247,9 +249,9 @@ backdrops:
   la sala depende de verlos de lejos. Los tiles `VIS` sin `COL` (columnas de decorado) se siguen
   dibujando encima del fondo.
 - Para mirar los fondos: `tools/room_shots.py build out --png` (con display o `xvfb-run`) captura
-  y valida las 22 salas de los niveles 1, 2 y 3 (`slice`: 8, `level2`: 8, `level3`: 6) y compara cada
-  una con su misma sala en `vacio`. CI lo corre en el job `engine` y sube las capturas reales de los
-  3 niveles (`fondos/sala*.ppm`, `fondos/level2_*.ppm`, `fondos/level3_*.ppm`, excluyendo
+  y valida las 46 salas de campaña (`slice`: 8, `level2`: 8, `level3`: 6, `world`: 24) y compara cada
+  una con su misma sala en `vacio`. CI lo corre en el job `engine` y sube las capturas reales
+  (`fondos/sala*.ppm`, `fondos/level2_*.ppm`, `fondos/level3_*.ppm`, `fondos/world_*.ppm`, excluyendo
   `*_vacio.ppm`) como artifact `fondos-salas`.
 
 ## Vegetación, brisa e interacción ambiental
@@ -315,17 +317,17 @@ Probado sin GL en `tests/guide_test.cpp` (`guide_arrows`).
 ./build/echo_engine --map build/maps/room.ewmap --frames 90 --demo --dump frame.ppm --nosound
 ```
 
-En el árbol de build, CMake ya compila `hello`, `slice`, `level2`, `level3`, `room`, `mover`, `gravity`, `boss`, `ability` y `dash` hacia `build/maps/*.ewmap`.
+En el árbol de build, CMake ya compila `world` (generado por `tools/gen_world.py`, verificado por `world_gen_check` y `world_metroidvania`), `hello`, `slice`, `level2`, `level3`, `room`, `mover`, `gravity`, `boss`, `ability` y `dash` hacia `build/maps/*.ewmap`.
 `ctest` corre `ewmapc_*` + `ewmap_load_*` (y el job `build` de CI lo vuelve a
 compilar y pasar por `ewmap_smoke`).
 
 ## Enganchar la sala al juego
 
-El prototipo arranca en **`slice`** (`EW_DEFAULT_MAP`). Para probar la tuya no hace falta
-cambiar el default:
+El prototipo arranca en **`world`** (`EW_DEFAULT_MAP`: `build/maps/world.ewmap`, mundo unificado `8×3`). Para probar la tuya o los capítulos sueltos (como `slice`) no hace falta cambiar el default:
 
 ```sh
 ./build/echo_engine --map build/maps/room.ewmap
+./build/echo_engine --map build/maps/slice.ewmap
 ```
 
 Para que CMake la compile siempre, como `room.yaml`:
@@ -337,7 +339,7 @@ Para que CMake la compile siempre, como `room.yaml`:
    `ewmapc --crc` + `ewmap_smoke` con los mismos flags.
 4. Si querés que viaje en el paquete portable, sumala a `install(FILES …)`.
 
-`echo_engine --map` alcanza para jugarla; el default del binario se deja en `slice`.
+`echo_engine --map` alcanza para jugarla; el default del binario se deja en `world`.
 
 ## Ejemplo mínimo (`room`)
 

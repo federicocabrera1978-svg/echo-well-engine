@@ -101,12 +101,15 @@ class Sim {
   static constexpr float kImpW = 10.f, kImpH = 10.f;
   static constexpr float kImpRange = 32.f, kImpSpeed = 34.f;
 
-  // Plataforma sólida que recorre waypoints en ping-pong (sección MOVER / type "mover").
+  // Plataforma sólida que recorre waypoints (sección MOVER / type "mover" o "elevator").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
   struct Mover {
     float x = 0, y = 0, w = 0, h = 0;
     float speed = 40.f, pause = 0.5f;
     uint16_t tile = 6;
+    bool is_elevator = false;
+    std::size_t ent = 0;
+    float wp0_x = 0, wp0_y = 0, wp1_x = 0, wp1_y = 0;
   };
 
   explicit Sim(Scene& scene);
@@ -151,6 +154,8 @@ class Sim {
   int invuln() const { return invuln_; }
   int mover_count() const { return int(movers_.size()); }
   const Mover& mover(int i) const { return movers_[std::size_t(i)]; }
+  // Llama al ascensor desbloqueado cercano hacia el extremo más próximo a (px, py).
+  bool call_elevator(float px, float py);
   // Boss: patrón determinista (caminar → aviso → salto, en loop; más rápido con cada golpe).
   // Se le pega cayéndole encima (pisotón: el player se mueve hacia su "abajo" y viene del
   // lado de su "arriba"; con gravedad invertida, desde abajo). Tocarlo de otra forma mata.
@@ -279,6 +284,9 @@ class Sim {
     int dir = 1;    // +1 o -1 (ping-pong)
     float dist = 0; // px recorridos en el segmento
     float wait = 0; // s de pausa restante
+    int elev_at = 0;      // waypoint actual del ascensor (0 o 1)
+    int elev_target = 0;  // waypoint destino del ascensor (0 o 1)
+    float elev_wait = 0;  // s de pausa tras llegar a un extremo
   };
   std::vector<MoverState> movers_;
   int ridden_ = -1;  // plataforma que carga al player

@@ -142,12 +142,22 @@ inline void push_sprite(FrameData& v, float x, float y, int col, int row, bool f
   v.sprite_tint[std::size_t(i * 4 + 3)] = emit_boost;
 }
 
-inline void push_movers(FrameData& v, const Sim& sim) {
+inline void push_movers(FrameData& v, const Sim& sim, const Scene* scene = nullptr) {
   constexpr float m = 16.f;
   const float x0 = v.cam_x - m, x1 = v.cam_x + float(kInternalW) + m;
   const float y0 = v.cam_y - m, y1 = v.cam_y + float(kInternalH) + m;
   for (int i = 0; i < sim.mover_count() && v.mover_count < kMaxMovers; ++i) {
     const auto& mv = sim.mover(i);
+    if (mv.is_elevator) {
+      const bool unlocked = scene && mv.ent < scene->entities().size() && scene->entities()[mv.ent].active;
+      const float cr = unlocked ? 0.22f : 0.95f;
+      const float cg = unlocked ? 0.92f : 0.58f;
+      const float cb = unlocked ? 0.72f : 0.14f;
+      push_marker(v, mv.wp0_x - 2.f, mv.wp0_y + 2.f, 1.5f, 1, cr, cg, cb);
+      push_marker(v, mv.wp0_x + mv.w + 2.f, mv.wp0_y + 2.f, 1.5f, 1, cr, cg, cb);
+      push_marker(v, mv.wp1_x - 2.f, mv.wp1_y + 2.f, 1.5f, 1, cr, cg, cb);
+      push_marker(v, mv.wp1_x + mv.w + 2.f, mv.wp1_y + 2.f, 1.5f, 1, cr, cg, cb);
+    }
     if (mv.x + mv.w < x0 || mv.x > x1 || mv.y + mv.h < y0 || mv.y > y1) continue;
     const int k = v.mover_count++;
     v.mover_rect[std::size_t(k * 4 + 0)] = mv.x;
@@ -178,6 +188,22 @@ inline void push_entities(FrameData& v, const Scene& s, float time_s) {
           push_marker(v, e.x + 4, e.y + 4 + 8.f * float(k) - rise, 4, 1, 0.6f * fade, 0.3f * fade, 0.85f * fade);
       }
       if (e.anim > 0.05f) push_marker(v, e.x + 4, e.y + 1, 1, 1, 0.3f, 0.2f, 0.4f);
+    } else if (e.type == "one_way_door") {  // compuerta de atajo unidireccional (1×3 tiles, desliza al abrir)
+      const float rise = e.anim * float(kDoorHTiles * ew::map::kTileSize);
+      if (e.anim < 0.99f) {
+        const float fade = 1.f - e.anim * 0.40f;
+        for (int k = 0; k < kDoorHTiles; ++k) {
+          const float sy = e.y + 4.f + 8.f * float(k) - rise;
+          if (sy + 4.f <= e.y) continue;
+          push_marker(v, e.x + 4.f, sy, 3.6f, 1, 0.34f * fade, 0.42f * fade, 0.54f * fade);
+          push_marker(v, e.x + 4.f, sy, 1.4f, 1, 0.62f * fade, 0.74f * fade, 0.88f * fade);
+        }
+        const float side = one_way_unlocks_from_left(e) ? -1.f : 1.f;
+        const float ly = e.y + 12.f - rise;
+        if (ly + 2.f > e.y)
+          push_marker(v, e.x + 4.f + side * 3.f, ly, 1.8f, 0, 0.25f * fade, 0.95f * fade, 0.72f * fade);
+      }
+      if (e.anim > 0.05f) push_marker(v, e.x + 4.f, e.y + 1.f, 1.2f, 1, 0.25f, 0.75f, 0.55f);
     } else if (e.type == "player_spawn") {
       push_marker(v, e.x, e.y + 7, 1, 1, 0.3f, 0.9f, 0.4f);
     } else if (e.type == "goal") {  // pedestal + orbe dorado (más brillante al completar)
@@ -307,7 +333,7 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     const auto& de = scene.entities()[scene.dialogs()[std::size_t(nd)].entity];
     push_marker(v, de.x, de.y - 12.f + std::round(std::sin(time_s * 5.f)), 1.5f, 0, 1.0f, 0.88f, 0.35f);
   }
-  push_movers(v, sim);
+  push_movers(v, sim, &scene);
 
   for (int bi = 0; bi < sim.boss_count() && v.boss_count < kMaxBosses; ++bi) {
     const auto& b = sim.boss(bi);

@@ -25,6 +25,9 @@ struct Entity {
   float anim = 0;       // door: 0 = cerrada, 1 = abierta (lerp visual + colisión)
 };
 inline bool is_switch_type(const std::string& t) { return t == "switch" || t == "flood_switch"; }
+inline bool one_way_unlocks_from_left(const Entity& e) {
+  return e.name.ends_with("_l") || e.name.find("_from_left") != std::string::npos;
+}
 
 // Puerta: 1×3 tiles (8×24 px) con esquina superior izquierda en (x, y).
 inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;
@@ -46,6 +49,10 @@ class Scene {
   // Switch → puerta (sección LINK). Toggle del switch más cercano dentro de kSwitchReach
   // de (x, y); abre/cierra todas sus puertas enlazadas. Devuelve el índice o -1.
   int interact(float x, float y);
+  // Puerta unidireccional ("one_way_door"): se abre desde su lado desbloqueable (por defecto
+  // derecha; izquierda si el nombre termina en "_l" o contiene "_from_left"). Devuelve el índice
+  // de la entidad abierta, -2 si !push_touch desde el lado bloqueado, o -1 si no hay puerta cerca.
+  int try_open_one_way(float x, float y, bool push_touch);
   void set_switch(std::size_t idx, bool on);
   // Activa/desactiva cualquier entidad y sus puertas linkeadas (p. ej. un boss vencido).
   void set_linked(std::size_t idx, bool on);
