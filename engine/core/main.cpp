@@ -15,6 +15,7 @@
 #include "game/campaign.hpp"
 #include "game/dialogue.hpp"
 #include "game/end_screen.hpp"
+#include "game/guide.hpp"
 #include "game/sim.hpp"
 #include "core/paths.hpp"
 #include "game/gamepad.hpp"
@@ -153,81 +154,6 @@ void push_entities(FrameView& v, const ew::game::Scene& s, float time_s) {
                   e.active ? 0.30f : 0.25f, e.active ? 1.0f : 0.55f, e.active ? 0.55f : 0.70f);
     }
   }
-}
-
-void push_guide_arrows(FrameView& v, const ew::game::Scene& s, const ew::game::Sim& sim, float time_s) {
-  if (sim.finished()) return;
-  const auto& ents = s.entities();
-  const auto mname = s.map().string_at(1);
-  const float px = sim.player().pos.x, py = sim.player().pos.y;
-  auto find_ent = [&](std::string_view name) -> const ew::game::Entity* {
-    for (const auto& e : ents)
-      if (e.name == name) return &e;
-    return nullptr;
-  };
-  bool has_target = false;
-  float tx = 0.f, ty = 0.f, style = 0.f;
-  if (mname == "level2") {
-    const auto* rel_dj = find_ent("rel_double_jump");
-    const auto* door_hub = find_ent("door_hub_gallery");
-    const auto* sw_sanc = find_ent("sw_sanctum");
-    const auto* rel_da = find_ent("rel_dash");
-    const auto* wall_g = find_ent("wall_guardian");
-    if (!sim.has_ability(ew::game::kAbilityDoubleJump) && rel_dj && !rel_dj->active) {
-      has_target = true; tx = rel_dj->x; ty = rel_dj->y; style = 1.f;
-    } else if (door_hub && !door_hub->active && sw_sanc && !sw_sanc->active) {
-      has_target = true; tx = sw_sanc->x; ty = sw_sanc->y; style = 0.f;
-    } else if (!sim.has_ability(ew::game::kAbilityDash) && rel_da && !rel_da->active) {
-      has_target = true; tx = rel_da->x; ty = rel_da->y; style = 1.f;
-    } else if (door_hub && door_hub->active && wall_g && !wall_g->active && (py >= 184.f || px < 640.f)) {
-      has_target = true; tx = door_hub->x; ty = door_hub->y + 12.f; style = 0.f;
-    }
-  } else if (mname == "level3") {
-    const auto* door_seal = find_ent("door_wyrm_seal");
-    const auto* sw_seal = find_ent("sw_seal3");
-    if (door_seal && !door_seal->active && sw_seal && !sw_seal->active) {
-      has_target = true; tx = sw_seal->x; ty = sw_seal->y; style = 0.f;
-    } else if (door_seal && door_seal->active && py >= 184.f) {
-      has_target = true; tx = door_seal->x; ty = door_seal->y + 12.f; style = 0.f;
-    }
-  } else {
-    for (const auto& l : s.map().links()) {
-      if (l.from_entity >= ents.size() || l.to_entity >= ents.size()) continue;
-      const auto& from = ents[l.from_entity];
-      const auto& to = ents[l.to_entity];
-      if (to.type != "door" || to.active) continue;
-      if ((from.type == "switch" || from.type == "flood_switch") && !from.active) {
-        if (mname == "slice" && (from.name == "switch_well" || px > to.x + 16.f)) continue;
-        has_target = true; tx = from.x; ty = from.y; style = 0.f;
-        break;
-      }
-    }
-    if (!has_target && mname == "slice" && px >= 400.f && px < 1130.f) {
-      if (const auto* fl = find_ent("flood"); fl && !fl->active) {
-        has_target = true; tx = fl->x; ty = fl->y; style = 0.f;
-      }
-    }
-  }
-  if (!has_target) return;
-  const float dist_full = std::hypot(tx - px, ty - py);
-  if (dist_full <= 24.f) return;
-  float wx = tx, wy = ty;
-  // Ruteo por el pozo vertical cuando el objetivo está en otra planta (level2 / level3).
-  if (mname == "level2") {
-    if (py < 184.f && ty >= 184.f) { wx = 448.f; wy = (px < 405.f) ? 148.f : 182.f; }
-    else if (py >= 184.f && ty < 184.f) { wx = 472.f; wy = (px > 510.f || px < 420.f) ? 280.f : 188.f; }
-  } else if (mname == "level3") {
-    if (py < 184.f && ty >= 184.f) { wx = 568.f; wy = (px < 540.f) ? 148.f : 182.f; }
-    else if (py >= 184.f && ty < 184.f) { wx = 568.f; wy = (px < 520.f) ? 320.f : 188.f; }
-  }
-  const float dx = wx - px, dy = wy - py;
-  const float len = std::hypot(dx, dy);
-  if (len < 1e-3f) return;
-  const float ux = dx / len, uy = dy / len;
-  const float pulse = std::sin(time_s * 6.0f) * 2.0f;
-  const float ax = std::round(px + ux * (17.f + pulse));
-  const float ay = std::round(py - 4.f + uy * (17.f + pulse));
-  push_marker(v, ax, ay, 6.f, 4, ux, uy, style);
 }
 
 void push_hazard_span(FrameView& v, float x0, float y0, float w, float dir) {
@@ -808,7 +734,10 @@ int main(int argc, char** argv) {
       v.bg_seed[i] = scene->active_backdrops()[i].seed;
     }
     push_entities(v, *scene, float(now));
-    if (!demo) push_guide_arrows(v, *scene, *sim, float(now));
+    if (!demo) {
+      if (const auto ga = ew::game::compute_guide_arrow(*scene, *sim, float(now)); ga.valid)
+        push_marker(v, ga.x, ga.y, 6.f, 4, ga.ux, ga.uy, float(ga.style));
+    }
     if (const int nd = sim->nearby_interact_dialog();
         nd >= 0 && !dialogue.open() && !menu.open() && !end_screen.open() && std::size_t(nd) < scene->dialogs().size()) {
       const auto& de = scene->entities()[scene->dialogs()[std::size_t(nd)].entity];

@@ -261,6 +261,41 @@ backdrops:
 - **Reacción en telarañas, hojas, cuerdas y estandartes:** el campo de brisa y sus ráfagas locales inclinan pasto, hongos y flores, hacen vibrar **telarañas** en esquinas bajo techos, curvan **enredaderas y cordeles colgantes**, arrastran **hojas y polvo** en el aire según `u_wind_gust`, mecen los **estandartes** rasgados de `cripta` y, en `Sim::step`, empujan horizontalmente los nodos libres de las **cuerdas Verlet** (`wind_.sample_at(pt.pos.x, pt.pos.y, 1u) * 24.f`).
 - **Menú de pausa (`BRISA SI` / `BRISA NO`):** el ítem `PauseMenu::kBrisa` (entre `CONTROLES` y `SALIR`) arranca activado (`foliage() == true`) y alterna con `Enter`/`Espacio`/`←`/`→` sin cerrar la pausa. En `NO`, `Sim::set_wind_enabled(false)` limpia impulsos, desactiva la fuerza sobre cuerdas y pone `u_foliage = 0` (oculta el follaje/telarañas/hojas animados y detiene los estandartes). Probado en `wind_test` (`wind_breeze`) y `menu_test` (`pause_menu`).
 
+## Flecha guía de navegación (`guide`)
+
+El runtime calcula la flecha guía alrededor del jugador en `engine/game/guide.hpp` (`GuideArrow` y `compute_guide_arrow(const Scene&, const Sim&, float time_s = 0.f)`), leyendo la sección opcional `GUIDE` (`id = 11`, registros `GuideRecord` de 24 B).
+
+- **Reglas generales en runtime:**
+  - Si `sim.finished()` es `true` o la distancia entre el jugador y el objetivo es `≤ 24 px`, `compute_guide_arrow` devuelve `valid = false`.
+  - Si el mapa tiene sección `GUIDE`, elige el primer registro `Objective` vigente y, si existe un `Shaft` cuyo `split_y` separa al jugador del objetivo (`py < split_y && ty >= split_y` o viceversa), rutea hacia la boca del pozo más cercano en X (horizontal hasta `|px - sx| ≤ 42 px` y luego vertical hacia `y_bot` o `y_top`).
+  - **Fallback automático sin `GUIDE`:** si `map().guides()` está vacío (mapas viejos como `hello.ewmap`), recorre `links:` y apunta al primer `switch` o `flood_switch` inactivo enlazado a una `door` todavía cerrada (`style = 0`).
+
+### Claves YAML de `guide:`
+
+- **Objetivos (`kind: objective`, valor por defecto si se omite `kind`):**
+  - `target`: nombre de la entidad destino en `entities` (obligatorio). Si `target` es una `door`, el punto objetivo usa el centro vertical de la puerta (`y + 12 px`).
+  - `gate`: nombre de la puerta/muro asociado (opcional; el objetivo se da por cumplido si `target` o `gate` está activo). Mutuamente excluyente con `until`.
+  - `until`: nombre de la entidad que mantiene vigente un objetivo de cruce hasta abrirla/romperla; activa `cross` automáticamente. Mutuamente excluyente con `gate`.
+  - `style`: `switch` (ámbar, `style = 0`, por defecto) o `ability` (cian, `style = 1`, flag `kGuideAbility`).
+  - `cross`: `true`/`false` (`kGuideCrossWhenOpen`: activo cuando `target->active` es `true` y falta abrir/romper `until` o cumplir la restricción de posición).
+  - `forward_x`: coordenada X en px (`kGuideForwardX`); el objetivo se considera superado al avanzar con `player.x > forward_x`.
+  - `below_y`: coordenada Y en px (`kGuideBelowY`); en objetivos `cross`, solo aplica mientras `player.y >= below_y` (si también se definió `forward_x`, se descarta cuando `player.y < below_y && player.x > forward_x`).
+- **Pozos verticales (`kind: shaft`):**
+  - `x`: centro X para bajar por el pozo en px (obligatorio).
+  - `y_top`, `y_bot`: cotas Y de las bocas superior e inferior (`y_top <= y_bot`, obligatorios).
+  - `up_x`: centro X de retorno al subir desde planta baja en px (opcional; por defecto usa `x`).
+  - `split_y`: altura Y en px que separa planta alta y planta baja (opcional; por defecto `184`, equivalente a `kChunkH * kTileSize`).
+
+```yaml
+guide:
+  - {kind: shaft, x: 448, up_x: 472, split_y: 184, y_top: 148, y_bot: 280}
+  - {target: rel_double_jump, style: ability}
+  - {target: sw_sanctum, gate: door_hub_gallery}
+  - {target: door_hub_gallery, until: wall_guardian, cross: true, below_y: 184, forward_x: 640}
+```
+
+Probado sin GL en `tests/guide_test.cpp` (`guide_arrows`).
+
 ## Compilar y probar
 
 ```sh

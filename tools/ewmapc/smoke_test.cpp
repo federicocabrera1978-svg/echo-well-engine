@@ -18,13 +18,13 @@ using namespace ew::map;
 int main(int argc, char** argv) {
   if (argc < 2) {
     std::fprintf(stderr, "uso: ewmap_smoke FILE [--name STR] [--chunks N] [--ents N] "
-                         "[--links N] [--water N] [--ropes N] [--movers N] [--backdrops N] [--dialogs N] [--has TYPE]...\n");
+                         "[--links N] [--water N] [--ropes N] [--movers N] [--backdrops N] [--dialogs N] [--guides N] [--has TYPE]...\n");
     return 2;
   }
   const char* path = argv[1];
   const char* expect_name = nullptr;
   int exp_chunks = -1, exp_ents = -1, exp_links = -1, exp_water = -1, exp_ropes = -1, exp_movers = -1,
-      exp_backdrops = -1, exp_dialogs = -1;
+      exp_backdrops = -1, exp_dialogs = -1, exp_guides = -1;
   std::vector<std::string> has;
   for (int i = 2; i < argc; ++i) {
     auto eq = [&](const char* s) { return std::strcmp(argv[i], s) == 0; };
@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
     else if (eq("--movers")) need(exp_movers);
     else if (eq("--backdrops")) need(exp_backdrops);
     else if (eq("--dialogs")) need(exp_dialogs);
+    else if (eq("--guides")) need(exp_guides);
     else if (eq("--has") && i + 1 < argc) has.emplace_back(argv[++i]);
     else { std::fprintf(stderr, "flag desconocido: %s\n", argv[i]); return 2; }
   }
@@ -105,6 +106,19 @@ int main(int argc, char** argv) {
     CHECK(!m.string_at(d.text_str).empty());
   }
 
+  // Guías (sección opcional GUIDE): índices válidos en ENT y flags/geometría coherentes.
+  for (const auto& g : m.guides()) {
+    CHECK(g.kind <= uint16_t(GuideKind::Shaft));
+    if (g.kind == uint16_t(GuideKind::Objective)) {
+      CHECK(g.entity < nent);
+      CHECK(g.gate_entity == ~0u || g.gate_entity < nent);
+      CHECK((g.flags & ~(kGuideAbility | kGuideCrossWhenOpen | kGuideForwardX | kGuideBelowY)) == 0);
+    } else {
+      CHECK(g.y_top <= g.y_bot);
+      CHECK(g.flags == 0);
+    }
+  }
+
   // Nombre del mapa = primer string de STRTAB (offset 1).
   const auto map_name = m.string_at(1);
   CHECK(!map_name.empty());
@@ -123,6 +137,7 @@ int main(int argc, char** argv) {
   if (exp_movers >= 0) CHECK(int(m.movers().size()) == exp_movers);
   if (exp_backdrops >= 0) CHECK(int(m.backdrops().size()) == exp_backdrops);
   if (exp_dialogs >= 0) CHECK(int(m.dialogs().size()) == exp_dialogs);
+  if (exp_guides >= 0) CHECK(int(m.guides().size()) == exp_guides);
   for (const auto& t : has) {
     bool found = false;
     for (const auto& ent : m.entities())
@@ -130,8 +145,9 @@ int main(int argc, char** argv) {
     if (!found) { std::fprintf(stderr, "FAIL: falta entidad type=%s\n", t.c_str()); return 1; }
   }
 
-  std::printf("ewmap_smoke: %s (%s, %u chunks, %zu ents, %zu links, %zu water, %zu ropes, %zu movers, %zu backdrops, %zu dialogs) OK\n",
+  std::printf("ewmap_smoke: %s (%s, %u chunks, %zu ents, %zu links, %zu water, %zu ropes, %zu movers, %zu backdrops, %zu dialogs, %zu guides) OK\n",
               path, map_name.data(), m.chunk_count(), m.entities().size(), m.links().size(),
-              m.water().size(), m.ropes().size(), m.movers().size(), m.backdrops().size(), m.dialogs().size());
+              m.water().size(), m.ropes().size(), m.movers().size(), m.backdrops().size(), m.dialogs().size(),
+              m.guides().size());
   return 0;
 }

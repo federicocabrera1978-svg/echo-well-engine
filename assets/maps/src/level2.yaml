@@ -190,3 +190,10 @@ dialogs:
   - {entity: egg_catacomb_2,  trigger: pickup,   speaker: "ECO: HUEVO DE BRASA", text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA PIEDRA.|FUE OCULTADO EN EL SANTUARIO/LEJOS DEL OJO DE LA BESTIA."}
   - {entity: rel_dash,        trigger: pickup,   speaker: "RELIQUIA: GARRA DE BRASA", text: "EL IMPETU DEL WYRM ARDE/EN TU EMBESTIDA!|PULSA E, X O K PARA EMBESTIR/Y ROMPER MUROS AGRIETADOS."}
   - {entity: egg_catacomb_1,  trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO", text: "LA NIDADA NO ERA UN TESORO:/ERA EL FUTURO DEL REINO.|LLEVA SU CALOR HACIA ARRIBA/CON UN CORAZON PURO!"}
+
+guide:
+  - {kind: shaft, x: 448, up_x: 472, split_y: 184, y_top: 148, y_bot: 280}
+  - {target: rel_double_jump, style: ability}
+  - {target: sw_sanctum, gate: door_hub_gallery}
+  - {target: rel_dash, style: ability}
+  - {target: door_hub_gallery, until: wall_guardian, cross: true, below_y: 184, forward_x: 640}

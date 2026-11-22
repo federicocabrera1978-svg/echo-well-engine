@@ -253,6 +253,77 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
     }
   }
 
+  // Guías de navegación (opcional, sección GUIDE = 11): solo se escribe si el YAML trae `guide`.
+  std::vector<GuideRecord> guides;
+  const bool has_guides = doc.lists.count("guide") > 0;
+  if (has_guides) {
+    for (auto& v : doc.lists.at("guide")) {
+      const auto kind_s = to_str(v, "kind");
+      if (kind_s == "shaft") {
+        if (!v.count("x") || !v.count("y_top") || !v.count("y_bot")) {
+          err = "guide shaft needs x, y_top and y_bot"; return false;
+        }
+        const int gx = to_int(v, "x");
+        const int y_top = to_int(v, "y_top");
+        const int y_bot = to_int(v, "y_bot");
+        if (y_top > y_bot) { err = "guide shaft needs y_top <= y_bot"; return false; }
+        const int split_y = to_int(v, "split_y", int(kChunkH * kTileSize));
+        if (split_y < 0) { err = "guide shaft split_y must be >= 0"; return false; }
+        const uint32_t up_x = v.count("up_x") ? static_cast<uint32_t>(int32_t(to_int(v, "up_x"))) : ~0u;
+        guides.push_back({up_x, uint32_t(split_y), gx, y_top, y_bot, uint16_t(GuideKind::Shaft), 0});
+      } else if (kind_s.empty() || kind_s == "objective") {
+        const auto tname = to_str(v, "target");
+        const auto tit = ent_by_name.find(tname);
+        if (tname.empty() || tit == ent_by_name.end()) {
+          err = "guide references unknown target entity '" + tname + "'"; return false;
+        }
+        if (v.count("gate") && v.count("until")) {
+          err = "guide objective cannot specify both gate and until"; return false;
+        }
+        uint32_t gate = ~0u;
+        uint16_t flags = 0;
+        if (v.count("gate")) {
+          const auto gname = to_str(v, "gate");
+          const auto git = ent_by_name.find(gname);
+          if (gname.empty() || git == ent_by_name.end()) {
+            err = "guide references unknown gate entity '" + gname + "'"; return false;
+          }
+          gate = git->second;
+        }
+        if (v.count("until")) {
+          const auto uname = to_str(v, "until");
+          const auto uit = ent_by_name.find(uname);
+          if (uname.empty() || uit == ent_by_name.end()) {
+            err = "guide references unknown until entity '" + uname + "'"; return false;
+          }
+          gate = uit->second;
+          flags |= kGuideCrossWhenOpen;
+        }
+        if (v.count("style")) {
+          const auto st_s = to_str(v, "style");
+          if (st_s == "ability") flags |= kGuideAbility;
+          else if (st_s != "switch") { err = "unknown guide style '" + st_s + "'"; return false; }
+        }
+        if (v.count("cross")) {
+          const auto& cs = v.at("cross");
+          if (cs == "true" || cs == "1" || cs == "yes" || cs == "on") flags |= kGuideCrossWhenOpen;
+          else if (cs == "false" || cs == "0" || cs == "no" || cs == "off") {
+            if (v.count("until")) { err = "guide until requires cross to be true"; return false; }
+          } else {
+            err = "guide cross must be true or false"; return false;
+          }
+        }
+        int32_t max_x = 0;
+        if (v.count("forward_x")) { flags |= kGuideForwardX; max_x = to_int(v, "forward_x"); }
+        int32_t min_y = 0;
+        if (v.count("below_y")) { flags |= kGuideBelowY; min_y = to_int(v, "below_y"); }
+        guides.push_back({tit->second, gate, max_x, 0, min_y, uint16_t(GuideKind::Objective), flags});
+      } else {
+        err = "unknown guide kind '" + kind_s + "'"; return false;
+      }
+    }
+  }
+
   std::vector<std::pair<SectionType, std::vector<std::byte>>> secs;
   secs.emplace_back(SectionType::TILE, tile.b);
   secs.emplace_back(SectionType::ENT, record_section(ents));
@@ -262,6 +333,7 @@ bool build_ewmap(const YamlDoc& doc, const WriteOptions& opt, std::vector<std::b
   secs.emplace_back(SectionType::MOVER, record_section(movers));
   if (has_backdrops) secs.emplace_back(SectionType::BACKDROP, record_section(backdrops));
   if (has_dialogs) secs.emplace_back(SectionType::DIALOG, record_section(dialogs));
+  if (has_guides) secs.emplace_back(SectionType::GUIDE, record_section(guides));
   {
     std::vector<std::byte> s(st.data.size());
     std::memcpy(s.data(), st.data.data(), s.size());
