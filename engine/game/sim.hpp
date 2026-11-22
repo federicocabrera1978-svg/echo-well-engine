@@ -4,6 +4,7 @@
 #pragma once
 #include "game/boss_victory.hpp"
 #include "game/scene.hpp"
+#include "game/wind.hpp"
 #include "physics/verlet.hpp"
 #include "physics/water.hpp"
 
@@ -227,6 +228,11 @@ class Sim {
   BossVictorySeq& victory_seq() { return victory_; }
   void set_victory_config(const BossVictoryConfig& cfg) { victory_.set_config(cfg); }
   bool take_victory_dialog(BossVictoryDialog& out) { return victory_.poll_dialog(out); }
+  // Brisa global y ráfagas locales (vegetación / cuerdas).
+  const WindField& wind() const { return wind_; }
+  WindField& wind() { return wind_; }
+  bool wind_enabled() const { return wind_.enabled(); }
+  void set_wind_enabled(bool e) { wind_.set_enabled(e); }
   // Estado visual de animación del protagonista (sin GL).
   int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
   PlayerAnim player_anim() const { return anim_; }
@@ -292,6 +298,8 @@ class Sim {
   int boss_burst_ = 0;
   float boss_burst_x_ = 0, boss_burst_y_ = 0;
   BossVictorySeq victory_;
+  WindField wind_;
+  bool was_grounded_ = false;
   int facing_ = 1;
   PlayerAnim anim_ = PlayerAnim::Idle;
   int anim_frame_ = 0;

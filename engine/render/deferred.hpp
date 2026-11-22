@@ -83,6 +83,11 @@ struct FrameView {
   // tema (ew::map::BackdropTheme) y seed. Default: cueva.
   std::array<int, 9> bg_theme{};
   std::array<int, 9> bg_seed{};
+  // Brisa global y ráfagas locales sobre vegetación.
+  int foliage_enabled = 1;
+  float wind_gust = 1.f;
+  int wind_impulse_count = 0;
+  std::array<float, 16> wind_impulses{};
 };
 
 

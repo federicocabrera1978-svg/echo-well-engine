@@ -65,7 +65,7 @@ o cargada, meta.
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
-VOL (←/→ cambia, Enter silencia), CONTROLES, SALIR.
+VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/←/→ alterna brisa y vegetación sin cerrar), SALIR.
 
 ## 3. Recorrido sala por sala
 
@@ -110,6 +110,11 @@ en verde al tomarlo.
   Los tiles muestran mampostería, ladrillos, madera remachada y musgo renovados, y los pinchos `META 4` se ven como
   púas pixel-art de acero y punta carmesí con alto contraste sobre el fondo.
   Anotá si algún fondo hace difícil ver un pincho, una plataforma o un switch.
+- [ ] **Pasto, brisa e interacción ambiental (`BRISA SI/NO`).**
+  - Verificá sobre pisos y repisas el **pasto pixel-art con variantes** (despejado alrededor de switches y checkpoints) y, en Las Catacumbas (`level2`), los **hongos y flores** bioluminiscentes.
+  - Verificá la **brisa global con ondas viajeras** recorriendo la sala y la reacción local al **caminar** (estela en los pies), **aterrizar** de un salto, **embestir con Dash** y al **caer/aterrizar enemigos y bosses** (coloso, `imp`, Wyrm).
+  - Comprobá que reaccionan tanto el pasto/hongos/flores como las **telarañas**, **hojas/enredaderas colgantes**, **estandartes** (p. ej. `cripta`) y el balanceo de las **cuerdas**.
+  - Abrí el menú de pausa (`Esc`/`Start`), bajá hasta **`BRISA SI`** y pulsá `Enter`/`←`/`→`: debe cambiar a **`BRISA NO`** sin cerrar el menú, deteniendo la animación de vegetación y el empuje del viento en las cuerdas; al volver a **`BRISA SI`** todo se reanuda.
 - [ ] **Meta y pantalla de final.** Detrás de esa puerta: se abre la pantalla de final pixel-art
   (**NIVEL COMPLETADO**) con el resumen de huevos, muertes y habilidades, y las opciones
   **SIGUIENTE NIVEL** (habilitada en `slice` para pasar a `level2`, o cuando se pasa `--next-map`),

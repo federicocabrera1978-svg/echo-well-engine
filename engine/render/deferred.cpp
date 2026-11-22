@@ -161,6 +161,11 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   }
   Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_theme"), 9, v.bg_theme.data());
   Uniform1iv(GetUniformLocation(geom_prog_, "u_bg_seed"), 9, v.bg_seed.data());
+  Uniform1i(GetUniformLocation(geom_prog_, "u_foliage"), v.foliage_enabled);
+  Uniform1f(GetUniformLocation(geom_prog_, "u_wind_gust"), v.wind_gust);
+  Uniform1i(GetUniformLocation(geom_prog_, "u_wind_imp_count"), v.wind_impulse_count);
+  if (v.wind_impulse_count > 0)
+    Uniform4fv(GetUniformLocation(geom_prog_, "u_wind_imp"), v.wind_impulse_count, v.wind_impulses.data());
   glDrawArrays(GL_TRIANGLES, 0, 3);
   // 2) Light pass -> lit target
   BindFramebuffer(GL_FRAMEBUFFER, lit_fbo_);
@@ -176,6 +181,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1f(GetUniformLocation(light_prog_, "u_vol"), v.pause_vol);
   Uniform1i(GetUniformLocation(light_prog_, "u_mute"), v.pause_mute);
   Uniform1i(GetUniformLocation(light_prog_, "u_has_save"), v.pause_has_save);
+  Uniform1i(GetUniformLocation(light_prog_, "u_foliage"), v.foliage_enabled);
   Uniform1i(GetUniformLocation(light_prog_, "u_dlg"), v.dlg);
   Uniform1i(GetUniformLocation(light_prog_, "u_dlg_more"), v.dlg_more);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl"), v.ctl);

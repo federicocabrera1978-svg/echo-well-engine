@@ -692,6 +692,7 @@ int main(int argc, char** argv) {
     }
     mixer.set_gain(menu.volume_setting());
     mixer.set_mute(menu.muted());
+    sim->set_wind_enabled(menu.foliage());
 
     // Paso fijo 60 Hz (con --frames: 1 paso por frame, determinista).
     // Nota: cuando end_screen está abierta, Sim::step debe seguir corriendo para avanzar finish_t_ (u_fade 0->1).
@@ -968,6 +969,9 @@ int main(int argc, char** argv) {
     v.cur_cx = scene->chunk_x();
     v.cur_cy = scene->chunk_y();
     v.visited_mask = uint32_t(scene->visited_chunks() & 0xFFFFFFFFu);
+    v.foliage_enabled = sim->wind_enabled() ? 1 : 0;
+    v.wind_gust = sim->wind().current_gust(uint32_t(v.bg_seed[4]));
+    v.wind_impulse_count = sim->wind().pack_impulses(v.wind_impulses);
 
     int fw, fh; glfwGetFramebufferSize(win, &fw, &fh);
     renderer.render(static_cast<float>(glfwGetTime()), fw, fh, v);

@@ -50,6 +50,8 @@ void Sim::build() {
   boss_burst_x_ = 0;
   boss_burst_y_ = 0;
   victory_.reset();
+  wind_.reset();
+  was_grounded_ = false;
   facing_ = 1;
   anim_ = PlayerAnim::Idle;
   anim_frame_ = 0;
@@ -181,7 +183,10 @@ void Sim::advance_bosses() {
         walk(std::min(b.speed() * (b.guardian2 ? 1.45f : 1.5f), 105.f));
         b.vy += 600.f * kDt;
         b.y += b.vy * kDt;
-        if (b.y >= b.home_y) { b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; ++b.cycle; }
+        if (b.y >= b.home_y) {
+          b.y = b.home_y; b.vy = 0; b.phase = 0; b.t = 0; ++b.cycle;
+          wind_.push_impulse(b.x, b.y, float(b.dir) * 2.2f, 28.f, 0.38f);
+        }
       }
       continue;
     }
@@ -215,6 +220,7 @@ void Sim::advance_bosses() {
         b.phase = 0;
         b.t = 0;
         ++b.cycle;
+        wind_.push_impulse(b.x, b.y, float(b.dir) * 2.8f, 34.f, 0.42f);
       }
     } else {
       walk(kDragonChargeSpeed + float(b.hits) * 10.f);
@@ -382,6 +388,8 @@ void Sim::respawn() {
   anim_frame_ = 0;
   anim_ticks_ = 0;
   air_ticks_ = 0;
+  was_grounded_ = false;
+  wind_.reset();
   pending_dialog_ = -1;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
   dash_ready_ = has_ability(kAbilityDash);
@@ -439,6 +447,7 @@ void Sim::step(const Input& in) {
   if (in.restart) { respawn(); return; }
   if (invuln_ > 0) --invuln_;
   victory_.step(kDt);
+  wind_.step(kDt);
   boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
@@ -452,6 +461,7 @@ void Sim::step(const Input& in) {
     scene_.follow(p.pos.x, p.pos.y, kDt);
     scene_.tick(kDt);
     update_player_anim({});
+    was_grounded_ = p.grounded;
     return;
   }
   auto& pts = world_.points();
@@ -577,6 +587,17 @@ void Sim::step(const Input& in) {
   advance_bosses();
   advance_imps();
   carry_player();
+  if (wind_.enabled()) {
+    for (int r = 0; r < rope_count(); ++r) {
+      const int n = ropes_[std::size_t(r)].n;
+      const uint32_t first = ropes_[std::size_t(r)].first;
+      for (int i = 1; i <= n; ++i) {
+        if (held_ && held_rope_ == r && i == held_) continue;
+        auto& pt = pts[first + uint32_t(i)];
+        if (pt.inv_mass > 0.f) pt.force.x += wind_.sample_at(pt.pos.x, pt.pos.y, 1u) * 24.f;
+      }
+    }
+  }
   world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
     const auto& node = world_.points()[held_index()];
@@ -616,6 +637,24 @@ void Sim::step(const Input& in) {
   check_hazards();
   check_goal();
   update_player_anim(in);
+  {
+    const auto& p = world_.points()[player_];
+    if (wind_.enabled()) {
+      if (p.grounded || air_ticks_ < 6) {
+        wind_.set_wake(p.pos.x, p.pos.y + down() * kPlayerRadius, (p.pos.x - p.prev.x) / kDt);
+      } else {
+        wind_.clear_wake();
+      }
+      if (!was_grounded_ && p.grounded) {
+        wind_.push_impulse(p.pos.x, p.pos.y + down() * kPlayerRadius,
+                           (p.pos.x >= p.prev.x ? 1.f : -1.f) * 2.2f, 24.f, 0.38f);
+      }
+      if (dash_ticks_ > 0) {
+        wind_.push_impulse(p.pos.x, p.pos.y, float(dash_dir_) * 3.8f, 30.f, 0.25f);
+      }
+    }
+    was_grounded_ = p.grounded;
+  }
 }
 
 void Sim::update_player_anim(const Input& in) {
@@ -1023,6 +1062,7 @@ void Sim::collide_bosses() {
         boss_burst_x_ = b.x;
         boss_burst_y_ = cy;
         boss_burst_ = victory_.in_defeat_anim() ? std::max(1, int(std::ceil(victory_.anim_remaining() / kDt))) : 0;
+        wind_.push_impulse(b.x, b.y, 3.6f, 44.f, 0.55f);
         sfx_ |= 4u | 2048u;  // kSfxCheckpoint | kSfxBossCrt (rayos catódicos)
       }
       return;
@@ -1064,6 +1104,7 @@ void Sim::collide_imps() {
     const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 4.f) : (vy < 0.f && pl.pos.y >= bot - 4.f);
     if (dash_ticks_ > 0 || from_above) {
       im.defeated = true;
+      wind_.push_impulse(im.x, im.y, float(im.dir) * 2.0f, 22.f, 0.35f);
       sfx_ |= 1024u;  // kSfxHit
       if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
       if (has_ability(kAbilityDash)) dash_ready_ = true;
