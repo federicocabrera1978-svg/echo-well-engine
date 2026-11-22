@@ -3,6 +3,7 @@
 #include "game/campaign.hpp"
 #include "game/end_screen.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -92,7 +93,7 @@ int main(int argc, char** argv) {
                           game::kAbilityDoubleJump | game::kAbilityDash, false, "", 125.f, true};
     es.open(s_rank);
     const auto t_s = game::end_screen_text(es);
-    CHECK(t_s[0] == "VICTORIA: REINO DESPIERTO");
+    CHECK(t_s[0] == game::kEndTitleVictory);
     CHECK(t_s[1] == "NIVEL 3: LA GUARIDA DEL WYRM");
     CHECK(t_s[5] == "TIEMPO:  2:05   RANGO: S");
 

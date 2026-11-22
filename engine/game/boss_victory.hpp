@@ -1,6 +1,8 @@
 #pragma once
 // Secuencia de victoria al derrotar un boss (sin GL/GLFW):
 // explosión CRT + partículas + shake + slow-motion + pausa dramática + diálogo.
+#include "game/story.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -38,19 +40,16 @@ struct BossVictoryDialog {
   std::string text;
 };
 
-// Diálogo de progresión al derrotar al boss de cada nivel.
+// Diálogo de progresión al derrotar al boss de cada nivel (textos en story.hpp, fuente única).
 inline BossVictoryDialog boss_victory_dialog(BossKind kind) {
   switch (kind) {
     case BossKind::Wyrm:
-      return {"CORONA DE LA PUREZA",
-              "VENCISTE A TODOS LOS BOSS/CON LA LUZ DE TU PUREZA!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|HAS DEMOSTRADO QUE PERTENECES/AL REINO DE LO ALTO!"};
+      return {std::string(kVictoryWyrmSpeaker), std::string(kVictoryWyrmText)};
     case BossKind::Guardian2:
-      return {"SELLO DE LAS CATACUMBAS",
-              "EL SEGUNDO IMPEDIMENTO CAYO/ANTE TU CORAZON PURO.|TU TAREA NO ES VANA:/NO DESISTAS EN SUBIR!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER."};
+      return {std::string(kVictoryGuardian2Speaker), std::string(kVictoryGuardian2Text)};
     case BossKind::Watcher:
     default:
-      return {"SELLO DE LA ASCENSION",
-              "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"};
+      return {std::string(kVictoryWatcherSpeaker), std::string(kVictoryWatcherText)};
   }
 }
 

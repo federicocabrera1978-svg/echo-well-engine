@@ -408,6 +408,11 @@ target_link_libraries(guide_test PRIVATE echo_game)
 add_dependencies(guide_test ew_maps)
 add_test(NAME guide_arrows COMMAND guide_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_HELLO_MAP})
 
+add_executable(story_test tests/story_test.cpp)
+target_link_libraries(story_test PRIVATE echo_game)
+add_dependencies(story_test ew_maps)
+add_test(NAME story_tone COMMAND story_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP})
+
 add_executable(mechanisms_crt_test tests/mechanisms_crt_test.cpp)
 target_link_libraries(mechanisms_crt_test PRIVATE echo_game echo_audio)
 add_dependencies(mechanisms_crt_test ew_maps)

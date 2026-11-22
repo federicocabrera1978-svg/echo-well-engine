@@ -1,6 +1,7 @@
 #pragma once
 // Progresión de niveles de campaña y resolución segura de mapas .ewmap (sin GL).
 #include "core/paths.hpp"
+#include "game/story.hpp"
 
 #include <array>
 #include <string>
@@ -15,7 +16,7 @@ struct LevelInfo {
 };
 
 inline constexpr std::array<LevelInfo, 4> kCampaignLevels{{
-    {"world", "EL REINO DEL POZO", ""},
+    {"world", kWorldTitle, ""},
     {"slice", "NIVEL 1: EL POZO", "level2"},
     {"level2", "NIVEL 2: LAS CATACUMBAS", "level3"},
     {"level3", "NIVEL 3: LA GUARIDA DEL WYRM", ""},

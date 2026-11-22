@@ -1237,7 +1237,7 @@ void main() {
       }
     }
   }
-  // Bosses pixel-art (Coloso del Sello 24×16 y Wyrm Ancestral 32×22) con corona dorada de pureza.
+  // Bosses pixel-art (Coloso del Sello 24×16 y Wyrm Ancestral 32×22) con corona dorada del Wyrm.
   for (int bi = 0; bi < u_boss_count; ++bi) {
     vec4 br = u_boss_rect[bi];
     vec4 bs = u_boss_state[bi];
@@ -1261,7 +1261,7 @@ void main() {
         vec3 col = arm_lo;
         float e = 0.0;
         vec2 norm_xy = vec2(fx * 0.07 * dir, (fy - 8.0) * 0.08);
-        // 1) Corona dorada de la Pureza (punto débil superior: fy -1..2, abs(fx) <= 4)
+        // 1) Corona dorada del Wyrm (punto débil superior: fy -1..2, abs(fx) <= 4)
         bool prong = (fy <= 0.0 && (abs(fx) < 0.8 || abs(abs(fx) - 3.0) < 0.9));
         bool band  = (fy >= 0.0 && fy <= 2.0 && abs(fx) <= 3.5);
         if ((fy >= -1.0 && prong) || band) {

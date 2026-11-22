@@ -4,6 +4,7 @@
 #include "game/menu.hpp"
 #include "game/menu_text.hpp"
 #include "game/sim.hpp"
+#include "game/story.hpp"
 
 #include <array>
 #include <cstdint>
@@ -81,8 +82,8 @@ class EndScreen {
 inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   std::array<std::string, kTxtRows> t{};
   const auto& s = e.stats();
-  t[0] = s.true_ending ? "FINAL VERDADERO" : (s.campaign_done ? "VICTORIA: REINO DESPIERTO" : "NIVEL COMPLETADO");
-  t[1] = s.true_ending ? "REINO RENACIDO: 100% HUEVOS" : (s.title.empty() ? "CAMINO SUPERADO" : s.title);
+  t[0] = s.true_ending ? std::string(kEndTitleTrue) : (s.campaign_done ? std::string(kEndTitleVictory) : std::string("NIVEL COMPLETADO"));
+  t[1] = s.true_ending ? std::string(kEndSubtitleTrue) : (s.title.empty() ? "CAMINO SUPERADO" : s.title);
   t[2] = "HUEVOS:  " + (s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-"));
   t[3] = "MUERTES: " + std::to_string(s.deaths);
   auto build_abs = [&](bool compact) {
