@@ -141,7 +141,7 @@ set_tests_properties(ewmap_load_mover PROPERTIES DEPENDS ewmapc_mover)
 add_library(echo_physics engine/physics/verlet.cpp engine/physics/water.cpp)
 target_include_directories(echo_physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 
-add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp engine/game/save.cpp)
+add_library(echo_game engine/game/scene.cpp engine/game/sim.cpp engine/game/save.cpp engine/game/level_flow.cpp)
 target_link_libraries(echo_game PUBLIC echo_map echo_physics)
 
 # Mapas compilados en el build (CRC siempre on). slice = camino jugable por defecto.
@@ -333,6 +333,11 @@ add_executable(end_screen_test tests/end_screen_test.cpp)
 target_link_libraries(end_screen_test PRIVATE echo_game)
 add_dependencies(end_screen_test ew_maps)
 add_test(NAME end_screen COMMAND end_screen_test ${EW_SLICE_MAP} ${EW_ABILITY_MAP})
+
+add_executable(level_flow_test tests/level_flow_test.cpp)
+target_link_libraries(level_flow_test PRIVATE echo_game)
+add_dependencies(level_flow_test ew_maps)
+add_test(NAME level_flow COMMAND level_flow_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP})
 
 add_executable(dialogue_test tests/dialogue_test.cpp tools/ewmapc/writer.cpp)
 target_include_directories(dialogue_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tools/ewmapc)
