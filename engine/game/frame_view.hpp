@@ -41,6 +41,8 @@ struct FrameData {
   int sprite_count = 0;
   std::array<float, kMaxSprites * 4> sprites{};
   std::array<float, kMaxSprites * 4> sprite_tint{};
+  int player_sprite_idx = -1;                // índice en `sprites` del héroe principal (-1 si no se dibujó)
+  float player_squash_x = 1.f, player_squash_y = 1.f;
   // Agua: hasta kMaxWaterBodies cuerpos. Por cuerpo: rect (x, y_reposo, w, fondo),
   // n° de columnas y altura de superficie por columna (px mundo), stride kMaxWaterCols.
   int water_count = 0;
@@ -310,6 +312,9 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
                               bool overlay_open, bool show_player_guide = false, int preview_hero_sel = -1) {
   v.marker_count = 0;
   v.sprite_count = 0;
+  v.player_sprite_idx = -1;
+  v.player_squash_x = 1.f;
+  v.player_squash_y = 1.f;
   v.water_count = 0;
   v.mover_count = 0;
   v.hazard_count = 0;
@@ -428,6 +433,12 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     push_marker(v, wx, sy, 1.6f, 0, 0.25f, 1.0f, 0.55f);
     push_marker(v, wx, sy + sim.down() * 2.5f, 1.1f, 1, 0.65f, 1.0f, 0.80f);
   }
+  for (const auto& pt : sim.dust()) {  // partículas de polvo/estela (despegue, aterrizaje, salto, dash)
+    if (v.marker_count >= kMaxMarkers) break;
+    if (pt.life <= 0.f) continue;
+    const float f = std::clamp(pt.life / std::max(pt.max_life, 1e-4f), 0.f, 1.f);
+    push_marker(v, pt.x, pt.y, pt.radius * (0.4f + 0.6f * f), 0, pt.r * f, pt.g * f, pt.b * f);
+  }
   {  // protagonista pixel-art 16×16 (según héroe): espejado según dirección y gravedad
     const float d = sim.down();
     const bool inv = sim.gravity_flipped();
@@ -439,14 +450,30 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
                   sim.player_facing() < 0, inv, 0.70f, 0.34f, 0.16f, 0.08f);
       push_sprite(v, std::round(px - dir * 4.f), std::round(py - 2.f * d), h_col + 2, 2,
                   sim.player_facing() < 0, inv, 1.05f, 0.52f, 0.22f, 0.18f);
+    } else if (sim.dash_flash() > 0) {  // estela residual al salir del Dash
+      const float dir = float(sim.dash_dir());
+      const float f = float(sim.dash_flash()) / float(Sim::kDashFlashFrames);
+      const bool up = sim.dash_upgraded();
+      push_sprite(v, std::round(px - dir * 5.f), std::round(py - 2.f * d), h_col + 2, 2,
+                  sim.player_facing() < 0, inv,
+                  (up ? 0.50f : 0.90f) * f, (up ? 0.92f : 0.48f) * f, (up ? 1.0f : 0.22f) * f, 0.12f * f);
     }
     const bool blink = sim.invuln() > 0 && (sim.invuln() / 2) % 2 == 1;
     const float tr = blink ? 0.55f : (dashing ? 1.25f : (inv ? 0.90f : 1.0f));
     const float tg = blink ? 0.55f : (dashing ? 0.90f : (inv ? 0.85f : 1.0f));
     const float tb = blink ? 0.70f : (dashing ? 0.55f : (inv ? 1.08f : 1.0f));
     const float boost = dashing ? 0.38f : (sim.double_jump_flash() > 0 ? 0.25f : 0.05f);
+    v.player_sprite_idx = v.sprite_count;
     push_sprite(v, std::round(px), std::round(py - 2.f * d), h_col + sim.player_anim_frame(), int(sim.player_anim()),
                 sim.player_facing() < 0, inv, tr, tg, tb, boost);
+    if (v.sprite_count == v.player_sprite_idx) {
+      v.player_sprite_idx = -1;
+      v.player_squash_x = 1.f;
+      v.player_squash_y = 1.f;
+    } else {
+      v.player_squash_x = sim.squash_x();
+      v.player_squash_y = sim.squash_y();
+    }
   }
   if (preview_hero_sel >= 0) {
     const int frame = int(time_s * 4.f) & 3;

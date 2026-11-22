@@ -19,6 +19,8 @@ uniform vec3 u_marker_colors[48];
 uniform int u_sprite_count;
 uniform vec4 u_sprite_rect[16];    // (x, y, col_signed, row_signed)
 uniform vec4 u_sprite_tint[16];    // (r, g, b, emit_boost)
+uniform int u_player_sprite_idx;
+uniform vec2 u_player_squash;
 uniform int u_water_count;         // cuerpos de agua (máx. 4)
 uniform int u_water_cols[4];
 uniform vec4 u_water_rect[4];      // x, y reposo, w, y fondo
@@ -1433,12 +1435,21 @@ void main() {
   // Sprites pixel-art 16×16 (protagonista, huevos de dragón, reliquias) con normales por altura.
   for (int i = 0; i < u_sprite_count; ++i) {
     vec4 sr = u_sprite_rect[i];
-    vec2 rel = floor(world - sr.xy + vec2(8.0, 8.0));
+    bool flip_y = sr.w < -0.5;
+    vec2 rel;
+    if (i == u_player_sprite_idx && (abs(u_player_squash.x - 1.0) > 0.005 || abs(u_player_squash.y - 1.0) > 0.005)) {
+      vec2 sq = clamp(u_player_squash, vec2(0.65), vec2(1.45));
+      vec2 pivot = vec2(0.0, flip_y ? -6.0 : 6.0);
+      vec2 ofs = world - sr.xy;
+      vec2 unscaled = (ofs - pivot) / sq + pivot;
+      rel = floor(unscaled + vec2(8.0, 8.0));
+    } else {
+      rel = floor(world - sr.xy + vec2(8.0, 8.0));
+    }
     if (rel.x >= 0.0 && rel.y >= 0.0 && rel.x < 16.0 && rel.y < 16.0) {
       int raw_c = int(floor(abs(sr.z) + 0.5));
       int raw_r = int(floor(abs(sr.w) + 0.5));
       bool flip_x = sr.z < -0.5;
-      bool flip_y = sr.w < -0.5;
       int col = clamp(flip_x ? raw_c - 1 : raw_c, 0, 15);
       int row = clamp(flip_y ? raw_r - 1 : raw_r, 0, 7);
       int lx = int(rel.x), ly = int(rel.y);

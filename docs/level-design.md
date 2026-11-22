@@ -152,6 +152,11 @@ Ejemplo:
 `flood_switch` solo afecta agua cuyo rectángulo tiene `x ≥ 400` (la pileta del chunk 0
 de `slice` no sube). Si tu pileta inundable está en el chunk 0, no va a subir.
 
+### Protagonista: movimiento y Game Feel
+
+- **Coyote time y Jump buffer:** el salto (`Sim::kJumpSpeed = 230` px/s, ~44 px de altura; caminata `Sim::kWalkSpeed = 90` px/s) admite **`Sim::kCoyoteFrames = 6`** frames de margen tras dejar un borde (sin gastar el Doble Salto) y **`Sim::kJumpBufferFrames = 6`** frames de buffer cuando se presiona salto justo antes de tocar el piso.
+- **Squash & Stretch y polvo:** `Sim::squash_x()` / `Sim::squash_y()` (expuestos en `FrameData::player_squash_x` / `player_squash_y` y anclados a los pies del sprite) estiran al protagonista al saltar/doble saltar y lo comprimen al aterrizar o iniciar un Dash, decayendo suavemente a `(1, 1)`. Además emite partículas `Sim::DustParticle` (hasta `Sim::kMaxDust = 24`) al despegar, aterrizar, hacer doble salto, saltar desde pared al trepar (`wall-jump`) y durante la embestida (`Dash`, con estela visual de `Sim::kDashFlashFrames = 14` frames). Probado sin GL en el test headless `game_feel` (`tests/game_feel_test.cpp`).
+
 ## Agua y cuerdas
 
 - **Agua:** `x, y, w, h` en px (la superficie de reposo es `y`; el fondo es `y+h`).

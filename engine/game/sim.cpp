@@ -54,6 +54,11 @@ void Sim::build() {
   wall_lock_ticks_ = 0;
   wall_sliding_ = false;
   wall_dir_ = 0;
+  coyote_ticks_ = 0;
+  jump_buf_ = 0;
+  squash_x_ = 1.f;
+  squash_y_ = 1.f;
+  dust_.clear();
   boss_burst_ = 0;
   boss_burst_x_ = 0;
   boss_burst_y_ = 0;
@@ -69,6 +74,7 @@ void Sim::build() {
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
+  last_pos_ = p;
   for (const auto& r : scene_.map().ropes()) {  // sección ROPE (validada por ewmapc)
     if (r.segments < 1 || r.segments > 256 || !(r.seg_len > 0)) continue;
     const int n = int(r.segments);
@@ -421,6 +427,11 @@ void Sim::respawn() {
   wall_lock_ticks_ = 0;
   wall_sliding_ = false;
   wall_dir_ = 0;
+  coyote_ticks_ = 0;
+  jump_buf_ = 0;
+  squash_x_ = 1.f;
+  squash_y_ = 1.f;
+  dust_.clear();
   boss_burst_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
@@ -429,6 +440,7 @@ void Sim::respawn() {
   anim_ticks_ = 0;
   air_ticks_ = 0;
   was_grounded_ = false;
+  last_pos_ = p;
   wind_.reset();
   pending_dialog_ = -1;
   air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
@@ -455,6 +467,8 @@ void Sim::take_hit(float src_x, float src_y, bool allow_survive) {
     sfx_ |= ew::audio::kSfxHit;
     if (held_) release();
     dash_ticks_ = 0;
+    coyote_ticks_ = 0;
+    jump_buf_ = 0;
     auto& pl = world_.points()[player_];
     pl.gscale = flip_ ? -1.f : 1.f;
     const float push = (pl.pos.x >= src_x ? 1.f : -1.f);
@@ -504,6 +518,13 @@ void Sim::release() {
 void Sim::step(const Input& in) {
   if (in.restart_full) { reset(); return; }
   if (in.restart) { respawn(); return; }
+  {
+    const auto& pl0 = world_.points()[player_];
+    if (pl0.pos.x != last_pos_.x || pl0.pos.y != last_pos_.y || pl0.grounded != was_grounded_) {
+      coyote_ticks_ = 0;
+      jump_buf_ = 0;
+    }
+  }
   if (invuln_ > 0) --invuln_;
   victory_.step(kDt);
   wind_.step(kDt);
@@ -519,10 +540,13 @@ void Sim::step(const Input& in) {
     const auto& p = world_.points()[player_];
     scene_.follow(p.pos.x, p.pos.y, kDt);
     scene_.tick(kDt);
+    step_game_feel();
     update_player_anim({});
     was_grounded_ = p.grounded;
+    last_pos_ = p.pos;
     return;
   }
+  step_game_feel();
   auto& pts = world_.points();
   if (regrab_cd_ > 0) --regrab_cd_;
   if (grab_flash_ > 0) --grab_flash_;
@@ -558,6 +582,8 @@ void Sim::step(const Input& in) {
   bool rope_jumped = false;
   if (held_) {
     // Colgado: recarga doble salto y embestida; ←/→ empujan el nodo, ↑/↓ trepan, saltar o dash sueltan.
+    coyote_ticks_ = 0;
+    jump_buf_ = 0;
     if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
     if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
     auto& node = pts[held_index()];
@@ -615,6 +641,10 @@ void Sim::step(const Input& in) {
       dash_cd_ = dash_upgraded() ? kDashUpgradedCooldown : kDashCooldownFrames;
       --dash_charges_;
       dash_flash_ = kDashFlashFrames;
+      coyote_ticks_ = 0;
+      jump_buf_ = 0;
+      squash_x_ = 1.24f;
+      squash_y_ = 0.80f;
       sfx_ |= 256u;  // kSfxDash
     }
 
@@ -624,10 +654,15 @@ void Sim::step(const Input& in) {
       wall_lock_ticks_ = 0;
       wall_dir_ = 0;
       break_walls_on_dash();
+      const bool up = dash_upgraded();
+      const float j = float((dash_ticks_ % 3) - 1);
+      spawn_dust(pl.pos.x - float(dash_dir_) * kPlayerRadius, pl.pos.y + j * 1.5f,
+                 -float(dash_dir_) * 24.f, j * 8.f, 0.20f, 1.5f,
+                 up ? 0.55f : 1.0f, up ? 0.96f : 0.58f, up ? 1.0f : 0.22f);
       pl.gscale = 0.f;
       pl.set_velocity({float(dash_dir_) * kDashSpeed * kDt, 0.f});
     } else {
-      // Control normal: caminar, salto apoyado, salto en pared o doble salto aéreo.
+      // Control normal: caminar, salto apoyado, coyote time, jump buffer, wall-jump o doble salto.
       Vec2 v = pl.velocity();
       const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
       float air_blend = 0.15f;
@@ -641,6 +676,13 @@ void Sim::step(const Input& in) {
         if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
         if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
         wall_lock_ticks_ = 0;
+      }
+      if (pl.grounded) {
+        coyote_ticks_ = kCoyoteFrames;
+      } else if (swim) {
+        coyote_ticks_ = 0;
+      } else if (coyote_ticks_ > 0) {
+        --coyote_ticks_;
       }
       wall_sliding_ = false;
       if (!pl.grounded && !swim && has_ability(kAbilityWallClimb)) {
@@ -675,18 +717,40 @@ void Sim::step(const Input& in) {
         wall_coyote_ = 0;
         wall_dir_ = 0;
       }
-      if (in.jump && !rope_jumped) {
-        if (pl.grounded || swim) {
+      const bool want_jump = (in.jump && !rope_jumped) || (jump_buf_ > 0 && (pl.grounded || swim));
+      bool set_jump_buf = false;
+      if (want_jump) {
+        if (pl.grounded || swim || coyote_ticks_ > 0) {
           v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+          coyote_ticks_ = 0;
+          jump_buf_ = 0;
+          squash_x_ = 0.82f;
+          squash_y_ = 1.22f;
+          const float fy = pl.pos.y + down() * kPlayerRadius;
+          for (int k = -1; k <= 1; ++k) {
+            spawn_dust(pl.pos.x + float(k) * 2.f, fy, float(k) * 18.f,
+                       -down() * (14.f + (k == 0 ? 8.f : 0.f)), 0.22f, 1.3f,
+                       swim ? 0.72f : 0.80f, swim ? 0.90f : 0.76f, swim ? 1.0f : 0.68f);
+          }
           sfx_ |= 1u;  // kSfxJump (audio/sfx.hpp)
         } else if (has_ability(kAbilityWallClimb) && wall_coyote_ > 0 && wall_dir_ != 0) {
-          v.x = -float(wall_dir_) * kWallJumpVx * kDt;
+          const int wd = wall_dir_;
+          v.x = -float(wd) * kWallJumpVx * kDt;
           v.y = -down() * kWallJumpVy * kDt;
-          facing_ = -wall_dir_;
+          facing_ = -wd;
           wall_dir_ = 0;
           wall_coyote_ = 0;
           wall_lock_ticks_ = kWallLockFrames;
           wall_sliding_ = false;
+          coyote_ticks_ = 0;
+          jump_buf_ = 0;
+          squash_x_ = 0.82f;
+          squash_y_ = 1.22f;
+          for (int k = -1; k <= 1; ++k) {
+            spawn_dust(pl.pos.x + float(wd) * kPlayerRadius, pl.pos.y + float(k) * 2.f,
+                       -float(wd) * (22.f + float(std::abs(k)) * 8.f), -down() * (10.f - float(k) * 8.f),
+                       0.24f, 1.3f, 0.55f, 0.92f, 0.68f);
+          }
           pl.force.y = 0.f;
           double_jump_flash_ = kDoubleJumpFlashFrames;
           double_jump_x_ = pl.pos.x;
@@ -695,12 +759,24 @@ void Sim::step(const Input& in) {
         } else if (has_ability(kAbilityDoubleJump) && air_jumps_ > 0) {
           --air_jumps_;
           v.y = -down() * kDoubleJumpSpeed * kDt;
+          jump_buf_ = 0;
+          squash_x_ = 0.84f;
+          squash_y_ = 1.18f;
+          const float fy = pl.pos.y + down() * kPlayerRadius;
+          for (int k = -1; k <= 1; ++k) {
+            spawn_dust(pl.pos.x + float(k) * 2.5f, fy, float(k) * 26.f,
+                       down() * (12.f + (k == 0 ? 6.f : 0.f)), 0.25f, 1.4f, 0.45f, 0.92f, 1.0f);
+          }
           double_jump_flash_ = kDoubleJumpFlashFrames;
           double_jump_x_ = pl.pos.x;
-          double_jump_y_ = pl.pos.y + down() * kPlayerRadius;
+          double_jump_y_ = fy;
           sfx_ |= 1u;  // kSfxJump
+        } else if (in.jump && !rope_jumped) {
+          jump_buf_ = kJumpBufferFrames;
+          set_jump_buf = true;
         }
       }
+      if (!set_jump_buf && jump_buf_ > 0) --jump_buf_;
       pl.set_velocity(v);
     }
   }
@@ -780,6 +856,17 @@ void Sim::step(const Input& in) {
   update_player_anim(in);
   {
     const auto& p = world_.points()[player_];
+    if (!was_grounded_ && p.grounded && !in_w) {
+      squash_x_ = 1.26f;
+      squash_y_ = 0.76f;
+      const float fy = p.pos.y + down() * kPlayerRadius;
+      for (int k = 0; k < 4; ++k) {
+        const float dir = (k % 2 == 0) ? -1.f : 1.f;
+        const float spd = (k < 2) ? 28.f : 16.f;
+        const float vy = (k < 2) ? 14.f : 22.f;
+        spawn_dust(p.pos.x + dir * 2.f, fy, dir * spd, -down() * vy, 0.26f, 1.5f, 0.78f, 0.74f, 0.66f);
+      }
+    }
     if (wind_.enabled()) {
       if (p.grounded || air_ticks_ < 6) {
         wind_.set_wake(p.pos.x, p.pos.y + down() * kPlayerRadius, (p.pos.x - p.prev.x) / kDt);
@@ -799,6 +886,33 @@ void Sim::step(const Input& in) {
       }
     }
     was_grounded_ = p.grounded;
+    last_pos_ = p.pos;
+  }
+}
+
+void Sim::spawn_dust(float x, float y, float vx, float vy, float life, float radius,
+                     float r, float g, float b) {
+  if (dust_.size() >= kMaxDust) dust_.erase(dust_.begin());
+  dust_.push_back({x, y, vx, vy, life, life, radius, r, g, b});
+}
+
+void Sim::step_game_feel() {
+  squash_x_ += (1.f - squash_x_) * 0.24f;
+  if (std::fabs(squash_x_ - 1.f) < 0.01f) squash_x_ = 1.f;
+  squash_y_ += (1.f - squash_y_) * 0.24f;
+  if (std::fabs(squash_y_ - 1.f) < 0.01f) squash_y_ = 1.f;
+  for (std::size_t i = 0; i < dust_.size();) {
+    auto& pt = dust_[i];
+    pt.x += pt.vx * kDt;
+    pt.y += pt.vy * kDt;
+    pt.vx *= 0.90f;
+    pt.life -= kDt;
+    if (pt.life <= 0.f) {
+      dust_[i] = dust_.back();
+      dust_.pop_back();
+    } else {
+      ++i;
+    }
   }
 }
 
