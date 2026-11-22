@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace ew::game {
 
@@ -21,6 +22,9 @@ struct EndStats {
   std::string next_label;
   float elapsed_sec = 0.f;
   bool campaign_done = false;
+  bool true_ending = false;
+  int max_hp = 1;
+  bool dash_upgraded = false;
 };
 
 inline char end_rank(const EndStats& s) {
@@ -77,21 +81,31 @@ class EndScreen {
 inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   std::array<std::string, kTxtRows> t{};
   const auto& s = e.stats();
-  t[0] = s.campaign_done ? "VICTORIA: REINO DESPIERTO" : "NIVEL COMPLETADO";
-  t[1] = s.title.empty() ? "CAMINO SUPERADO" : s.title;
+  t[0] = s.true_ending ? "FINAL VERDADERO" : (s.campaign_done ? "VICTORIA: REINO DESPIERTO" : "NIVEL COMPLETADO");
+  t[1] = s.true_ending ? "REINO RENACIDO: 100% HUEVOS" : (s.title.empty() ? "CAMINO SUPERADO" : s.title);
   t[2] = "HUEVOS:  " + (s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-"));
   t[3] = "MUERTES: " + std::to_string(s.deaths);
-  std::string abs;
-  if (s.abilities & kAbilityDoubleJump) abs += "DOBLE SALTO";
-  if (s.abilities & kAbilityDash) {
-    if (!abs.empty()) abs += " + ";
-    abs += "DASH";
+  auto build_abs = [&](bool compact) {
+    const std::string sep = compact ? "/" : " + ";
+    std::string out;
+    auto add = [&](std::string_view tag) {
+      if (!out.empty()) out += sep;
+      out += tag;
+    };
+    if (s.abilities & kAbilityDoubleJump) add(compact ? "DJ" : "DOBLE SALTO");
+    if ((s.abilities & kAbilityDash) || s.dash_upgraded) add(s.dash_upgraded ? "DASH II" : "DASH");
+    if (s.abilities & kAbilityWallClimb) add("ESCALADA");
+    if (s.max_hp > 1) add("+1HP");
+    return out;
+  };
+  const std::string abs_full = build_abs(false);
+  if (abs_full.empty()) {
+    t[4] = "HABILIDADES: NINGUNA";
+  } else if (std::string("HABILIDADES: " + abs_full).size() <= std::size_t(kTxtCols)) {
+    t[4] = "HABILIDADES: " + abs_full;
+  } else {
+    t[4] = "HAB: " + build_abs(true);
   }
-  if (s.abilities & kAbilityWallClimb) {
-    if (!abs.empty()) abs += " + ";
-    abs += "ESCALADA";
-  }
-  t[4] = "HABILIDADES: " + (abs.empty() ? std::string("NINGUNA") : abs);
   if (s.elapsed_sec > 0.f || s.campaign_done) {
     const int secs = s.elapsed_sec > 0.f ? int(s.elapsed_sec) : 0;
     const int mm = secs / 60 > 99 ? 99 : secs / 60;

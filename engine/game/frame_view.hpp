@@ -52,6 +52,7 @@ struct FrameData {
   int end_screen = 0;                        // 1 = pantalla de final interactiva (usa ctl_txt)
   int end_sel = 0;                           // opción seleccionada 0..3
   int end_has_next = 0;                      // 1 = hay siguiente nivel disponible
+  int end_true = 0;                          // 1 = final verdadero (100% huevos al terminar campaña)
   int pause = 0;                             // 1 = menú de pausa (light pass)
   int pause_sel = 0;
   float pause_vol = 0.8f;
@@ -72,6 +73,8 @@ struct FrameData {
   // HUD de habilidades (light pass): bitmask kAbility* + destello 0..1 al desbloquear.
   int abilities = 0;
   float ability_flash = 0;
+  int hp = 1, max_hp = 1;                    // vida actual / máxima (2 con 2+ huevos)
+  int dash_upgraded = 0;                     // 1 = Dash II desbloqueado (4+ huevos)
   // Mini-mapa exploratorio (light pass): grilla de chunks, chunk activo, bitmasks de
   // visitados, puertas/muros cerrados, huevos pendientes y porcentaje explorado.
   int map_w = 0, map_h = 0, cur_cx = 0, cur_cy = 0;

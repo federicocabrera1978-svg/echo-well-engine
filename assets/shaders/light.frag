@@ -11,6 +11,7 @@ uniform float u_fade;  // 0..1
 uniform int u_end;     // 1 = pantalla de final interactiva (usa u_txt)
 uniform int u_end_sel; // opción seleccionada 0..3
 uniform int u_end_has_next; // 1 = hay siguiente nivel
+uniform int u_end_true;     // 1 = final verdadero (100% huevos)
 uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
 uniform int u_sel;     // ítem seleccionado 0..7
@@ -31,6 +32,9 @@ uniform int u_items_total;  // 0 = sin HUD
 uniform float u_items_flash; // 0..1 destello al agarrar
 uniform int u_abilities;       // bitmask de habilidades desbloqueadas
 uniform float u_ability_flash; // 0..1 destello al desbloquear
+uniform int u_hp;              // vida actual
+uniform int u_max_hp;          // vida máxima (1..2)
+uniform int u_dash_up;         // 1 = Dash II desbloqueado
 uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
 uniform int u_map_vis;         // bitmask de chunks visitados (bits 0..31)
 uniform int u_map_vis_hi;      // bitmask de chunks visitados (bits 32..63)
@@ -103,20 +107,30 @@ vec3 end_screen_page(vec3 c, vec2 px, float f) {
     bool inner_b = (ip.x == 36.0 || ip.x == 283.0 || ip.y == 16.0 || ip.y == 163.0) &&
                    (ip.x >= 36.0 && ip.x <= 283.0 && ip.y >= 16.0 && ip.y <= 163.0);
     pcol = mix(c, vec3(0.08, 0.08, 0.11), 0.94);
+    vec3 true_tint = mix(vec3(1.0, 0.88, 0.36), vec3(0.48, 0.96, 1.0), 0.35 + 0.35 * sin(u_time * 3.0 + ip.x * 0.08));
     if (inner_b) pcol = vec3(0.30, 0.23, 0.12);
-    if (outer_b) pcol = vec3(0.85, 0.72, 0.36);
+    if (outer_b) pcol = (u_end_true > 0) ? true_tint : vec3(0.85, 0.72, 0.36);
     float d_tl = abs(ip.x - 39.0) + abs(ip.y - 19.0);
     float d_tr = abs(ip.x - 280.0) + abs(ip.y - 19.0);
     float d_bl = abs(ip.x - 39.0) + abs(ip.y - 160.0);
     float d_br = abs(ip.x - 280.0) + abs(ip.y - 160.0);
-    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) pcol = vec3(0.95, 0.85, 0.48);
+    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) pcol = (u_end_true > 0) ? true_tint : vec3(0.95, 0.85, 0.48);
     if (ip.y == 87.0 && ip.x >= 44.0 && ip.x <= 275.0) pcol = vec3(0.42, 0.34, 0.18);
     if (abs(ip.x - 160.0) + abs(ip.y - 87.0) <= 2.0) pcol = vec3(0.90, 0.76, 0.38);
     float sel_y = 95.0 + float(clamp(u_end_sel, 0, 3)) * 13.0;
     if (ip.x >= 44.0 && ip.x <= 275.0 && ip.y >= sel_y - 2.0 && ip.y <= sel_y + 6.0)
       pcol = mix(pcol, vec3(0.22, 0.19, 0.10), 0.55);
   }
-  float title_g = txt_glyph(0, px - vec2(65.0, 22.0), 2.0);
+  int len0 = 0;
+  for (int k = 0; k < 32; ++k) {
+    int g0 = txt_at(0, k);
+    if (g0 < 47 && g0 != 37) len0 = k + 1;
+  }
+  float ts = (len0 <= 18) ? 2.0 : 1.0;
+  float tx0 = (len0 <= 18) ? (160.0 - float(max(len0, 1)) * 6.0 + 1.0)
+                           : (160.0 - float(max(len0, 1)) * 3.0 + 0.5);
+  float ty0 = (len0 <= 18) ? 22.0 : 25.0;
+  float title_g = txt_glyph(0, px - vec2(tx0, ty0), ts);
   pcol = mix(pcol, vec3(1.0, 0.90, 0.45) * (0.88 + 0.12 * sin(u_time * 3.5)), title_g);
   pcol = mix(pcol, vec3(0.82, 0.74, 0.55), txt_glyph(1, px - vec2(46.0, 39.0), 1.0));
   for (int r = 0; r < 3; ++r) {
@@ -373,6 +387,33 @@ vec3 hud_items(vec3 c, vec2 px) {
   return mix(c, mix(tc, vec3(1.0), flash * 0.5), g);
 }
 
+// Corazones de vida junto al HUD de huevos (1..2 corazones 7×6).
+vec3 hud_hearts(vec3 c, vec2 px) {
+  int mhp = clamp(u_max_hp, 1, 2);
+  float x0 = (u_items_total > 0) ? 36.0 : 3.0;
+  if (px.x >= x0 && px.x <= x0 + float(mhp) * 9.0 + 4.0 && px.y >= 3.0 && px.y <= 14.0)
+    c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
+  for (int i = 0; i < 2; ++i) {
+    if (i >= mhp) break;
+    ivec2 p = ivec2(floor(px - vec2(x0 + 3.0 + float(i) * 9.0, 6.0)));
+    if (p.x >= 0 && p.x <= 6 && p.y >= 0 && p.y <= 5) {
+      bool heart = (p.y == 0 && (p.x == 1 || p.x == 2 || p.x == 4 || p.x == 5))
+                || (p.y == 1 || p.y == 2)
+                || (p.y == 3 && p.x >= 1 && p.x <= 5)
+                || (p.y == 4 && p.x >= 2 && p.x <= 4)
+                || (p.y == 5 && p.x == 3);
+      if (heart) {
+        if (i < u_hp) {
+          c = (p.x == 1 && p.y == 1) ? vec3(1.0, 0.78, 0.84) : vec3(0.98, 0.28, 0.42);
+        } else {
+          c = vec3(0.24, 0.14, 0.18);
+        }
+      }
+    }
+  }
+  return c;
+}
+
 // Íconos discretos de habilidades desbloqueadas (debajo del HUD de huevos, o arriba si no hay huevos).
 vec3 hud_abilities(vec3 c, vec2 px) {
   float top = u_items_total > 0 ? 17.0 : 3.0;
@@ -398,7 +439,12 @@ vec3 hud_abilities(vec3 c, vec2 px) {
     if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 6) {
       int dy = abs(p.y - 3);
       bool arrow = (dy == 0 && p.x <= 6) || (p.x >= 4 && (p.x - 4) == (3 - dy));
-      if (arrow) c = mix(vec3(1.0, 0.55, 0.22), vec3(1.0), flash * 0.65);
+      if (arrow) {
+        vec3 dc = (u_dash_up > 0)
+                    ? mix(vec3(1.0, 0.85, 0.25), vec3(0.45, 0.98, 1.0), float(p.x >= 5))
+                    : vec3(1.0, 0.55, 0.22);
+        c = mix(dc, vec3(1.0), flash * 0.65);
+      }
     }
     ax += 12.0;
   }
@@ -565,6 +611,7 @@ void main() {
   }
 
   if (u_items_total > 0 && u_hero_sel == 0) c = hud_items(c, px);
+  if (u_max_hp > 0 && u_hero_sel == 0) c = hud_hearts(c, px);
   if (u_abilities != 0 && u_hero_sel == 0) c = hud_abilities(c, px);
   if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_minimap(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);

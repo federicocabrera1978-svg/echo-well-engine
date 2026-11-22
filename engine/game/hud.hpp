@@ -19,6 +19,8 @@ namespace ew::game {
 struct HudTracker {
   int last_items = 0;
   uint32_t last_abilities = 0;
+  int last_max_hp = 1;
+  bool last_dash_up = false;
 };
 
 struct HudEvents {
@@ -26,6 +28,8 @@ struct HudEvents {
   bool new_double_jump = false;
   bool new_dash = false;
   bool new_wall_climb = false;
+  bool new_extra_hp = false;
+  bool new_dash_upgrade = false;
 };
 
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
@@ -44,6 +48,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.end_screen = 0;
   v.end_sel = 0;
   v.end_has_next = 0;
+  v.end_true = 0;
   v.dlg = 0;
   v.dlg_more = 0;
   v.ctl_txt = {};
@@ -62,6 +67,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     v.end_screen = 1;
     v.end_sel = end_screen.cursor();
     v.end_has_next = end_screen.stats().has_next ? 1 : 0;
+    v.end_true = end_screen.stats().true_ending ? 1 : 0;
     v.ctl_txt = pack_text(end_screen_text(end_screen));
   } else if (!menu.open() && dialogue.open()) {
     v.dlg = 1;
@@ -86,6 +92,18 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   }
   v.abilities = int(ab);
   v.ability_flash = float(sim.ability_flash()) / float(Sim::kAbilityFlashFrames);
+  v.hp = sim.hp();
+  v.max_hp = sim.max_hp();
+  v.dash_upgraded = sim.dash_upgraded() ? 1 : 0;
+  if (v.max_hp != tracker.last_max_hp) {
+    if (v.max_hp > tracker.last_max_hp) ev.new_extra_hp = true;
+    tracker.last_max_hp = v.max_hp;
+  }
+  const bool dash_up = sim.dash_upgraded();
+  if (dash_up != tracker.last_dash_up) {
+    if (dash_up && !tracker.last_dash_up) ev.new_dash_upgrade = true;
+    tracker.last_dash_up = dash_up;
+  }
   const MinimapState mm = compute_minimap(scene);
   v.map_w = mm.map_w;
   v.map_h = mm.map_h;
