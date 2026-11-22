@@ -30,6 +30,7 @@ uniform int u_abilities;       // bitmask de habilidades desbloqueadas
 uniform float u_ability_flash; // 0..1 destello al desbloquear
 uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
 uniform int u_map_vis;         // bitmask de chunks visitados
+uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, 0) rayos catódicos al vencer boss
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
 float glyph5(int bits, vec2 p) {
@@ -250,6 +251,37 @@ vec3 hud_minimap(vec3 c, vec2 px) {
   return c;
 }
 
+// Efecto de rayos catódicos (CRT) emanando del boss al ser derrotado: haces radiales con dispersión
+// cromática RGB de fósforo, anillos de barrido con scanlines y línea horizontal de deflexión.
+vec3 crt_boss_rays(vec3 c, vec2 px, vec3 burst) {
+  float bt = clamp(burst.z, 0.0, 1.0);
+  if (bt <= 0.001) return c;
+  float u = 1.0 - bt;
+  float env = sin(u * 3.14159265);
+  vec2 d = px - burst.xy;
+  float r = length(d);
+  float ang = atan(d.y, d.x);
+  float scan = 0.55 + 0.45 * step(0.5, fract(px.y * 0.5 + u_time * 15.0));
+  float wave_r = 16.0 + u * 260.0;
+  float reach = smoothstep(wave_r, max(1.0, wave_r - 36.0), r) * exp(-r * 0.009);
+  // 1) Haces catódicos radiales con separación de cañones RGB
+  float bR = max(0.0, cos((ang - 0.045) * 12.0 - u * 22.0 + r * 0.09));
+  float bG = max(0.0, cos(ang * 12.0 - u * 22.0 + r * 0.09));
+  float bB = max(0.0, cos((ang + 0.045) * 12.0 - u * 22.0 + r * 0.09));
+  vec3 rays = vec3(pow(bR, 5.0), pow(bG, 5.0), pow(bB, 5.0));
+  c += rays * vec3(1.0, 0.92, 1.15) * reach * env * scan * 1.35;
+  // 2) Anillos concéntricos de fósforo CRT + haz horizontal de deflexión catódica
+  float ring1 = exp(-abs(r - u * 195.0) * 0.32);
+  float ring2 = exp(-abs(r - max(0.0, u - 0.16) * 175.0) * 0.36);
+  c += (ring1 * vec3(0.45, 0.96, 1.0) + ring2 * vec3(1.0, 0.42, 0.88)) * env * scan * 0.95;
+  float hbeam = exp(-abs(d.y) * 0.55) * exp(-abs(d.x) * 0.008) * bt;
+  c += vec3(0.65, 0.98, 1.0) * hbeam * scan * 1.1;
+  // 3) Destello del núcleo catódico en el centro del boss
+  float core = exp(-r * 0.12) * bt;
+  c = mix(c, vec3(0.85, 0.98, 1.0), clamp(core * 1.2, 0.0, 1.0));
+  return clamp(c, 0.0, 1.0);
+}
+
 void main() {
   vec4 A = texture(u_albedo, v_uv);
   vec4 N = texture(u_normal, v_uv);
@@ -268,6 +300,7 @@ void main() {
   vec3 amb = mix(vec3(0.36, 0.38, 0.46), vec3(0.12), lr);
   vec3 c = albedo * (amb + vec3(1.0, 0.85, 0.6) * diff * att * 2.6 * mix(0.45, 1.0, lr));
   c += albedo * emit * 1.6;
+  if (u_boss_burst.z > 0.001) c = crt_boss_rays(c, px, u_boss_burst.xyz);
 
   if (u_fade > 0.0) {
     float f = clamp(u_fade, 0.0, 1.0);

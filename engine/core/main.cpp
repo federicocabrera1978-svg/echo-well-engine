@@ -679,23 +679,27 @@ int main(int argc, char** argv) {
       if (bits & kSfxDash) device_play(SfxId::Dash);
       if (bits & kSfxBreak) device_play(SfxId::Break);
       if (bits & kSfxHit) device_play(SfxId::Hit);
+      if (bits & kSfxBossCrt) device_play(SfxId::BossCrt);
     }
     if (acc > ew::game::Sim::kDt) acc = 0;
     const bool now_boss_defeated = sim->boss_count() > 0 && sim->bosses_defeated();
-    if (now_boss_defeated && !boss_was_defeated && !demo && !max_frames) {
-      const auto& b0 = sim->boss(0);
-      if (b0.dragon) {
-        dialogue.open("CORONA DE LA PUREZA",
-                      "VENCISTE A TODOS LOS BOSS/CON LA LUZ DE TU PUREZA!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|HAS DEMOSTRADO QUE PERTENECES/AL REINO DE LO ALTO!");
-      } else if (b0.guardian2) {
-        dialogue.open("SELLO DE LAS CATACUMBAS",
-                      "EL SEGUNDO IMPEDIMENTO CAYO/ANTE TU CORAZON PURO.|TU TAREA NO ES VANA:/NO DESISTAS EN SUBIR!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.");
-      } else {
-        dialogue.open("SELLO DE LA ASCENSION",
-                      "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!");
+    if (now_boss_defeated && !boss_was_defeated && sim->boss_burst() <= 15) {
+      if (!demo && !max_frames && !sim->finished()) {
+        const auto& b0 = sim->boss(0);
+        if (b0.dragon) {
+          dialogue.open("CORONA DE LA PUREZA",
+                        "VENCISTE A TODOS LOS BOSS/CON LA LUZ DE TU PUREZA!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|HAS DEMOSTRADO QUE PERTENECES/AL REINO DE LO ALTO!");
+        } else if (b0.guardian2) {
+          dialogue.open("SELLO DE LAS CATACUMBAS",
+                        "EL SEGUNDO IMPEDIMENTO CAYO/ANTE TU CORAZON PURO.|TU TAREA NO ES VANA:/NO DESISTAS EN SUBIR!|DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.");
+        } else {
+          dialogue.open("SELLO DE LA ASCENSION",
+                        "CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!");
+        }
       }
+      boss_was_defeated = true;
     }
-    boss_was_defeated = now_boss_defeated;
+    if (!now_boss_defeated) boss_was_defeated = false;
     if (sim->finished() && !announced_goal && !dialogue.open()) {
       ew::game::EndStats st;
       st.title = ew::game::level_title(scene->map().string_at(1));
@@ -752,17 +756,24 @@ int main(int argc, char** argv) {
     push_movers(v, *sim);
     for (int bi = 0; bi < sim->boss_count() && v.boss_count < ew::render::kMaxBosses; ++bi) {
       const auto& b = sim->boss(bi);
-      if (b.defeated) continue;
-      if (b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
+      if (b.defeated && sim->boss_burst() <= 0) continue;
+      if (b.defeated && (sim->boss_burst() % 2 == 0)) continue;  // se desintegra en scanlines CRT
+      if (!b.defeated && b.hurt > 0.f && int(b.hurt * 20.f) % 2 == 0) continue;  // parpadea herido
+      const float crt_jitter = b.defeated ? std::round(std::sin(float(sim->boss_burst()) * 2.1f) * 3.f) : 0.f;
       const int k = v.boss_count++;
-      v.boss_rect[std::size_t(k * 4 + 0)] = std::round(b.x);
+      v.boss_rect[std::size_t(k * 4 + 0)] = std::round(b.x) + crt_jitter;
       v.boss_rect[std::size_t(k * 4 + 1)] = std::round(b.y);
       v.boss_rect[std::size_t(k * 4 + 2)] = b.width();
       v.boss_rect[std::size_t(k * 4 + 3)] = b.height();
       v.boss_state[std::size_t(k * 4 + 0)] = b.dragon ? 2.f : (b.guardian2 ? 1.f : 0.f);
       v.boss_state[std::size_t(k * 4 + 1)] = float(b.dir);
-      v.boss_state[std::size_t(k * 4 + 2)] = float(b.phase);
+      v.boss_state[std::size_t(k * 4 + 2)] = b.defeated ? 1.f : float(b.phase);
       v.boss_state[std::size_t(k * 4 + 3)] = float(b.hits);
+    }
+    if (sim->boss_burst() > 0) {
+      v.boss_burst_x = sim->boss_burst_x() - v.cam_x;
+      v.boss_burst_y = sim->boss_burst_y() - v.cam_y;
+      v.boss_burst_t = float(sim->boss_burst()) / float(ew::game::Sim::kBossBurstFrames);
     }
     for (const auto& fb : sim->fireballs()) {
       push_marker(v, fb.x, fb.y, ew::game::Sim::kFireballRadius + 1.f, 0, 0.96f, 0.34f, 0.08f);

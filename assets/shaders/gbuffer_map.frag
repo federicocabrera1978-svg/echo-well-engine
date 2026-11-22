@@ -540,6 +540,154 @@ void main() {
     albedo = atlas_texel(cv.g, l).rgb * 0.35;  // decorado de fondo (VIS sin COL)
   }
   if (solid || cv.g != 0u) { emit = 0.0; lr = 1.0; }
+  // Flora subterránea (pasto animado, enredaderas), bichos (de suelo y alados) y elementos
+  // exploratorios/artísticos (estelas rúnicas, candelabros, cristales y relicarios) en cada sala.
+  if (!solid && inside) {
+    ivec2 c_nb = clamp(ivec2(floor(local / vec2(320.0, 184.0))), ivec2(0), ivec2(2));
+    int nb_idx = c_nb.y * 3 + c_nb.x;
+    int r_theme = u_bg_theme[nb_idx];
+    float r_seed = float(u_bg_seed[nb_idx] % 997) + 1.0;
+    if (r_theme != 9) {
+      vec2 corg = u_chunk + vec2(c_nb) * vec2(320.0, 184.0);
+      vec2 rq = floor(world - corg);
+      float wx = floor(world.x);
+      bool floor_1 = (t.y + 1 < 69) && (texelFetch(u_tiles, ivec2(t.x, t.y + 1), 0).r != 0u);
+      bool floor_2 = !floor_1 && (t.y + 2 < 69) && (texelFetch(u_tiles, ivec2(t.x, t.y + 2), 0).r != 0u);
+      bool ceil_1  = (t.y > 0) && (texelFetch(u_tiles, ivec2(t.x, t.y - 1), 0).r != 0u);
+
+      // 1) Elementos exploratorios y artísticos de sala (cada 6 tiles sobre pisos sólidos: 8×14 px)
+      if ((floor_1 || floor_2) && int(mod(float(t.x), 6.0)) == 2 && t.x + 1 < 120) {
+        int base_ty = floor_1 ? (t.y + 1) : (t.y + 2);
+        bool wide_ok = texelFetch(u_tiles, ivec2(t.x + 1, base_ty), 0).r != 0u;
+        if (wide_ok) {
+          float py = float(floor_1 ? (7 - l.y) : (15 - l.y));
+          float lx = float(l.x);
+          int pkind = int(mod(float(t.x / 6 + base_ty), 4.0));
+          bool pdrawn = false;
+          vec3 pcol = vec3(0.0);
+          float pemit = 0.0;
+          if (pkind == 0 && py < 13.0 && lx >= 2.0 && lx <= 5.0) {
+            // Estela / tótem rúnico con inscripciones encendidas
+            pdrawn = true;
+            bool rune = (lx >= 3.0 && lx <= 4.0 && (py == 4.0 || py == 7.0 || py == 10.0));
+            pcol = rune ? vec3(0.38, 0.90, 0.98) : vec3(0.24, 0.25, 0.32);
+            pemit = rune ? 0.55 : 0.0;
+          } else if (pkind == 1 && py < 13.0) {
+            // Candelabro de hierro forjado con 3 llamas titilantes
+            float fl = floor(sin(u_time * 9.0 + lx * 2.1) * 0.6 + 0.5);
+            bool stem = (lx >= 3.0 && lx <= 4.0 && py <= 8.0);
+            bool arm  = (py >= 7.0 && py <= 8.0 && lx >= 1.0 && lx <= 6.0);
+            bool wax  = ((lx == 1.0 || lx == 4.0 || lx == 6.0) && py >= 9.0 && py <= 10.0);
+            bool fire = ((lx == 1.0 || lx == 4.0 || lx == 6.0) && py >= 11.0 && py <= 11.0 + fl);
+            if (stem || arm || wax || fire) {
+              pdrawn = true;
+              pcol = fire ? vec3(1.0, 0.72, 0.22) : (wax ? vec3(0.82, 0.76, 0.64) : vec3(0.20, 0.18, 0.24));
+              pemit = fire ? 0.82 : 0.0;
+            }
+          } else if (pkind == 2 && py < 11.0) {
+            // Geoda de cristales arcanos y hongos bioluminiscentes
+            bool sh1 = (lx >= 1.0 && lx <= 2.0 && py <= 6.0);
+            bool sh2 = (lx >= 3.0 && lx <= 4.0 && py <= 9.0);
+            bool sh3 = (lx >= 5.0 && lx <= 6.0 && py <= 5.0);
+            if (sh1 || sh2 || sh3) {
+              pdrawn = true;
+              pcol = sh2 ? vec3(0.42, 0.85, 0.96) : vec3(0.68, 0.36, 0.88);
+              pemit = (py >= 5.0) ? 0.52 : 0.22;
+            }
+          } else if (pkind == 3 && py < 13.0) {
+            // Pedestal antiguo con espada ancestral clavada
+            bool ped = (py <= 3.0 && lx >= 1.0 && lx <= 6.0);
+            bool blade = (py >= 4.0 && py <= 11.0 && lx >= 3.0 && lx <= 4.0);
+            bool guard = (py == 8.0 && lx >= 2.0 && lx <= 5.0);
+            if (ped || blade || guard) {
+              pdrawn = true;
+              pcol = guard ? vec3(0.88, 0.70, 0.26) : (blade ? vec3(0.64, 0.72, 0.82) : vec3(0.26, 0.24, 0.28));
+              pemit = guard ? 0.35 : 0.0;
+            }
+          }
+          if (pdrawn) {
+            albedo = pcol;
+            n = normalize(vec3((lx - 3.5) * 0.18, -0.25, 1.0));
+            depth = 0.46;
+            emit = pemit;
+            lr = 1.0;
+          }
+        }
+      }
+
+      // 2) Pasto animado y flores/esporas sobre cada piso y repisa (floor_1)
+      if (floor_1) {
+        float py = float(7 - l.y);
+        float sway = floor(sin(u_time * 2.8 + wx * 0.26 + r_seed) * 1.4);
+        float h_rnd = hash12(vec2(wx, float(t.y)));
+        float bh = 2.0 + floor(h_rnd * 4.5);  // 2..6 px de altura
+        bool blade = (py <= bh) && (mod(wx + (py >= 2.0 ? sway : 0.0), 2.0) < 1.35);
+        if (blade) {
+          float tip = clamp(py / max(1.0, bh), 0.0, 1.0);
+          bool spore = (h_rnd > 0.82 && py >= bh - 0.5);
+          albedo = spore ? vec3(0.52, 0.96, 0.76)
+                         : mix(vec3(0.10, 0.28, 0.16), vec3(0.30, 0.68, 0.38), tip);
+          n = normalize(vec3(sway * 0.22, -0.45, 1.0));
+          depth = 0.43;
+          emit = spore ? 0.42 : 0.0;
+          lr = 1.0;
+        }
+        // 3) Bichos de suelo (escarabajos luminosos que caminan entre el pasto cada 32 px)
+        float seg = floor(wx / 32.0);
+        float b_spd = 1.5 + fract(seg * 0.37 + r_seed * 0.1) * 0.9;
+        float bx = floor(seg * 32.0 + 16.0 + sin(u_time * b_spd + seg * 2.3) * 9.0);
+        float bdir = cos(u_time * b_spd + seg * 2.3) >= 0.0 ? 1.0 : -1.0;
+        float dx = (wx - bx) * bdir;
+        if (abs(dx) <= 2.0 && py >= 0.0 && py <= 2.5) {
+          bool legs = (py == 0.0 && mod(wx + floor(u_time * 10.0), 2.0) < 1.0);
+          bool shell = (py >= 1.0 && py <= 2.0 && abs(dx) <= 1.5);
+          bool ant = (py == 2.0 && dx == 2.0);
+          if (legs || shell || ant) {
+            bool glow_tail = (shell && dx < -0.2);
+            albedo = glow_tail ? vec3(0.48, 0.98, 0.62)
+                               : (shell ? vec3(0.54, 0.34, 0.66) : vec3(0.18, 0.15, 0.22));
+            n = normalize(vec3(dx * 0.25 * bdir, -0.4, 1.0));
+            depth = 0.41;
+            emit = glow_tail ? 0.72 : 0.0;
+            lr = 1.0;
+          }
+        }
+      }
+
+      // 4) Enredaderas y musgo colgante bajo techos (ceil_1)
+      if (ceil_1) {
+        float cy = float(l.y);
+        float sway = floor(sin(u_time * 2.4 + wx * 0.22 + r_seed) * 1.2);
+        float vh = 1.0 + floor(hash12(vec2(wx + 17.0, float(t.y))) * 4.5);
+        if (cy <= vh && mod(wx + sway, 3.0) < 1.4) {
+          bool dew = (cy >= vh - 0.5 && hash12(vec2(wx, float(t.y) + 9.0)) > 0.78);
+          albedo = dew ? vec3(0.46, 0.92, 0.88) : mix(vec3(0.10, 0.26, 0.16), vec3(0.24, 0.54, 0.32), cy / 5.0);
+          n = normalize(vec3(sway * 0.2, 0.4, 1.0));
+          depth = 0.44;
+          emit = dew ? 0.38 : 0.0;
+          lr = 1.0;
+        }
+      }
+
+      // 5) Bichos alados en el aire de cada sala (polillas dracónicas y luciérnagas con alas batientes)
+      for (int bi = 0; bi < 4; ++bi) {
+        float fk = float(bi);
+        float bx = floor(42.0 + fk * 76.0 + sin(u_time * (1.2 + fk * 0.22) + r_seed + fk * 2.1) * 24.0);
+        float by = floor(38.0 + mod(fk * 33.0 + r_seed * 7.0, 76.0) + cos(u_time * (1.7 + fk * 0.28) + fk) * 13.0);
+        float flap = floor(sin(u_time * 18.0 + fk * 2.3) * 1.4);
+        vec2 bd = rq - vec2(bx, by);
+        bool body = (abs(bd.x) < 0.8 && abs(bd.y) <= 1.0);
+        bool wing = (abs(abs(bd.x) - 1.5) <= 0.8 && abs(bd.y - flap) <= 1.0);
+        if (body || wing) {
+          albedo = body ? vec3(1.0, 0.88, 0.38) : ((bi % 2 == 0) ? vec3(0.45, 0.92, 0.98) : vec3(0.96, 0.52, 0.24));
+          n = vec3(0.0, 0.0, 1.0);
+          depth = 0.42;
+          emit = body ? 0.80 : 0.52;
+          lr = 1.0;
+        }
+      }
+    }
+  }
   // Agua: columna por columna, desde la superficie Hooke hasta el fondo.
   for (int b = 0; b < u_water_count; ++b) {
     int nc = u_water_cols[b];

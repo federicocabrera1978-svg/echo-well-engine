@@ -44,8 +44,12 @@ void Sim::build() {
   dash_ready_ = false;
   dash_flash_ = 0;
   wall_break_flash_ = 0;
+  boss_burst_ = 0;
   wall_break_x_ = 0;
   wall_break_y_ = 0;
+  boss_burst_ = 0;
+  boss_burst_x_ = 0;
+  boss_burst_y_ = 0;
   facing_ = 1;
   anim_ = PlayerAnim::Idle;
   anim_frame_ = 0;
@@ -367,6 +371,7 @@ void Sim::respawn() {
   dash_cd_ = 0;
   dash_flash_ = 0;
   wall_break_flash_ = 0;
+  boss_burst_ = 0;
   regrab_cd_ = 0;
   climb_acc_ = 0;
   anim_ = PlayerAnim::Idle;
@@ -427,6 +432,7 @@ void Sim::step(const Input& in) {
   if (in.restart_full) { reset(); return; }
   if (in.restart) { respawn(); return; }
   if (invuln_ > 0) --invuln_;
+  if (boss_burst_ > 0) --boss_burst_;
   if (finished_) {
     finish_t_ = std::min(1.f, finish_t_ + kDt / kFinishFadeSec);
     apply_flood();
@@ -1004,7 +1010,10 @@ void Sim::collide_bosses() {
         b.defeated = true;
         fireballs_.clear();
         scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
-        sfx_ |= 4u;  // kSfxCheckpoint (fanfarria corta)
+        boss_burst_ = kBossBurstFrames;
+        boss_burst_x_ = b.x;
+        boss_burst_y_ = b.y - bh * 0.5f;
+        sfx_ |= 4u | 2048u;  // kSfxCheckpoint | kSfxBossCrt (rayos catódicos)
       }
       return;
     }
