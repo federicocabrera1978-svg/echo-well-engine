@@ -324,6 +324,11 @@ add_executable(menu_test tests/menu_test.cpp)
 target_link_libraries(menu_test PRIVATE echo_game)
 add_test(NAME pause_menu COMMAND menu_test)
 
+add_executable(wind_test tests/wind_test.cpp)
+target_link_libraries(wind_test PRIVATE echo_game)
+add_dependencies(wind_test ew_maps)
+add_test(NAME wind_breeze COMMAND wind_test ${EW_SLICE_MAP})
+
 add_executable(end_screen_test tests/end_screen_test.cpp)
 target_link_libraries(end_screen_test PRIVATE echo_game)
 add_dependencies(end_screen_test ew_maps)

@@ -101,6 +101,36 @@ int main() {
   c.set_audio(-1.f, false);
   CHECK(c.volume_setting() == 0.f && c.muted());
 
+  // Brisa: arranca en true, confirm/left/right alternan sin cerrar el menú, y kSalir sigue al final con wrap.
+  PauseMenu b;
+  CHECK(b.foliage());
+  CHECK(PauseMenu::kSalir == PauseMenu::kItemCount - 1);
+  in = {}; in.toggle = true; b.handle(in);
+  CHECK(b.open() && b.cursor() == PauseMenu::kSeguir);
+  in = {}; in.up = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kSalir);
+  in = {}; in.down = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kSeguir);
+  for (int i = 0; i < PauseMenu::kBrisa; ++i) { in = {}; in.down = true; b.handle(in); }
+  CHECK(b.cursor() == PauseMenu::kBrisa);
+  in = {}; in.down = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kSalir);
+  in = {}; in.up = true; b.handle(in);
+  CHECK(b.cursor() == PauseMenu::kBrisa);
+
+  in = {}; in.confirm = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && !b.foliage());
+  in = {}; in.left = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && b.foliage());
+  in = {}; in.right = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && !b.foliage());
+  in = {}; in.confirm = true;
+  CHECK(b.handle(in) == MenuAction::None);
+  CHECK(b.open() && b.foliage());
+
   std::puts("menu ok");
   return 0;
 }

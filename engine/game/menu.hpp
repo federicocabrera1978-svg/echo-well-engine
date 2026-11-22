@@ -23,8 +23,8 @@ struct MenuInput {
 
 class PauseMenu {
  public:
-  static constexpr int kItemCount = 6;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Salir
-  static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kControles = 4, kSalir = 5;
+  static constexpr int kItemCount = 7;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Brisa, Salir
+  static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kControles = 4, kBrisa = 5, kSalir = 6;
   // Página Controles: una fila por acción + POR DEFECTO + VOLVER.
   static constexpr int kCtlDefaults = kBindCount, kCtlBack = kBindCount + 1, kCtlRows = kBindCount + 2;
   static constexpr float kVolStep = 0.10f;
@@ -42,6 +42,9 @@ class PauseMenu {
   // Hay partida guardada: habilita "Continuar" (sin save, confirm ahí no hace nada).
   bool has_save() const { return has_save_; }
   void set_has_save(bool s) { has_save_ = s; }
+  // Brisa y vegetación animada.
+  bool foliage() const { return foliage_; }
+  void set_foliage(bool f) { foliage_ = f; }
   // Restaura volumen/mute (p. ej. desde el save). Clampa a [0, 1].
   void set_audio(float vol, bool muted) {
     volume_ = std::clamp(vol, 0.f, 1.f);
@@ -86,6 +89,10 @@ class PauseMenu {
         volume_ = std::min(1.f, volume_ + kVolStep);
       }
     }
+    if (cursor_ == kBrisa && (in.left || in.right || in.confirm)) {
+      foliage_ = !foliage_;
+      return MenuAction::None;
+    }
     if (!in.confirm) return MenuAction::None;
     switch (cursor_) {
       case kSeguir:    open_ = false; return MenuAction::Resume;
@@ -96,6 +103,7 @@ class PauseMenu {
       case kReiniciar: open_ = false; return MenuAction::Restart;
       case kVolumen:   muted_ = !muted_; return MenuAction::None;
       case kControles: page_ = 1; ctl_cursor_ = 0; return MenuAction::None;
+      case kBrisa:     foliage_ = !foliage_; return MenuAction::None;
       case kSalir:     return MenuAction::Quit;
       default:         return MenuAction::None;
     }
@@ -137,6 +145,7 @@ class PauseMenu {
   float volume_ = kVolDefault;
   bool muted_ = false;
   bool has_save_ = false;
+  bool foliage_ = true;
   Bindings bind_ = Bindings::defaults();
   bool bind_changed_ = false;
 };

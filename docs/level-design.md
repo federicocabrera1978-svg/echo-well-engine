@@ -249,6 +249,18 @@ backdrops:
   captura por sala de `slice` y la compara con la misma sala en `vacio`. CI lo corre en el job
   `engine` y sube las capturas como artifact `fondos-salas`.
 
+## Vegetación, brisa e interacción ambiental
+
+- **Pasto pixel-art con variantes, hongos y flores (`assets/shaders/gbuffer_map.frag`):** sobre pisos y repisas sólidas (`floor_1`, despejado alrededor de switches y checkpoints) se dibujan matas cada 5 px con claros entre sí y 3 variantes deterministas de altura: cortas (`2–3 px`), medianas arqueadas (`4–5 px`) y juncos altos (`6–8 px`), usando paletas de 3 tonos según el tema del chunk (verde musgo en `pozo`/`raices`/`nido`/`cueva`/`engranajes`, verde-azulado espectral en `cripta`/`santuario`/`abismo`/`cisterna`, oliva-ocre con punta ámbar en `grieta`/`guarida`/`arena` e índigo-lavanda en `invertido`). En los temas de catacumbas/subterráneos (`cripta`, `santuario`, `abismo`, `cisterna`, `raices`, `grieta`) brotan **hongos** chicos (tallo `2–3 px` y sombrero cian espectral u ocre con brillo tenue), mientras que en el resto de los biomas aparecen **flores silvestres** mecidas por el viento.
+- **Brisa global con ondas viajeras (`engine/game/wind.hpp` y `wind_sway` en `gbuffer_map.frag`):** `WindField` evalúa `wind_gust(time_s, seed)` (ráfaga lenta acotada a `[0.35, 1.85]`) multiplicada por `wind_wave(world_x, time_s, seed)` (onda viajera horizontal determinista según la `seed` de la sala).
+- **Interacción física y ráfagas locales (`Sim` + `WindField`):** además de la brisa global (`u_wind_gust`), `WindField` mantiene hasta `kMaxImpulses = 4` impulsos empaquetados para el renderer (`u_wind_imp_count`, `u_wind_imp`):
+  - **Caminar:** estela continua en el slot 0 (`set_wake`, radio `16 px`, centrada en los pies mientras el jugador está en el suelo o recién despega).
+  - **Aterrizar de un salto:** ráfaga local de radio `24 px` (`0.38 s`) al tocar el piso.
+  - **Embestida (Dash):** ráfaga direccional fuerte de radio `30 px` (`0.25 s`) durante `dash_ticks_ > 0`.
+  - **Enemigos y bosses al caer/derrotarlos:** aterrizaje tras salto del coloso (`28 px`, `0.38 s`) y del Wyrm (`34 px`, `0.42 s`), golpe final al boss (`44 px`, `0.55 s`) y derrota de `imp` (`22 px`, `0.35 s`).
+- **Reacción en telarañas, hojas, cuerdas y estandartes:** el campo de brisa y sus ráfagas locales inclinan pasto, hongos y flores, hacen vibrar **telarañas** en esquinas bajo techos, curvan **enredaderas y cordeles colgantes**, arrastran **hojas y polvo** en el aire según `u_wind_gust`, mecen los **estandartes** rasgados de `cripta` y, en `Sim::step`, empujan horizontalmente los nodos libres de las **cuerdas Verlet** (`wind_.sample_at(pt.pos.x, pt.pos.y, 1u) * 24.f`).
+- **Menú de pausa (`BRISA SI` / `BRISA NO`):** el ítem `PauseMenu::kBrisa` (entre `CONTROLES` y `SALIR`) arranca activado (`foliage() == true`) y alterna con `Enter`/`Espacio`/`←`/`→` sin cerrar la pausa. En `NO`, `Sim::set_wind_enabled(false)` limpia impulsos, desactiva la fuerza sobre cuerdas y pone `u_foliage = 0` (oculta el follaje/telarañas/hojas animados y detiene los estandartes). Probado en `wind_test` (`wind_breeze`) y `menu_test` (`pause_menu`).
+
 ## Compilar y probar
 
 ```sh

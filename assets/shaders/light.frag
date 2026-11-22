@@ -13,8 +13,9 @@ uniform int u_end_sel; // opción seleccionada 0..3
 uniform int u_end_has_next; // 1 = hay siguiente nivel
 uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
-uniform int u_sel;     // ítem seleccionado 0..4
+uniform int u_sel;     // ítem seleccionado 0..6
 uniform int u_has_save; // 1 = hay partida guardada (CONTINUAR habilitado)
+uniform int u_foliage;  // 1 = brisa / vegetación animada habilitada
 uniform int u_dlg;      // 1 = caja de diálogo abierta (usa u_txt)
 uniform int u_dlg_more; // 1 = hay páginas siguientes en el diálogo
 uniform int u_ctl;      // 1 = página CONTROLES del menú
@@ -356,34 +357,34 @@ void main() {
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
     c = controls_page(c, px);
   } else if (u_pause > 0) {
-    // Oscurece y dibuja PAUSA + 6 ítems (SEGUIR, CONTINUAR, REINICIO, VOL/MUTE, CONTROLES, SALIR).
+    // Oscurece y dibuja PAUSA + 7 ítems (SEGUIR, CONTINUAR, REINICIO, VOL/MUTE, CONTROLES, BRISA SI/NO, SALIR).
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
-    // A=0 … Z=25, 0-9=26-35, '>'=36. Solo las letras usadas están llenas.
-    const int G[37] = int[](
+    // A=0 … Z=25, 0-9=26-35, '>'=36, ' '=37. Solo las letras usadas están llenas.
+    const int G[38] = int[](
       18415150, 16301615, 31491134, 16303663, 32554047, 0, 15266878, 0,          // A-H
       32641183, 0, 0, 32539681, 18405233, 18667121, 15255086, 1097263,            // I-P
       0, 9616943, 16267326, 4329631, 15255089, 4539953, 0, 0, 0, 0,              // Q-Z
       15324974, 14815428, 32584238, 16267791, 8682793,                            // 0-4
       16268351, 15252526, 2167071, 15252014, 15235630,                            // 5-9
-      1154145                                                                    // >
+      1154145, 0                                                                 // >, espacio
     );
     // caja
     vec2 mid = px - vec2(160.0, 92.0);
-    if (abs(mid.x) < 86.0 && abs(mid.y) < 68.0) {
-      float border = (abs(mid.x) > 83.0 || abs(mid.y) > 65.0) ? 1.0 : 0.0;
+    if (abs(mid.x) < 86.0 && abs(mid.y) < 72.0) {
+      float border = (abs(mid.x) > 83.0 || abs(mid.y) > 69.0) ? 1.0 : 0.0;
       c = mix(c, vec3(0.10, 0.10, 0.13), 0.92);
       c = mix(c, vec3(0.85, 0.75, 0.40), border);
     }
     float tg = 0.0;
     // PAUSA (escala 3)
     float ts = 3.0;
-    vec2 to = vec2(160.0 - 15.0 * ts, 36.0);
+    vec2 to = vec2(160.0 - 15.0 * ts, 34.0);
     int title[5] = int[](15, 0, 20, 18, 0);  // P A U S A
     for (int i = 0; i < 5; ++i)
       tg = max(tg, glyph5(G[title[i]], (px - to - vec2(float(i) * 6.0 * ts, 0.0)) / ts));
     c = mix(c, vec3(1.0, 0.92, 0.50), tg);
 
-    const int NR = 6, W = 9;
+    const int NR = 7, W = 9;
     int rows[NR * W];
     int rlen[NR];
     for (int i = 0; i < NR * W; ++i) rows[i] = 0;
@@ -407,12 +408,17 @@ void main() {
     }
     // CONTROLES
     rows[36]=2; rows[37]=14; rows[38]=13; rows[39]=19; rows[40]=17; rows[41]=14; rows[42]=11; rows[43]=4; rows[44]=18; rlen[4]=9;
+    // BRISA SI / BRISA NO
+    rows[45]=1; rows[46]=17; rows[47]=8; rows[48]=18; rows[49]=0; rows[50]=37;
+    rows[51]=(u_foliage > 0 ? 18 : 13);
+    rows[52]=(u_foliage > 0 ? 8 : 14);
+    rlen[5]=8;
     // SALIR
-    rows[45]=18; rows[46]=0; rows[47]=11; rows[48]=8; rows[49]=17; rlen[5]=5;
+    rows[54]=18; rows[55]=0; rows[56]=11; rows[57]=8; rows[58]=17; rlen[6]=5;
 
     float is_ = 2.0;
     for (int r = 0; r < NR; ++r) {
-      vec2 o = vec2(112.0, 60.0 + float(r) * 15.0);
+      vec2 o = vec2(112.0, 58.0 + float(r) * 13.0);
       float g = 0.0;
       if (r == u_sel)
         g = max(g, glyph5(G[36], (px - vec2(o.x - 14.0, o.y)) / is_));
@@ -423,10 +429,10 @@ void main() {
       c = mix(c, col, g);
     }
     // Versión (fila 11 de u_txt) abajo a la derecha de la caja.
-    c = mix(c, vec3(0.50, 0.50, 0.56), txt_glyph(11, px - vec2(204.0, 150.0), 1.0));
+    c = mix(c, vec3(0.50, 0.50, 0.56), txt_glyph(11, px - vec2(204.0, 152.0), 1.0));
     // Barrita de volumen bajo el ítem VOL.
     {
-      float bx = 112.0, by = 60.0 + 3.0 * 15.0 + 11.0, bw = 80.0, bh = 2.0;
+      float bx = 112.0, by = 58.0 + 3.0 * 13.0 + 10.5, bw = 80.0, bh = 1.5;
       if (px.x >= bx && px.x <= bx + bw && px.y >= by && px.y <= by + bh) {
         float f = (px.x - bx) / bw;
         if (u_mute > 0) c = vec3(0.25, 0.22, 0.22);

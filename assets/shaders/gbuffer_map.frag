@@ -38,6 +38,10 @@ uniform vec4 u_boss_state[4];      // (kind: 0=coloso1, 1=coloso2, 2=wyrm; dir; 
 // parallax 0.35 respecto del origen del chunk. Devuelve albedo + altura (para normales) y emisión.
 uniform int u_bg_theme[9];
 uniform int u_bg_seed[9];
+uniform int u_foliage;
+uniform float u_wind_gust;
+uniform int u_wind_imp_count;
+uniform vec4 u_wind_imp[4];
 
 float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -66,6 +70,53 @@ float bayer4(vec2 p) {
   return (float(m[i.y * 4 + i.x]) + 0.5) / 16.0;
 }
 float bevel(float e) { return e < 1.0 ? 0.0 : (e < 2.0 ? 0.6 : 1.0); }
+
+// Brisa global (ola viajera equivalente a wind.hpp) + ráfagas/impulsos locales.
+float wind_sway(vec2 wpos, float seed) {
+  if (u_foliage == 0) return 0.0;
+  float wave = 0.68 * sin(0.055 * wpos.x - 2.15 * u_time + seed * 0.73) +
+               0.32 * sin(0.115 * wpos.x - 3.45 * u_time + seed * 1.37);
+  float sway = wave * clamp(u_wind_gust, 0.35, 1.85);
+  int imp_n = clamp(u_wind_imp_count, 0, 4);
+  for (int i = 0; i < imp_n; ++i) {
+    vec4 imp = u_wind_imp[i];
+    if (imp.w > 0.0) {
+      vec2 d = wpos - imp.xy;
+      float dist = length(d);
+      if (dist < imp.w) {
+        float falloff = 1.0 - dist / imp.w;
+        float push_out = sign(wpos.x - imp.x) * 0.65;
+        sway += (imp.z + push_out) * falloff;
+      }
+    }
+  }
+  return sway;
+}
+
+// Paleta de 3 tonos (root, mid, tip) para pasto y enredaderas según tema del chunk.
+void grass_palette(int theme, out vec3 root, out vec3 mid, out vec3 tip) {
+  if (theme == 10 || theme == 12 || theme == 13 || theme == 4) {
+    // cripta / santuario / abismo / cisterna: verde-azulado espectral
+    root = vec3(0.07, 0.20, 0.22);
+    mid  = vec3(0.14, 0.42, 0.44);
+    tip  = vec3(0.30, 0.72, 0.68);
+  } else if (theme == 3 || theme == 11 || theme == 8) {
+    // grieta / guarida / arena: oliva-ocre con punta ámbar
+    root = vec3(0.16, 0.17, 0.08);
+    mid  = vec3(0.34, 0.36, 0.14);
+    tip  = vec3(0.70, 0.54, 0.20);
+  } else if (theme == 7) {
+    // invertido: índigo-lavanda
+    root = vec3(0.14, 0.11, 0.28);
+    mid  = vec3(0.30, 0.24, 0.56);
+    tip  = vec3(0.58, 0.48, 0.86);
+  } else {
+    // pozo / raices / nido / cueva / engranajes: verde musgo
+    root = vec3(0.08, 0.22, 0.13);
+    mid  = vec3(0.18, 0.44, 0.24);
+    tip  = vec3(0.36, 0.70, 0.38);
+  }
+}
 
 // Partícula de 1 px en una grilla de celdas `cell`, que se mueve con `vel` (px/s).
 float motes(vec2 p, float cell, vec2 vel, float seed, float density) {
@@ -346,8 +397,10 @@ vec4 bg_cripta(vec2 q, vec2 f, float s, out float emit) {
       h = 0.4;
     }
   }
-  // estandartes rasgados + fuego espectral tenue en columnas alternas
-  float banner_x = abs(mod(q.x + 32.0, 128.0) - 64.0);
+  // estandartes rasgados + fuego espectral tenue en columnas alternas (mecidos por la brisa)
+  float by_t = clamp((q.y - 42.0) / 34.0, 0.0, 1.0);
+  float b_sway = (u_foliage > 0) ? floor(wind_sway(q, s) * by_t * 1.35 + 0.5) : 0.0;
+  float banner_x = abs(mod(q.x - b_sway + 32.0, 128.0) - 64.0);
   if (banner_x < 4.5 && q.y > 42.0 && q.y < 76.0 - mod(banner_x, 3.0) * 2.0) {
     c = vec3(0.16, 0.06, 0.09);
     h = 0.6;
@@ -623,24 +676,221 @@ void main() {
         }
       }
 
-      // 2) Pasto animado y flores/esporas sobre cada piso y repisa (floor_1; despejado alrededor de switches/checkpoints)
+      if (u_foliage > 0) {
+        vec3 g_root, g_mid, g_tip;
+        grass_palette(r_theme, g_root, g_mid, g_tip);
+        float sw_here = wind_sway(vec2(wx, world.y), r_seed);
+
+        // 2) Telarañas en esquinas bajo techos (ceil_1 + pared lateral adyacente a ±1 tile)
+        if (ceil_1) {
+          bool wall_l = (t.x > 0) && (texelFetch(u_tiles, ivec2(t.x - 1, t.y), 0).r != 0u);
+          bool wall_r = (t.x + 1 < 120) && (texelFetch(u_tiles, ivec2(t.x + 1, t.y), 0).r != 0u);
+          float web_h = hash12(vec2(float(t.x), float(t.y)) + r_seed * 0.13);
+          if ((wall_l || wall_r) && web_h > 0.28) {
+            float wcx = wall_l ? float(l.x) : float(7 - l.x);
+            float wcy = float(l.y);
+            float vib = floor(sin(u_time * 7.5 + wx * 0.4 + r_seed) * clamp(abs(sw_here), 0.0, 1.4) * 0.75 + 0.5);
+            float wr = length(vec2(wcx, wcy));
+            bool spoke = (abs(wcx - wcy) <= 0.5 && wcx <= 6.0) ||
+                         (abs(wcx * 2.0 - wcy) <= 0.6 && wcy <= 6.0) ||
+                         (abs(wcx - wcy * 2.0) <= 0.6 && wcx <= 6.0);
+            bool arc = (abs(wr - (3.2 + vib * 0.4)) < 0.46) || (abs(wr - (5.9 + vib * 0.6)) < 0.46);
+            if (spoke || arc) {
+              albedo = mix(albedo, vec3(0.64, 0.68, 0.75), 0.55);
+              n = normalize(vec3(wall_l ? 0.25 : -0.25, 0.35, 1.0));
+              depth = 0.45;
+              emit = 0.0;
+              lr = 1.0;
+            }
+          }
+        }
+
+        // 3) Enredaderas y cuerdas sueltas bajo techos (ceil_1 y extensión hasta 2 tiles)
+        bool ceil_2 = !ceil_1 && (t.y > 1) &&
+                      (texelFetch(u_tiles, ivec2(t.x, t.y - 1), 0).r == 0u) &&
+                      (texelFetch(u_tiles, ivec2(t.x, t.y - 2), 0).r != 0u);
+        if (ceil_1 || ceil_2) {
+          float cy = ceil_1 ? float(l.y) : float(8 + l.y);
+          int c_ty = ceil_1 ? t.y : (t.y - 1);
+          for (int ox = -2; ox <= 2; ++ox) {
+            float rx = wx + float(ox);
+            int rx_tx = int(floor((rx - u_chunk.x) / 8.0));
+            if (rx_tx < 0 || rx_tx >= 120) continue;
+            if (texelFetch(u_tiles, ivec2(rx_tx, c_ty - 1), 0).r == 0u) continue;
+            if (texelFetch(u_tiles, ivec2(rx_tx, c_ty), 0).r != 0u) continue;
+            if (texelFetch(u_tiles, ivec2(rx_tx, t.y), 0).r != 0u) continue;
+            float vrnd = hash12(vec2(rx + 17.0, float(c_ty) + r_seed * 0.19));
+            bool is_cord = (vrnd > 0.89) && (mod(rx, 5.0) < 1.0);
+            bool is_vine = (!is_cord) && (vrnd > 0.48) && (mod(rx, 3.0) < 1.1);
+            if (!is_cord && !is_vine) continue;
+            float vh = is_cord ? (6.0 + floor(hash12(vec2(rx, float(c_ty) + 3.0)) * 7.0))
+                               : (3.0 + floor(hash12(vec2(rx + 9.0, float(c_ty))) * 9.0));
+            if (cy >= vh) continue;
+            float u = cy / max(1.0, vh - 1.0);
+            float vx_off = clamp(floor(sw_here * u * u * 1.2 + 0.5), -2.0, 2.0);
+            if (rx + vx_off == wx) {
+              if (is_cord) {
+                albedo = (mod(cy, 2.0) < 1.0) ? vec3(0.42, 0.31, 0.19) : vec3(0.56, 0.43, 0.27);
+                emit = 0.0;
+              } else {
+                bool dew = (cy >= vh - 1.5 && hash12(vec2(rx, float(c_ty) + 9.0)) > 0.78);
+                albedo = dew ? vec3(0.46, 0.92, 0.88) : (u < 0.35 ? g_root : (u < 0.75 ? g_mid : g_tip));
+                emit = dew ? 0.35 : 0.0;
+              }
+              n = normalize(vec3(sw_here * 0.22, 0.4, 1.0));
+              depth = 0.44;
+              lr = 1.0;
+              break;
+            }
+          }
+        }
+
+        // 4) Pasto pixel-art rediseñado + flores silvestres / hongos de catacumba sobre floor_1 && !near_mech
+        if (floor_1 && !near_mech) {
+          float py = float(7 - l.y);
+          bool catacomb = (r_theme == 10 || r_theme == 12 || r_theme == 13 ||
+                           r_theme == 4 || r_theme == 1 || r_theme == 2);
+          for (int ox = -2; ox <= 2; ++ox) {
+            float rx = wx + float(ox);
+            int rx_tx = int(floor((rx - u_chunk.x) / 8.0));
+            if (rx_tx < 0 || rx_tx >= 120) continue;
+            bool rx_floor = (t.y + 1 < 69) &&
+                            (texelFetch(u_tiles, ivec2(rx_tx, t.y), 0).r == 0u) &&
+                            (texelFetch(u_tiles, ivec2(rx_tx, t.y + 1), 0).r != 0u);
+            if (!rx_floor) continue;
+
+            float tuft = floor(rx / 5.0);
+            float tuft_rnd = hash12(vec2(tuft, float(t.y) * 1.7 + r_seed * 0.11));
+            if (tuft_rnd < 0.18) continue;  // claros de piedra entre matas
+
+            float lx_t = mod(rx, 5.0);
+            float blade_rnd = hash12(vec2(rx, float(t.y) * 2.3 + r_seed * 0.07));
+            bool inner = (lx_t >= 1.0 && lx_t <= 3.0);
+            if (!inner && blade_rnd < 0.42) continue;
+            if (inner && blade_rnd < 0.22) continue;
+
+            // Variantes deterministas de matas: cortas (2-3), medianas arqueadas (4-5), juncos altos (6-8)
+            float bh = 2.0;
+            float arch = 0.0;
+            if (tuft_rnd < 0.46) {
+              bh = 2.0 + floor(blade_rnd * 1.9);  // 2..3 px
+              arch = (lx_t - 2.0) * 0.25;
+            } else if (tuft_rnd < 0.78) {
+              bh = inner ? (4.0 + floor(blade_rnd * 1.9)) : (2.0 + floor(blade_rnd * 1.5));  // 4..5 px
+              arch = (lx_t - 2.0) * 0.45;
+            } else {
+              bh = inner ? (6.0 + floor(blade_rnd * 2.9)) : (3.0 + floor(blade_rnd * 2.0));  // 6..8 px
+              arch = (lx_t - 2.0) * 0.30;
+            }
+
+            if (py < bh) {
+              float u = py / max(1.0, bh - 1.0);
+              float x_off = clamp(floor((sw_here * 1.15 + arch) * u * u + 0.5), -2.0, 2.0);
+              if (rx + x_off == wx) {
+                albedo = (u < 0.34) ? g_root : ((u < 0.72) ? g_mid : g_tip);
+                n = normalize(vec3((sw_here * 0.25 + arch * 0.2), -0.45, 1.0));
+                depth = 0.43;
+                emit = 0.0;
+                lr = 1.0;
+                break;
+              }
+            }
+          }
+
+          // Flores silvestres o hongos chicos de catacumba (mecidos por wind_sway)
+          float f_tuft = floor(wx / 5.0);
+          float f_rnd = hash12(vec2(f_tuft + 13.0, float(t.y) + r_seed * 0.29));
+          if (f_rnd > 0.74) {
+            float anchor_x = f_tuft * 5.0 + 2.0;
+            int ax_tx = int(floor((anchor_x - u_chunk.x) / 8.0));
+            bool ax_ok = (ax_tx >= 0 && ax_tx < 120 && t.y + 1 < 69) &&
+                         (texelFetch(u_tiles, ivec2(ax_tx, t.y), 0).r == 0u) &&
+                         (texelFetch(u_tiles, ivec2(ax_tx, t.y + 1), 0).r != 0u);
+            if (ax_ok) {
+              if (catacomb) {
+                float stem_h = (f_rnd > 0.88) ? 3.0 : 2.0;
+                float top_off = clamp(floor(sw_here * 0.75 + 0.5), -1.0, 1.0);
+                float cap_x = anchor_x + top_off;
+                bool is_stem = (py < stem_h) && (wx == anchor_x + (py >= 1.0 ? top_off : 0.0));
+                bool is_cap = (py == stem_h && abs(wx - cap_x) <= 1.0) || (py == stem_h + 1.0 && wx == cap_x);
+                if (is_cap || is_stem) {
+                  bool glow_m = hash12(vec2(f_tuft, r_seed + 4.0)) > 0.45;
+                  vec3 cap_col = (r_theme == 10 || r_theme == 12 || r_theme == 13)
+                                     ? vec3(0.42, 0.84, 0.90)
+                                     : vec3(0.78, 0.54, 0.28);
+                  albedo = is_cap ? cap_col : vec3(0.74, 0.70, 0.62);
+                  n = normalize(vec3((wx - cap_x) * 0.25, -0.5, 1.0));
+                  depth = 0.428;
+                  emit = (is_cap && glow_m) ? 0.30 : 0.0;
+                  lr = 1.0;
+                }
+              } else {
+                float stem_h = 3.0 + floor(fract(f_rnd * 17.0) * 2.5);
+                float top_off = clamp(floor(sw_here * 0.95 + 0.5), -2.0, 2.0);
+                float fl_x = anchor_x + top_off;
+                float u_f = clamp(py / stem_h, 0.0, 1.0);
+                float sx = anchor_x + floor(top_off * u_f + 0.5);
+                bool is_stem = (py < stem_h) && (wx == sx);
+                bool is_petal = (py == stem_h && abs(wx - fl_x) <= 1.0) || (py == stem_h + 1.0 && wx == fl_x);
+                if (is_petal || is_stem) {
+                  vec3 fl_col = (r_theme == 3 || r_theme == 11 || r_theme == 8)
+                                    ? vec3(0.96, 0.68, 0.22)
+                                    : (r_theme == 7 ? vec3(0.84, 0.66, 1.0) : vec3(0.95, 0.88, 0.52));
+                  albedo = is_petal ? ((wx == fl_x && py == stem_h) ? vec3(1.0, 0.96, 0.78) : fl_col) : g_mid;
+                  n = normalize(vec3(sw_here * 0.2, -0.5, 1.0));
+                  depth = 0.428;
+                  emit = is_petal ? 0.22 : 0.0;
+                  lr = 1.0;
+                }
+              }
+            }
+          }
+        }
+
+        // 5) Hojas y partículas de polvo en el aire arrastradas por la brisa
+        {
+          float gust_spd = clamp(u_wind_gust, 0.35, 1.85);
+          vec2 l_drift = vec2(u_time * 14.0 * gust_spd, u_time * 4.5);
+          vec2 pp = world - l_drift;
+          vec2 lc = floor(pp / 44.0);
+          float lh = hash12(lc + r_seed * 0.31);
+          if (lh < 0.38) {
+            vec2 lbase = lc * 44.0 + vec2(10.0) + floor(vec2(hash12(lc + 1.3), hash12(lc + 5.7)) * 24.0);
+            float lg = wind_sway(lbase + l_drift, r_seed);
+            vec2 lpos = floor(lbase + vec2(lg * 3.5, sin(u_time * 2.2 + lh * 30.0) * 3.0));
+            vec2 ld = floor(pp) - lpos;
+            bool tilt = fract(u_time * 2.0 + lh * 12.0) > 0.5;
+            bool leaf = (ld.y == 0.0 && (ld.x == 0.0 || (tilt && ld.x == 1.0))) ||
+                        (!tilt && ld.x == 0.0 && ld.y == 1.0);
+            if (leaf) {
+              albedo = mix(g_mid, g_tip, 0.65);
+              n = vec3(0.0, 0.0, 1.0);
+              depth = 0.425;
+              emit = 0.0;
+              lr = 1.0;
+            }
+          }
+
+          vec2 d_drift = vec2(u_time * 10.0 * gust_spd, u_time * 1.5);
+          vec2 dp = world - d_drift;
+          vec2 dc = floor(dp / 32.0);
+          float dh = hash12(dc + r_seed * 0.71 + 19.0);
+          if (dh < 0.30) {
+            vec2 dbase = dc * 32.0 + vec2(6.0) + floor(vec2(hash12(dc + 2.9), hash12(dc + 8.1)) * 20.0);
+            float dg = wind_sway(dbase + d_drift, r_seed);
+            vec2 dpos = floor(dbase + vec2(dg * 2.5, cos(u_time * 1.6 + dh * 25.0) * 2.0));
+            if (floor(dp) == dpos) {
+              albedo = mix(albedo, vec3(0.75, 0.78, 0.72), 0.55);
+              depth = 0.425;
+              lr = 1.0;
+            }
+          }
+        }
+      }
+
+      // 6) Bichos de suelo (escarabajos luminosos que caminan sobre el piso cada 32 px)
       if (floor_1 && !near_mech) {
         float py = float(7 - l.y);
-        float sway = floor(sin(u_time * 2.8 + wx * 0.26 + r_seed) * 1.4);
-        float h_rnd = hash12(vec2(wx, float(t.y)));
-        float bh = 2.0 + floor(h_rnd * 4.5);  // 2..6 px de altura
-        bool blade = (py <= bh) && (mod(wx + (py >= 2.0 ? sway : 0.0), 2.0) < 1.35);
-        if (blade) {
-          float tip = clamp(py / max(1.0, bh), 0.0, 1.0);
-          bool spore = (h_rnd > 0.82 && py >= bh - 0.5);
-          albedo = spore ? vec3(0.52, 0.96, 0.76)
-                         : mix(vec3(0.10, 0.28, 0.16), vec3(0.30, 0.68, 0.38), tip);
-          n = normalize(vec3(sway * 0.22, -0.45, 1.0));
-          depth = 0.43;
-          emit = spore ? 0.42 : 0.0;
-          lr = 1.0;
-        }
-        // 3) Bichos de suelo (escarabajos luminosos que caminan entre el pasto cada 32 px)
         float seg = floor(wx / 32.0);
         float b_spd = 1.5 + fract(seg * 0.37 + r_seed * 0.1) * 0.9;
         float bx = floor(seg * 32.0 + 16.0 + sin(u_time * b_spd + seg * 2.3) * 9.0);
@@ -662,22 +912,7 @@ void main() {
         }
       }
 
-      // 4) Enredaderas y musgo colgante bajo techos (ceil_1)
-      if (ceil_1) {
-        float cy = float(l.y);
-        float sway = floor(sin(u_time * 2.4 + wx * 0.22 + r_seed) * 1.2);
-        float vh = 1.0 + floor(hash12(vec2(wx + 17.0, float(t.y))) * 4.5);
-        if (cy <= vh && mod(wx + sway, 3.0) < 1.4) {
-          bool dew = (cy >= vh - 0.5 && hash12(vec2(wx, float(t.y) + 9.0)) > 0.78);
-          albedo = dew ? vec3(0.46, 0.92, 0.88) : mix(vec3(0.10, 0.26, 0.16), vec3(0.24, 0.54, 0.32), cy / 5.0);
-          n = normalize(vec3(sway * 0.2, 0.4, 1.0));
-          depth = 0.44;
-          emit = dew ? 0.38 : 0.0;
-          lr = 1.0;
-        }
-      }
-
-      // 5) Bichos alados en el aire de cada sala (polillas dracónicas y luciérnagas con alas batientes)
+      // 7) Bichos alados en el aire de cada sala (polillas dracónicas y luciérnagas con alas batientes)
       for (int bi = 0; bi < 4; ++bi) {
         float fk = float(bi);
         float bx = floor(42.0 + fk * 76.0 + sin(u_time * (1.2 + fk * 0.22) + r_seed + fk * 2.1) * 24.0);
