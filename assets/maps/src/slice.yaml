@@ -189,3 +189,7 @@ water:
 dialogs:
   - {entity: npc_vigia, trigger: interact, speaker: "VIGIA DEL FAROL", text: "DE ALLI UNA VEZ VINISTE/Y ALLI HAS DE VOLVER.|SOLO VOLVERAS SI DEMUESTRAS/QUE ALLI PERTENECES.|CADA BOSS ES UN IMPEDIMENTO/PARA TU ASCENSION.|TU TAREA NO ES VANA SI TIENES/UN CORAZON PURO Y NO DESISTES.|VENCE A TODOS LOS BOSS/CON TU PUREZA!"}
   - {entity: egg_well,  trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE", text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE TU CORAZON PURO:/NO DESISTAS EN SUBIR!"}
+
+guide:
+  - {target: switch_start, gate: door_start, forward_x: 216}
+  - {target: flood, forward_x: 1130}

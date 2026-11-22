@@ -20,7 +20,7 @@ inline constexpr uint32_t kLayerCount = 4;
 
 enum class SectionType : uint32_t {
   TILE = 1, ENT = 2, LINK = 3, WATER = 4, STRTAB = 5, CRC = 6, ROPE = 7, MOVER = 8, BACKDROP = 9,
-  DIALOG = 10,
+  DIALOG = 10, GUIDE = 11,
 };
 
 enum HeaderFlags : uint32_t {
@@ -112,6 +112,23 @@ struct DialogRecord {           // 16 bytes: diálogo asociado a una entidad
   uint16_t trigger;             // DialogTrigger
   uint16_t flags;               // kDialogFlagOnce, etc.
 };
+
+enum class GuideKind : uint16_t { Objective = 0, Shaft = 1 };
+enum GuideFlags : uint16_t {
+  kGuideAbility       = 1u << 0, // estilo cian de reliquia/habilidad (sino ámbar/switch)
+  kGuideCrossWhenOpen = 1u << 1, // activo cuando target->active es true y gate_entity (o !below_y) aún falta
+  kGuideForwardX      = 1u << 2, // se considera superado si player.x > x
+  kGuideBelowY        = 1u << 3, // para Objective cross: solo mientras player.y >= y_bot
+};
+struct GuideRecord { // 24 bytes: objetivos y rutas verticales opcionales (sección GUIDE = 11)
+  uint32_t entity;      // Objective: índice en ENT; Shaft: up_x en px (reinterpretado) o ~0u (= x)
+  uint32_t gate_entity; // Objective: puerta/muro asociado (~0u si no aplica); Shaft: y_split (default 184)
+  int32_t  x;           // Shaft: centro X para bajar (px); Objective: max_x si kGuideForwardX
+  int32_t  y_top;       // Shaft: Y boca superior (px); Objective: 0
+  int32_t  y_bot;       // Shaft: Y boca inferior (px); Objective: min_y si kGuideBelowY
+  uint16_t kind;        // GuideKind
+  uint16_t flags;       // GuideFlags
+};
 #pragma pack(pop)
 
 static_assert(sizeof(EwMapHeader) == 40);
@@ -124,6 +141,7 @@ static_assert(sizeof(RopeRecord) == 16);
 static_assert(sizeof(MoverRecord) == 88);
 static_assert(sizeof(BackdropRecord) == 8);
 static_assert(sizeof(DialogRecord) == 16);
+static_assert(sizeof(GuideRecord) == 24);
 
 inline constexpr std::size_t kChunkBytes =
     sizeof(ChunkHeader) + kLayerCount * kTilesPerChunk * sizeof(uint16_t); // 7368

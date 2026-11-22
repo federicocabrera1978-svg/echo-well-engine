@@ -75,12 +75,12 @@ add_test(NAME ewmapc_level3
           -o ${CMAKE_CURRENT_BINARY_DIR}/level3.ewmap)
 add_test(NAME ewmap_load_hello
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/hello.ewmap
-          --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --backdrops 0
+          --name hello --chunks 2 --ents 3 --links 1 --water 2 --ropes 2 --backdrops 0 --guides 0
           --has player_spawn --has switch --has door)
 add_test(NAME ewmap_load_slice
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/slice.ewmap
           --name slice --chunks 8 --ents 22 --links 4 --water 2 --ropes 2 --movers 3 --has mover --has gravity_flip --has boss --has checkpoint --has flood_switch --has goal --has collectible
-          --has player_spawn --has switch --has door --has goal --has npc --backdrops 8 --dialogs 2)
+          --has player_spawn --has switch --has door --has goal --has npc --backdrops 8 --dialogs 2 --guides 2)
 add_test(NAME ewmap_load_room
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/room.ewmap
           --name room --chunks 1 --ents 2 --has player_spawn --has goal)
@@ -110,13 +110,13 @@ add_test(NAME ewmap_load_dash
 set_tests_properties(ewmap_load_dash PROPERTIES DEPENDS ewmapc_dash)
 add_test(NAME ewmap_load_level2
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level2.ewmap
-          --name level2 --chunks 8 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 6
+          --name level2 --chunks 8 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 8 --dialogs 6 --guides 5
           --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
           --has mover --has gravity_flip --has boss --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level2 PROPERTIES DEPENDS ewmapc_level2)
 add_test(NAME ewmap_load_level3
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/level3.ewmap
-          --name level3 --chunks 6 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4
+          --name level3 --chunks 6 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4 --guides 3
           --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door
           --has mover --has gravity_flip --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_level3 PROPERTIES DEPENDS ewmapc_level3)
@@ -339,6 +339,11 @@ target_include_directories(dialogue_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/too
 target_link_libraries(dialogue_test PRIVATE echo_game ew_yaml_lite)
 add_dependencies(dialogue_test ew_maps)
 add_test(NAME dialogue_lore COMMAND dialogue_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_HELLO_MAP})
+
+add_executable(guide_test tests/guide_test.cpp)
+target_link_libraries(guide_test PRIVATE echo_game)
+add_dependencies(guide_test ew_maps)
+add_test(NAME guide_arrows COMMAND guide_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_HELLO_MAP})
 
 add_executable(paths_test tests/paths_test.cpp)
 target_include_directories(paths_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/engine)

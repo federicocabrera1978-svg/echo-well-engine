@@ -43,6 +43,7 @@ public:
   std::span<const MoverRecord>  movers()   const;  // vacío si el mapa no tiene MOVER
   std::span<const BackdropRecord> backdrops() const;  // vacío si el mapa no tiene BACKDROP
   std::span<const DialogRecord> dialogs() const;      // vacío si el mapa no tiene DIALOG
+  std::span<const GuideRecord>  guides()  const;      // vacío si el mapa no tiene GUIDE
   std::string_view              string_at(uint32_t offset) const;
 
   uint32_t chunk_count() const;

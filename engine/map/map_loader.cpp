@@ -104,6 +104,7 @@ std::span<const RopeRecord>   MapLoader::ropes()    const { return records<RopeR
 std::span<const MoverRecord>  MapLoader::movers()   const { return records<MoverRecord>(SectionType::MOVER); }
 std::span<const BackdropRecord> MapLoader::backdrops() const { return records<BackdropRecord>(SectionType::BACKDROP); }
 std::span<const DialogRecord> MapLoader::dialogs()  const { return records<DialogRecord>(SectionType::DIALOG); }
+std::span<const GuideRecord>  MapLoader::guides()   const { return records<GuideRecord>(SectionType::GUIDE); }
 
 std::string_view MapLoader::string_at(uint32_t offset) const {
   auto s = section(SectionType::STRTAB);

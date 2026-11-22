@@ -74,6 +74,11 @@ checkpoint correcto, con la cámara bien ubicada y sin quedar trabado. El checkp
 en verde al tomarlo.
 
 - [ ] **Protagonista pixel-art (Explorador del Farol) y objetos.** Verificá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto, trepada en cuerda, nado y parpadeo post-respawn; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados y la reliquia como un emblema alado cian.
+- [ ] **Flecha guía de navegación (`engine/game/guide.hpp`, sección `GUIDE`).** Verificá que la flecha alrededor del jugador apunta al siguiente objetivo vigente (ámbar para switches/puertas, cian para reliquias) y desaparece al acercarse `≤ 24 px` o completar el nivel:
+  - En `slice`: desde el spawn apunta a `switch_start`, al activarlo pasa a `flood` (ignorando `switch_well`) y se oculta al activarlo o pasar `x > 1130`.
+  - En `level2`: rutea por el pozo (`x = 448`) hacia `rel_double_jump` (cian), luego a `sw_sanctum` (ámbar), a `rel_dash` (cian) y de regreso subiendo por el pozo (`up_x = 472`) hacia `door_hub_gallery` hasta pasar `x > 640`.
+  - En `level3`: rutea por el pozo (`568`) a `sw_seal3` y de vuelta hacia `door_wyrm_seal` hasta subir a planta alta (`y < 184`).
+  - En mapas sin sección `GUIDE` (p. ej. `hello`): usa el fallback automático por `links:` hacia el switch mientras la puerta esté cerrada.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
   arriba a la izquierda dice `0/1`. El switch abre la puerta y hay que nadar la pileta (el
