@@ -55,6 +55,18 @@ int main(int argc, char** argv) {
     CHECK(v.tiles_version == flow.scene().chunk_version());
     CHECK(v.sprite_count >= 1);
     CHECK(v.marker_count > 0);
+    // Sin flecha guía orbitando al lado del jugador (solo switches tienen su propio indicador ↓ arriba).
+    const auto ga = compute_guide_arrow(flow.scene(), flow.sim(), 1.25f);
+    CHECK(ga.valid);
+    bool has_player_orbit_arrow = false;
+    for (int i = 0; i < v.marker_count; ++i) {
+      if (int(v.markers[std::size_t(i * 4 + 3)]) == 4 &&
+          std::fabs(v.markers[std::size_t(i * 4 + 0)] - ga.x) < 1.f &&
+          std::fabs(v.markers[std::size_t(i * 4 + 1)] - ga.y) < 1.f) {
+        has_player_orbit_arrow = true;
+      }
+    }
+    CHECK(!has_player_orbit_arrow);
     CHECK(std::fabs(v.light_x - flow.sim().player().pos.x) < 1e-3f);
     CHECK(std::fabs(v.light_y - flow.sim().player().pos.y) < 1e-3f);
     CHECK(v.foliage_enabled == 1);
