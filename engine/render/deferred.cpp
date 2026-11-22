@@ -88,14 +88,14 @@ bool DeferredRenderer::init(const std::string& dir, std::string& err, const std:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
-  {  // atlas de sprites 128×128 RGBA8 (unidad 2)
+  {  // atlas de sprites 256×128 RGBA8 (unidad 2)
     const auto loaded_sp = load_sprite_atlas_file(sprite_atlas_path.empty() ? nullptr : sprite_atlas_path.c_str());
     const auto& sprites = loaded_sp.px;
     std::fprintf(stderr, "echo_engine: sprites %s%s\n",
                  loaded_sp.source == AtlasSource::Png ? "PNG " : "procedural",
                  loaded_sp.source == AtlasSource::Png ? sprite_atlas_path.c_str() : "");
     glGenTextures(1, &sprite_tex_); glBindTexture(GL_TEXTURE_2D, sprite_tex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kSpriteAtlasPx, kSpriteAtlasPx, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kSpriteAtlasW, kSpriteAtlasH, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                  sprites.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -182,12 +182,15 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_mute"), v.pause_mute);
   Uniform1i(GetUniformLocation(light_prog_, "u_has_save"), v.pause_has_save);
   Uniform1i(GetUniformLocation(light_prog_, "u_foliage"), v.foliage_enabled);
+  Uniform1i(GetUniformLocation(light_prog_, "u_hero_sel"), v.hero_select);
+  Uniform1i(GetUniformLocation(light_prog_, "u_hero_cur"), v.hero_cursor);
   Uniform1i(GetUniformLocation(light_prog_, "u_dlg"), v.dlg);
   Uniform1i(GetUniformLocation(light_prog_, "u_dlg_more"), v.dlg_more);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl"), v.ctl);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_sel"), v.ctl_sel);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_wait"), v.ctl_wait);
-  if (v.pause || v.end_screen || v.dlg) Uniform1iv(GetUniformLocation(light_prog_, "u_txt"), 96, v.ctl_txt.data());
+  if (v.pause || v.hero_select || v.end_screen || v.dlg)
+    Uniform1iv(GetUniformLocation(light_prog_, "u_txt"), 96, v.ctl_txt.data());
   Uniform1i(GetUniformLocation(light_prog_, "u_items"), v.items);
   Uniform1i(GetUniformLocation(light_prog_, "u_items_total"), v.items_total);
   Uniform1f(GetUniformLocation(light_prog_, "u_items_flash"), v.items_flash);

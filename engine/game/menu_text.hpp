@@ -1,11 +1,15 @@
 #pragma once
 // Texto de la página Controles del menú de pausa (sin GL). echo_engine lo empaqueta en
 // uniforms (4 glifos de 6 bits por int) y light.frag lo dibuja con su fuente 5×5.
+#include "game/hero.hpp"
 #include "game/menu.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace ew::game {
 
@@ -49,6 +53,49 @@ inline std::array<std::string, kTxtRows> controls_text(const PauseMenu& m) {
     t[std::size_t(r + 1)] = s;
   }
   t[kTxtRows - 1] = m.waiting() ? "ESC CANCELA" : "ENTER CAMBIA   ESC VUELVE";
+  for (auto& s : t)
+    if (s.size() > std::size_t(kTxtCols)) s.resize(std::size_t(kTxtCols));
+  return t;
+}
+
+// Fila 0 = PAUSA, 1..8 = opciones del menú con "> " en cursor(), última = versión.
+inline std::array<std::string, kTxtRows> pause_text(const PauseMenu& m, std::string_view version_str) {
+  std::array<std::string, kTxtRows> t{};
+  t[0] = "PAUSA";
+  const int pct = int(std::lround(std::clamp(m.volume_setting(), 0.f, 1.f) * 100.f));
+  const std::array<std::string, PauseMenu::kItemCount> labels = {
+      "SEGUIR",
+      "CONTINUAR",
+      "REINICIAR",
+      m.muted() ? std::string("MUTE") : ("VOL: " + std::to_string(pct)),
+      "CONTROLES",
+      std::string("BRISA: ") + (m.foliage() ? "SI" : "NO"),
+      std::string("HEROE: ") + hero_short_label(m.hero()),
+      "SALIR",
+  };
+  for (int i = 0; i < PauseMenu::kItemCount; ++i)
+    t[std::size_t(i + 1)] = std::string(m.cursor() == i ? "> " : "  ") + labels[std::size_t(i)];
+  t[kTxtRows - 1] = "V" + std::string(version_str);
+  for (auto& s : t)
+    if (s.size() > std::size_t(kTxtCols)) s.resize(std::size_t(kTxtCols));
+  return t;
+}
+
+// Selector de héroe: título, 3 personajes con descripción debajo y ayuda al pie.
+inline std::array<std::string, kTxtRows> hero_select_text(const PauseMenu& m) {
+  std::array<std::string, kTxtRows> t{};
+  t[0] = "ELIGE TU HEROE";
+  static constexpr const char* kDesc[kHeroCount] = {
+      "  GUARDIAN DEL FAROL",
+      "  EXPLORADORA AGIL",
+      "  CONSTRUCTOR TENAZ",
+  };
+  const int sel = std::clamp(m.hero_cursor(), 0, kHeroCount - 1);
+  for (int h = 0; h < kHeroCount; ++h) {
+    t[std::size_t(1 + h * 2)] = std::string(sel == h ? "> " : "  ") + hero_label(HeroKind(h));
+    t[std::size_t(2 + h * 2)] = kDesc[h];
+  }
+  t[kTxtRows - 1] = "ARRIBA/ABAJO  ENTER JUEGA";
   for (auto& s : t)
     if (s.size() > std::size_t(kTxtCols)) s.resize(std::size_t(kTxtCols));
   return t;

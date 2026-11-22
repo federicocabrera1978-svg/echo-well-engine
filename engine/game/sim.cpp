@@ -1,5 +1,7 @@
 #include "game/sim.hpp"
 
+#include "game/hero.hpp"
+
 #include <algorithm>
 #include <cmath>
 

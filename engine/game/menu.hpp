@@ -3,6 +3,7 @@
 // (remapeo de teclado y pad) y acciones. echo_engine lo dibuja en el light pass, aplica el
 // volumen al Mixer y lee las teclas/botones con bindings().
 #include "game/bindings.hpp"
+#include "game/hero.hpp"
 
 #include <algorithm>
 
@@ -23,8 +24,9 @@ struct MenuInput {
 
 class PauseMenu {
  public:
-  static constexpr int kItemCount = 7;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Brisa, Salir
-  static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kControles = 4, kBrisa = 5, kSalir = 6;
+  static constexpr int kItemCount = 8;  // Seguir, Continuar, Reiniciar, Volumen, Controles, Brisa, Héroe, Salir
+  static constexpr int kSeguir = 0, kContinuar = 1, kReiniciar = 2, kVolumen = 3, kControles = 4, kBrisa = 5,
+                       kHero = 6, kSalir = 7;
   // Página Controles: una fila por acción + POR DEFECTO + VOLVER.
   static constexpr int kCtlDefaults = kBindCount, kCtlBack = kBindCount + 1, kCtlRows = kBindCount + 2;
   static constexpr float kVolStep = 0.10f;
@@ -34,6 +36,8 @@ class PauseMenu {
   int cursor() const { return cursor_; }
   bool in_controls() const { return open_ && page_ == 1; }
   int ctl_cursor() const { return ctl_cursor_; }
+  bool in_hero_select() const { return open_ && page_ == 2; }
+  int hero_cursor() const { return hero_cursor_; }
   bool waiting() const { return open_ && waiting_; }  // esperando la tecla/botón nuevo
   // Ganancia efectiva que debe oírse (0 si mute).
   float volume() const { return muted_ ? 0.f : volume_; }
@@ -45,6 +49,20 @@ class PauseMenu {
   // Brisa y vegetación animada.
   bool foliage() const { return foliage_; }
   void set_foliage(bool f) { foliage_ = f; }
+  // Héroe seleccionado.
+  HeroKind hero() const { return hero_; }
+  void set_hero(HeroKind h) {
+    hero_ = sanitize_hero(uint8_t(h));
+    hero_cursor_ = int(hero_);
+  }
+  // Abre el selector de héroe (con start_only = true, ESC entra directo al juego).
+  void open_hero_select(bool start_only = false) {
+    open_ = true;
+    page_ = 2;
+    waiting_ = false;
+    hero_cursor_ = int(hero_);
+    hero_start_only_ = start_only;
+  }
   // Restaura volumen/mute (p. ej. desde el save). Clampa a [0, 1].
   void set_audio(float vol, bool muted) {
     volume_ = std::clamp(vol, 0.f, 1.f);
@@ -59,6 +77,7 @@ class PauseMenu {
     open_ = true;
     page_ = 0;
     waiting_ = false;
+    hero_start_only_ = false;
     cursor_ = (item >= 0 && item < kItemCount) ? item : kSeguir;
   }
 
@@ -69,12 +88,24 @@ class PauseMenu {
         page_ = 0;
         return MenuAction::None;
       }
+      if (open_ && page_ == 2) {  // Esc en selector de héroe: vuelve al menú o entra al juego si es inicio
+        if (hero_start_only_) {
+          open_ = false;
+          page_ = 0;
+          hero_start_only_ = false;
+          return MenuAction::Resume;
+        }
+        page_ = 0;
+        cursor_ = kHero;
+        return MenuAction::None;
+      }
       open_ = !open_;
-      if (open_) { cursor_ = kSeguir; page_ = 0; }
+      if (open_) { cursor_ = kSeguir; page_ = 0; hero_start_only_ = false; }
       return open_ ? MenuAction::None : MenuAction::Resume;
     }
     if (!open_) return MenuAction::None;
     if (page_ == 1) return handle_controls(in);
+    if (page_ == 2) return handle_hero_select(in);
 
     if (in.up) cursor_ = (cursor_ + kItemCount - 1) % kItemCount;
     if (in.down) cursor_ = (cursor_ + 1) % kItemCount;
@@ -93,6 +124,10 @@ class PauseMenu {
       foliage_ = !foliage_;
       return MenuAction::None;
     }
+    if (cursor_ == kHero) {
+      if (in.left) hero_ = cycle_hero(hero_, -1);
+      if (in.right) hero_ = cycle_hero(hero_, +1);
+    }
     if (!in.confirm) return MenuAction::None;
     switch (cursor_) {
       case kSeguir:    open_ = false; return MenuAction::Resume;
@@ -104,6 +139,11 @@ class PauseMenu {
       case kVolumen:   muted_ = !muted_; return MenuAction::None;
       case kControles: page_ = 1; ctl_cursor_ = 0; return MenuAction::None;
       case kBrisa:     foliage_ = !foliage_; return MenuAction::None;
+      case kHero:
+        page_ = 2;
+        hero_cursor_ = int(hero_);
+        hero_start_only_ = false;
+        return MenuAction::None;
       case kSalir:     return MenuAction::Quit;
       default:         return MenuAction::None;
     }
@@ -137,15 +177,29 @@ class PauseMenu {
     return MenuAction::None;
   }
 
+  MenuAction handle_hero_select(const MenuInput& in) {
+    if (in.up) hero_cursor_ = (hero_cursor_ + kHeroCount - 1) % kHeroCount;
+    if (in.down) hero_cursor_ = (hero_cursor_ + 1) % kHeroCount;
+    if (!in.confirm) return MenuAction::None;
+    hero_ = sanitize_hero(uint8_t(hero_cursor_));
+    open_ = false;
+    page_ = 0;
+    hero_start_only_ = false;
+    return MenuAction::Resume;
+  }
+
   bool open_ = false;
-  int page_ = 0;  // 0 = principal, 1 = controles
+  int page_ = 0;  // 0 = principal, 1 = controles, 2 = elegir héroe
   int cursor_ = 0;
   int ctl_cursor_ = 0;
+  int hero_cursor_ = 0;
   bool waiting_ = false;
+  bool hero_start_only_ = false;
   float volume_ = kVolDefault;
   bool muted_ = false;
   bool has_save_ = false;
   bool foliage_ = true;
+  HeroKind hero_ = HeroKind::Lantern;
   Bindings bind_ = Bindings::defaults();
   bool bind_changed_ = false;
 };

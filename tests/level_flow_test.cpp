@@ -50,10 +50,21 @@ int main(int argc, char** argv) {
           std::filesystem::path(flow.resolve_next_map()).filename() == "level2.ewmap");
 
     FrameData v;
+    flow.sim().set_hero(HeroKind::Opossum);
     build_world_frame(v, flow.scene(), flow.sim(), 1.25f, false, false);
     CHECK(v.tiles != nullptr);
     CHECK(v.tiles_version == flow.scene().chunk_version());
     CHECK(v.sprite_count >= 1);
+    {
+      const int last_col = int(v.sprites[std::size_t((v.sprite_count - 1) * 4 + 2)]);
+      const int col_abs = last_col >= 0 ? last_col : (-last_col - 1);
+      CHECK(col_abs >= 4 && col_abs < 8);  // La Zarigüeya ocupa cols 4..7
+    }
+    const int base_sprites = v.sprite_count;
+    FrameData v_prev;
+    build_world_frame(v_prev, flow.scene(), flow.sim(), 1.25f, false, true, false, 1);
+    CHECK(v_prev.sprite_count == base_sprites + 3);
+    CHECK(int(v_prev.sprites[std::size_t((base_sprites + 2) * 4 + 2)]) >= 8);  // El Castor cols 8..11
     CHECK(v.marker_count > 0);
     // Sin flecha guía orbitando al lado del jugador (solo switches tienen su propio indicador ↓ arriba).
     const auto ga = compute_guide_arrow(flow.scene(), flow.sim(), 1.25f);
@@ -108,13 +119,17 @@ int main(int argc, char** argv) {
     auto ev = populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud, "0.1.0");
     CHECK(v.pause == 1 && v.pause_sel == PauseMenu::kSeguir && v.pause_has_save == 1);
     CHECK(std::fabs(v.pause_vol - 0.6f) < 1e-5f);
-    CHECK(v.ctl == 0 && v.end_screen == 0 && v.dlg == 0);
-    CHECK(v.ctl_txt == pack_text([&] {
-            std::array<std::string, kTxtRows> t{};
-            t[kTxtRows - 1] = "V0.1.0";
-            return t;
-          }()));
+    CHECK(v.ctl == 0 && v.hero_select == 0 && v.end_screen == 0 && v.dlg == 0);
+    CHECK(v.ctl_txt == pack_text(pause_text(menu, "0.1.0")));
     CHECK(!ev.new_item && !ev.new_double_jump && !ev.new_dash);
+
+    menu.open_hero_select();
+    menu.set_hero(HeroKind::Beaver);
+    ev = populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud, "0.1.0");
+    CHECK(v.pause == 1 && v.hero_select == 1 && v.hero_cursor == int(HeroKind::Beaver) && v.ctl == 0);
+    CHECK(v.ctl_txt == pack_text(hero_select_text(menu)));
+    menu.handle(MenuInput{.confirm = true});  // confirma héroe y cierra pausa
+    CHECK(!menu.open());
 
     // Desbloqueo de habilidades y collectible
     flow.sim().grant_ability(kAbilityDoubleJump);
@@ -125,7 +140,6 @@ int main(int argc, char** argv) {
         break;
       }
     }
-    menu.handle(MenuInput{.toggle = true});  // cierra pausa
     dialogue.open("CRONISTA", "HOLA|MUNDO");
     ev = populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud, "0.1.0");
     CHECK(ev.new_item && ev.new_double_jump && ev.new_dash);
@@ -161,6 +175,8 @@ int main(int argc, char** argv) {
       }
     }
     flow.sim().grant_ability(kAbilityDoubleJump);
+    menu.set_hero(HeroKind::Opossum);
+    flow.sim().set_hero(menu.hero());
     const auto post1 = flow.post_step(menu, end_screen, dialogue, false);
     CHECK(!post1.save_failed && menu.has_save() && flow.save_armed());
 
@@ -188,6 +204,7 @@ int main(int argc, char** argv) {
     CHECK(!flow.consume_tiles_dirty());
     CHECK(flow.scene().map().string_at(1) == "level2");
     CHECK(flow.sim().has_ability(kAbilityDoubleJump));
+    CHECK(flow.sim().hero() == HeroKind::Opossum);
     CHECK(!end_screen.open() && !flow.announced_goal());
 
     // restart_level resetea estado y cierra overlays
@@ -209,6 +226,8 @@ int main(int argc, char** argv) {
     CHECK(flow2.consume_tiles_dirty());
     CHECK(flow2.scene().map().string_at(1) == "level2");
     CHECK(flow2.sim().has_ability(kAbilityDoubleJump));
+    CHECK(flow2.sim().hero() == HeroKind::Opossum);
+    CHECK(menu2.hero() == HeroKind::Opossum);
   }
 
   std::filesystem::remove_all(tmp_dir);

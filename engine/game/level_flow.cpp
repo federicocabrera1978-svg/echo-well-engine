@@ -12,6 +12,7 @@ LevelFlow::SaveKey LevelFlow::current_save_key(const PauseMenu& menu) const {
       sim_->checkpoint_index(),
       sim_->collected(),
       sim_->abilities(),
+      sim_->hero(),
       sim_->boss_count() > 0 && sim_->bosses_defeated(),
       menu.muted(),
       menu.volume_setting(),
@@ -79,12 +80,16 @@ void LevelFlow::init_save(bool nosave, bool demo, bool has_start, int max_frames
       menu.set_has_save(true);
       menu.set_audio(loaded_.volume, loaded_.muted);
       menu.set_bindings(loaded_.bind);
+      menu.set_hero(loaded_.hero);
+      if (sim_) sim_->set_hero(loaded_.hero);
       menu.open_at(PauseMenu::kContinuar);
       save_armed_ = false;
       log("echo_engine: partida guardada en " + save_path_ + " — CONTINUAR en el menú");
-    } else if (e == SaveError::None) {  // save de otro mapa no disponible: solo audio + controles
+    } else if (e == SaveError::None) {  // save de otro mapa no disponible: solo audio + controles + héroe
       menu.set_audio(loaded_.volume, loaded_.muted);
       menu.set_bindings(loaded_.bind);
+      menu.set_hero(loaded_.hero);
+      if (sim_) sim_->set_hero(loaded_.hero);
       log("echo_engine: save de otro mapa (se usan volumen y controles)");
     } else if (e != SaveError::Io) {
       log(std::string("echo_engine: save ignorado (") + save_error_str(e) + ")");
@@ -105,10 +110,11 @@ std::string LevelFlow::resolve_next_map() const {
 }
 
 bool LevelFlow::load_level(const std::string& path, uint32_t carry_abilities, EndScreen& end_screen,
-                           DialogueBox& dialogue, HudTracker& hud, std::string& err) {
+                           DialogueBox& dialogue, HudTracker& hud, std::string& err, HeroKind carry_hero) {
   auto next_scene = std::make_unique<Scene>();
   if (!next_scene->load(path, err)) return false;
   auto next_sim = std::make_unique<Sim>(*next_scene);
+  next_sim->set_hero(carry_hero);
   if (carry_abilities) next_sim->set_abilities(carry_abilities);
   scene_ = std::move(next_scene);
   sim_ = std::move(next_sim);
@@ -162,6 +168,7 @@ bool LevelFlow::continue_save(PauseMenu& menu, EndScreen& end_screen, DialogueBo
   loaded_ = d;
   menu.set_audio(d.volume, d.muted);
   menu.set_bindings(d.bind);
+  menu.set_hero(sim_->hero());
   save_armed_ = true;
   announced_goal_ = false;
   last_key_ = current_save_key(menu);
@@ -187,7 +194,8 @@ bool LevelFlow::next_level(const PauseMenu& menu, EndScreen& end_screen, Dialogu
     return false;
   }
   const uint32_t carry = sim_ ? sim_->abilities() : 0u;
-  if (!load_level(next_p, carry, end_screen, dialogue, hud, err)) return false;
+  const HeroKind carry_hero = sim_ ? sim_->hero() : menu.hero();
+  if (!load_level(next_p, carry, end_screen, dialogue, hud, err, carry_hero)) return false;
   if (!save_path_.empty()) {
     save_armed_ = true;
     write_save(capture_save(*sim_), menu);

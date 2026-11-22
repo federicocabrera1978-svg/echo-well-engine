@@ -13,9 +13,11 @@ uniform int u_end_sel; // opción seleccionada 0..3
 uniform int u_end_has_next; // 1 = hay siguiente nivel
 uniform vec2 u_light;  // px de vista, y hacia abajo
 uniform int u_pause;   // 1 = menú de pausa
-uniform int u_sel;     // ítem seleccionado 0..6
+uniform int u_sel;     // ítem seleccionado 0..7
 uniform int u_has_save; // 1 = hay partida guardada (CONTINUAR habilitado)
 uniform int u_foliage;  // 1 = brisa / vegetación animada habilitada
+uniform int u_hero_sel; // 1 = página ELIGE TU HEROE
+uniform int u_hero_cur; // héroe seleccionado 0..2
 uniform int u_dlg;      // 1 = caja de diálogo abierta (usa u_txt)
 uniform int u_dlg_more; // 1 = hay páginas siguientes en el diálogo
 uniform int u_ctl;      // 1 = página CONTROLES del menú
@@ -139,6 +141,168 @@ vec3 controls_page(vec3 c, vec2 px) {
     c = mix(c, col, g);
   }
   c = mix(c, vec3(0.55, 0.55, 0.62), txt_glyph(11, px - vec2(56.0, 162.0), 1.0));
+  return c;
+}
+
+// Página principal de PAUSA: caja oscura con borde dorado, título (fila 0), opciones (filas 1..8),
+// barra de volumen en fila 4 junto a VOL, ítem apagado en fila 2 si u_has_save == 0, versión en fila 11.
+vec3 pause_page(vec3 c, vec2 px) {
+  vec2 ip = floor(px);
+  if (ip.x >= 44.0 && ip.x <= 275.0 && ip.y >= 14.0 && ip.y <= 165.0) {
+    bool outer_b = (ip.x == 44.0 || ip.x == 275.0 || ip.y == 14.0 || ip.y == 165.0);
+    bool inner_b = (ip.x == 46.0 || ip.x == 273.0 || ip.y == 16.0 || ip.y == 163.0) &&
+                   (ip.x >= 46.0 && ip.x <= 273.0 && ip.y >= 16.0 && ip.y <= 163.0);
+    c = mix(c, vec3(0.08, 0.08, 0.12), 0.93);
+    if (inner_b) c = vec3(0.32, 0.25, 0.13);
+    if (outer_b) c = vec3(0.85, 0.75, 0.40);
+    float d_tl = abs(ip.x - 49.0) + abs(ip.y - 19.0);
+    float d_tr = abs(ip.x - 270.0) + abs(ip.y - 19.0);
+    float d_bl = abs(ip.x - 49.0) + abs(ip.y - 160.0);
+    float d_br = abs(ip.x - 270.0) + abs(ip.y - 160.0);
+    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) c = vec3(0.96, 0.86, 0.48);
+    if (ip.y == 40.0 && ip.x >= 52.0 && ip.x <= 267.0) c = vec3(0.38, 0.31, 0.16);
+  }
+
+  // Fila 0: título ("PAUSA") centrado a escala 3.0.
+  int len0 = 0;
+  for (int k = 0; k < 16; ++k) {
+    int g0 = txt_at(0, k);
+    if (g0 < 47 && g0 != 37) len0 = k + 1;
+  }
+  float title_x = max(52.0, 160.0 - float(max(len0, 1)) * 9.0 + 1.5);
+  c = mix(c, vec3(1.0, 0.92, 0.50), txt_glyph(0, px - vec2(title_x, 22.0), 3.0));
+
+  // Filas 1..8: opciones de juego (escala 2.0, paso 12 px).
+  for (int r = 1; r <= 8; ++r) {
+    float ry = 45.0 + float(r - 1) * 12.0;
+    int c0 = txt_at(r, 0);
+    if (c0 >= 47) continue;
+    bool is_sel = (r - 1 == u_sel);
+    if (is_sel && ip.x >= 50.0 && ip.x <= 269.0 && ip.y >= ry - 1.0 && ip.y <= ry + 10.0)
+      c = mix(c, vec3(0.22, 0.19, 0.10), 0.48);
+    bool has_lead = (c0 == 36 || c0 == 37);
+    float tx0 = has_lead ? 54.0 : 74.0;
+    float g = txt_glyph(r, px - vec2(tx0, ry), 2.0);
+    if (is_sel && c0 != 36)
+      g = max(g, glyph5(FONT[36], (px - vec2(has_lead ? 54.0 : 58.0, ry)) / 2.0));
+    vec3 col = is_sel ? vec3(1.0, 0.95, 0.55) : vec3(0.76, 0.78, 0.84);
+    if (r == 2 && u_has_save == 0) col *= 0.45;
+    c = mix(c, col, g);
+  }
+
+  // Barra de volumen en fila 4 junto a VOL.
+  {
+    int end_c = 0;
+    for (int k = 0; k < 18; ++k) {
+      int g4 = txt_at(4, k);
+      if (g4 < 47 && g4 != 37) end_c = k + 1;
+    }
+    int c4 = txt_at(4, 0);
+    float tx4 = (c4 == 36 || c4 == 37) ? 54.0 : 74.0;
+    float bx = max(172.0, tx4 + float(end_c) * 12.0 + 8.0);
+    float bw = max(32.0, 265.0 - bx);
+    float by = 84.0, bh = 4.0;
+    if (px.x >= bx - 1.0 && px.x <= bx + bw + 1.0 && px.y >= by - 1.0 && px.y <= by + bh + 1.0) {
+      if (px.x >= bx && px.x <= bx + bw && px.y >= by && px.y <= by + bh) {
+        float f = (px.x - bx) / bw;
+        if (u_mute > 0) c = vec3(0.25, 0.22, 0.22);
+        else c = (f <= u_vol) ? vec3(0.85, 0.75, 0.35) : vec3(0.20, 0.20, 0.24);
+      } else {
+        c = vec3(0.35, 0.30, 0.18);
+      }
+    }
+  }
+
+  // Versión en fila 11 abajo a la derecha.
+  c = mix(c, vec3(0.50, 0.50, 0.56), txt_glyph(11, px - vec2(212.0, 152.0), 1.0));
+  return c;
+}
+
+// Página ELIGE TU HEROE: marco elegante + 3 recuadros de retrato traslúcidos al costado izquierdo
+// donde se ven nítidos los 3 sprites animados (preview_hero_sel en x=70, y=62+h*26), resaltando recuadro y fila (u_hero_cur).
+vec3 hero_select_page(vec3 c, vec2 px) {
+  vec2 ip = floor(px);
+  bool in_frame = (ip.x >= 34.0 && ip.x <= 285.0 && ip.y >= 12.0 && ip.y <= 165.0);
+
+  // Detectar si estamos dentro de alguno de los 3 recuadros de retrato a la izquierda (centrados en x=70, y=62+h*26).
+  int port_idx = -1;
+  bool port_border = false;
+  if (ip.x >= 56.0 && ip.x <= 84.0) {
+    for (int i = 0; i < 3; ++i) {
+      float by0 = 50.0 + float(i) * 26.0;
+      float by1 = by0 + 24.0;
+      if (ip.y >= by0 && ip.y <= by1) {
+        port_idx = i;
+        port_border = (ip.x == 56.0 || ip.x == 84.0 || ip.y == by0 || ip.y == by1);
+        break;
+      }
+    }
+  }
+
+  if (!in_frame) {
+    c = mix(c, vec3(0.04, 0.04, 0.06), 0.72);
+  } else if (port_idx >= 0) {
+    bool sel_p = (port_idx == u_hero_cur);
+    if (port_border) {
+      float pulse = 0.88 + 0.12 * sin(u_time * 5.0);
+      c = sel_p ? vec3(1.0, 0.88, 0.38) * pulse : vec3(0.32, 0.34, 0.44);
+    } else {
+      // Ventana limpia/traslúcida: conserva nítido el sprite del mundo renderizado en c.
+      c = sel_p ? clamp(c * 1.05 + vec3(0.02, 0.02, 0.01), 0.0, 1.0)
+                : mix(c, vec3(0.06, 0.07, 0.10), 0.26);
+    }
+  } else {
+    bool outer_b = (ip.x == 34.0 || ip.x == 285.0 || ip.y == 12.0 || ip.y == 165.0);
+    bool inner_b = (ip.x == 36.0 || ip.x == 283.0 || ip.y == 14.0 || ip.y == 163.0) &&
+                   (ip.x >= 36.0 && ip.x <= 283.0 && ip.y >= 14.0 && ip.y <= 163.0);
+    c = mix(c, vec3(0.08, 0.08, 0.12), 0.93);
+    if (inner_b) c = vec3(0.30, 0.24, 0.13);
+    if (outer_b) c = vec3(0.86, 0.74, 0.38);
+    float d_tl = abs(ip.x - 39.0) + abs(ip.y - 17.0);
+    float d_tr = abs(ip.x - 280.0) + abs(ip.y - 17.0);
+    float d_bl = abs(ip.x - 39.0) + abs(ip.y - 160.0);
+    float d_br = abs(ip.x - 280.0) + abs(ip.y - 160.0);
+    if (min(min(d_tl, d_tr), min(d_bl, d_br)) <= 1.0) c = vec3(0.96, 0.86, 0.48);
+    if (ip.y == 35.0 && ip.x >= 42.0 && ip.x <= 277.0) c = vec3(0.38, 0.31, 0.16);
+    if (ip.x == 90.0 && ip.y >= 46.0 && ip.y <= 130.0) c = vec3(0.28, 0.24, 0.15);
+    if (ip.y == 138.0 && ip.x >= 42.0 && ip.x <= 277.0) c = vec3(0.28, 0.24, 0.15);
+  }
+
+  // Fila 0: título ("ELIGE TU HEROE") a escala 2.0.
+  int len0 = 0;
+  for (int k = 0; k < 24; ++k) {
+    int g0 = txt_at(0, k);
+    if (g0 < 47 && g0 != 37) len0 = k + 1;
+  }
+  float title_x = max(42.0, 160.0 - float(max(len0, 1)) * 6.0 + 1.0);
+  c = mix(c, vec3(1.0, 0.90, 0.46), txt_glyph(0, px - vec2(title_x, 19.0), 2.0));
+
+  // Filas 1..6: 3 héroes (nombre a escala 2.0 + descripción a escala 1.0) alineados con los retratos.
+  for (int h = 0; h < 3; ++h) {
+    int r_name = 1 + h * 2;
+    int r_desc = 2 + h * 2;
+    float hy0 = 50.0 + float(h) * 26.0;
+    bool is_sel = (h == u_hero_cur);
+    if (is_sel && ip.x >= 93.0 && ip.x <= 278.0 && ip.y >= hy0 && ip.y <= hy0 + 23.0)
+      c = mix(c, vec3(0.22, 0.18, 0.09), 0.52);
+
+    float gn = txt_glyph(r_name, px - vec2(96.0, hy0 + 2.0), 2.0);
+    vec3 ncol = is_sel ? vec3(1.0, 0.95, 0.55) : vec3(0.76, 0.78, 0.85);
+    c = mix(c, ncol, gn);
+
+    float gd = txt_glyph(r_desc, px - vec2(96.0, hy0 + 14.0), 1.0);
+    vec3 dcol = is_sel ? vec3(0.92, 0.86, 0.64) : vec3(0.58, 0.60, 0.68);
+    c = mix(c, dcol, gd);
+  }
+
+  // Fila 11: ayuda al pie centrada.
+  int len11 = 0;
+  for (int k = 0; k < 32; ++k) {
+    int g11 = txt_at(11, k);
+    if (g11 < 47 && g11 != 37) len11 = k + 1;
+  }
+  float foot_x = max(42.0, 160.0 - float(max(len11, 1)) * 3.0 + 0.5);
+  c = mix(c, vec3(0.58, 0.60, 0.68), txt_glyph(11, px - vec2(foot_x, 148.0), 1.0));
   return c;
 }
 
@@ -319,7 +483,7 @@ void main() {
   c += albedo * emit * 1.6;
   if (u_boss_burst.z > 0.001 || u_boss_burst.w > 0.001) c = crt_boss_rays(c, px, u_boss_burst);
 
-  if (u_fade > 0.0) {
+  if (u_fade > 0.0 && u_hero_sel == 0) {
     float f = clamp(u_fade, 0.0, 1.0);
     if (u_end > 0 && u_pause == 0) {
       c = end_screen_page(c, px, f);
@@ -348,97 +512,19 @@ void main() {
     }
   }
 
-  if (u_items_total > 0) c = hud_items(c, px);
-  if (u_abilities != 0) c = hud_abilities(c, px);
-  if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0) c = hud_minimap(c, px);
-  if (u_dlg > 0 && u_pause == 0 && u_end == 0) c = dialogue_box(c, px);
+  if (u_items_total > 0 && u_hero_sel == 0) c = hud_items(c, px);
+  if (u_abilities != 0 && u_hero_sel == 0) c = hud_abilities(c, px);
+  if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_minimap(c, px);
+  if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 
-  if (u_pause > 0 && u_ctl > 0) {
+  if (u_hero_sel > 0) {
+    c = hero_select_page(c, px);
+  } else if (u_pause > 0 && u_ctl > 0) {
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
     c = controls_page(c, px);
   } else if (u_pause > 0) {
-    // Oscurece y dibuja PAUSA + 7 ítems (SEGUIR, CONTINUAR, REINICIO, VOL/MUTE, CONTROLES, BRISA SI/NO, SALIR).
     c = mix(c, vec3(0.05, 0.05, 0.07), 0.72);
-    // A=0 … Z=25, 0-9=26-35, '>'=36, ' '=37. Solo las letras usadas están llenas.
-    const int G[38] = int[](
-      18415150, 16301615, 31491134, 16303663, 32554047, 0, 15266878, 0,          // A-H
-      32641183, 0, 0, 32539681, 18405233, 18667121, 15255086, 1097263,            // I-P
-      0, 9616943, 16267326, 4329631, 15255089, 4539953, 0, 0, 0, 0,              // Q-Z
-      15324974, 14815428, 32584238, 16267791, 8682793,                            // 0-4
-      16268351, 15252526, 2167071, 15252014, 15235630,                            // 5-9
-      1154145, 0                                                                 // >, espacio
-    );
-    // caja
-    vec2 mid = px - vec2(160.0, 92.0);
-    if (abs(mid.x) < 86.0 && abs(mid.y) < 72.0) {
-      float border = (abs(mid.x) > 83.0 || abs(mid.y) > 69.0) ? 1.0 : 0.0;
-      c = mix(c, vec3(0.10, 0.10, 0.13), 0.92);
-      c = mix(c, vec3(0.85, 0.75, 0.40), border);
-    }
-    float tg = 0.0;
-    // PAUSA (escala 3)
-    float ts = 3.0;
-    vec2 to = vec2(160.0 - 15.0 * ts, 34.0);
-    int title[5] = int[](15, 0, 20, 18, 0);  // P A U S A
-    for (int i = 0; i < 5; ++i)
-      tg = max(tg, glyph5(G[title[i]], (px - to - vec2(float(i) * 6.0 * ts, 0.0)) / ts));
-    c = mix(c, vec3(1.0, 0.92, 0.50), tg);
-
-    const int NR = 7, W = 9;
-    int rows[NR * W];
-    int rlen[NR];
-    for (int i = 0; i < NR * W; ++i) rows[i] = 0;
-    // SEGUIR
-    rows[0]=18; rows[1]=4; rows[2]=6; rows[3]=20; rows[4]=8; rows[5]=17; rlen[0]=6;
-    // CONTINUAR
-    rows[9]=2; rows[10]=14; rows[11]=13; rows[12]=19; rows[13]=8; rows[14]=13; rows[15]=20; rows[16]=0; rows[17]=17; rlen[1]=9;
-    // REINICIO
-    rows[18]=17; rows[19]=4; rows[20]=8; rows[21]=13; rows[22]=8; rows[23]=2; rows[24]=8; rows[25]=14; rlen[2]=8;
-    // VOL xx  o  MUTE
-    if (u_mute > 0) {
-      rows[27]=12; rows[28]=20; rows[29]=19; rows[30]=4; rlen[3]=4;
-    } else {
-      int pct = int(clamp(u_vol, 0.0, 1.0) * 100.0 + 0.5);
-      rows[27]=21; rows[28]=14; rows[29]=11;  // VOL
-      if (pct >= 100) {
-        rows[30]=27; rows[31]=26; rows[32]=26; rlen[3]=6;  // VOL100
-      } else {
-        rows[30]=26 + pct / 10; rows[31]=26 + pct % 10; rlen[3]=5;
-      }
-    }
-    // CONTROLES
-    rows[36]=2; rows[37]=14; rows[38]=13; rows[39]=19; rows[40]=17; rows[41]=14; rows[42]=11; rows[43]=4; rows[44]=18; rlen[4]=9;
-    // BRISA SI / BRISA NO
-    rows[45]=1; rows[46]=17; rows[47]=8; rows[48]=18; rows[49]=0; rows[50]=37;
-    rows[51]=(u_foliage > 0 ? 18 : 13);
-    rows[52]=(u_foliage > 0 ? 8 : 14);
-    rlen[5]=8;
-    // SALIR
-    rows[54]=18; rows[55]=0; rows[56]=11; rows[57]=8; rows[58]=17; rlen[6]=5;
-
-    float is_ = 2.0;
-    for (int r = 0; r < NR; ++r) {
-      vec2 o = vec2(112.0, 58.0 + float(r) * 13.0);
-      float g = 0.0;
-      if (r == u_sel)
-        g = max(g, glyph5(G[36], (px - vec2(o.x - 14.0, o.y)) / is_));
-      for (int i = 0; i < rlen[r]; ++i)
-        g = max(g, glyph5(G[rows[r * W + i]], (px - o - vec2(float(i) * 6.0 * is_, 0.0)) / is_));
-      vec3 col = (r == u_sel) ? vec3(1.0, 0.95, 0.55) : vec3(0.75, 0.75, 0.80);
-      if (r == 1 && u_has_save == 0) col *= 0.45;  // sin partida guardada: apagado
-      c = mix(c, col, g);
-    }
-    // Versión (fila 11 de u_txt) abajo a la derecha de la caja.
-    c = mix(c, vec3(0.50, 0.50, 0.56), txt_glyph(11, px - vec2(204.0, 152.0), 1.0));
-    // Barrita de volumen bajo el ítem VOL.
-    {
-      float bx = 112.0, by = 58.0 + 3.0 * 13.0 + 10.5, bw = 80.0, bh = 1.5;
-      if (px.x >= bx && px.x <= bx + bw && px.y >= by && px.y <= by + bh) {
-        float f = (px.x - bx) / bw;
-        if (u_mute > 0) c = vec3(0.25, 0.22, 0.22);
-        else c = (f <= u_vol) ? vec3(0.85, 0.75, 0.35) : vec3(0.22, 0.22, 0.25);
-      }
-    }
+    c = pause_page(c, px);
   }
   o_color = vec4(c, 1.0);
 }

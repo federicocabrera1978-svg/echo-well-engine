@@ -42,6 +42,7 @@ Adentro de `echo-well/` tiene que haber: `echo_engine` (o `echo_engine.exe`), `e
 | `--nogamepad` / `EW_NOGAMEPAD=1` | ignora el gamepad |
 | `--nosave` / `EW_NOSAVE=1` | no lee ni escribe la partida guardada |
 | `EW_SAVE_DIR=carpeta` | usa otra carpeta para el guardado (útil para probar desde cero) |
+| `--hero farol\|zarigueya\|castor` | elige el personaje inicial directo sin abrir el selector |
 | `--map assets/maps/bin/level2.ewmap` | carga directo el Nivel 2 "Las Catacumbas" (también `level3`, `dash`, `boss`, `ability`, `gravity`, `mover`, `room`) |
 | `--next-map assets/maps/bin/ability.ewmap` | define el mapa que carga **SIGUIENTE NIVEL** al completar el actual |
 
@@ -65,7 +66,7 @@ o cargada, meta.
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
-VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/Espacio/←/→ alterna brisa y vegetación sin cerrar), SALIR.
+VOL (←/→ cambia, Enter silencia), CONTROLES, BRISA SI/NO (Enter/Espacio/←/→ alterna brisa y vegetación sin cerrar), HEROE (abre el selector de personaje), SALIR.
 
 ## 3. Recorrido sala por sala
 
@@ -75,7 +76,7 @@ checkpoint** (`shape 2`) pasan de cristal cian a llama verde al tomarlos, y las 
 abre-puertas elevadas** (`shape 3`) muestran una flecha verde encima mientras están en ámbar y
 pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`near_mech`).
 
-- [ ] **Protagonista pixel-art (Explorador del Farol) y objetos.** Verificá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto (`245 px/s`), trepada en cuerda, nado y parpadeo post-respawn; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados, la reliquia de Doble Salto como emblema alado cian y la de Dash como reliquia ígnea dorado-carmesí.
+- [ ] **Selector de 3 personajes (`Sr. del Farol`, `La Zarigüeya`, `El Castor`) y objetos.** Verificá que al arrancar sin partida guardada se abre **`ELIGE TU HEROE`** con retratos animados en vivo (↑/↓ o W/S elige, Enter/Espacio confirma, Esc cierra), y que desde Pausa → **`HEROE`** podés cambiar de personaje en cualquier momento (o iniciando con `--hero farol|zarigueya|castor`). Probá animaciones de reposo, caminata (orientada a ←/→), salto/caída, despliegue de alas cian al usar Doble Salto (`245 px/s`), trepada en cuerda, nado y parpadeo post-respawn en los 3 héroes; con gravedad invertida el sprite queda invertido verticalmente apoyado en el techo. Los coleccionables se muestran como huevos de dragón escamados, la reliquia de Doble Salto como emblema alado cian y la de Dash como reliquia ígnea dorado-carmesí.
 - [ ] **Lectura visual limpia sin flecha junto al protagonista.** Verificá que no aparece ninguna flecha orbitando al lado del personaje (los abre-puertas sin accionar conservan únicamente su indicador `↓` arriba). La lógica de cálculo basada en la sección `GUIDE` (`engine/game/guide.hpp`) sigue cubierta por `guide_arrows`.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
@@ -144,9 +145,9 @@ boss o cambiar el volumen o los controles. Archivo `save.ewsv` en:
 Linux `~/.local/share/echo-well/` (o `$XDG_DATA_HOME/echo-well/`), Windows
 `%APPDATA%\EchoWell\`.
 
-- [ ] Primera vez (sin archivo): el juego arranca jugando y CONTINUAR aparece apagado en el menú.
-- [ ] Tomá un checkpoint de una sala avanzada, salí con SALIR y volvé a abrir: el menú abre
-  en **CONTINUAR**; al elegirlo aparecés en ese checkpoint.
+- [ ] Primera vez (sin archivo): el juego abre primero **`ELIGE TU HEROE`** (3 personajes), luego arranca jugando y CONTINUAR aparece apagado en el menú.
+- [ ] Tomá un checkpoint de una sala avanzada, elegí a `La Zarigüeya` o `El Castor`, salí con SALIR y volvé a abrir: el menú abre
+  en **CONTINUAR**; al elegirlo aparecés en ese checkpoint con el mismo personaje guardado en `save.ewsv` v4 (saves v1–v3 siguen cargando).
 - [ ] Se restauran: huevo (HUD), puertas abiertas, agua inundada (sin animación), boss
   vencido, gravedad del checkpoint, volumen/mute y controles.
 - [ ] Elegí **SEGUIR** con un save existente: arrancás de cero; el save viejo se reemplaza

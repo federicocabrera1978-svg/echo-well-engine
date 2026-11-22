@@ -1,4 +1,4 @@
-// Test sin GL: atlas de sprites pixel-art 128×128 (8×8 celdas de 16×16 px), carga PNG con
+// Test sin GL: atlas de sprites pixel-art 256×128 (16×8 celdas de 16×16 px), carga PNG con
 // fallback procedural y máquina de estados de animación del protagonista (Sim::player_anim).
 #include "game/sim.hpp"
 #include "render/sprite_atlas.hpp"
@@ -24,14 +24,14 @@ static std::vector<uint8_t> extract_cell(const std::vector<uint8_t>& px, int col
   out.reserve(std::size_t(kSpriteCellPx) * kSpriteCellPx * 4);
   const auto uv = sprite_uv(col, row);
   for (int y = 0; y < kSpriteCellPx; ++y) {
-    const std::size_t row_off = (std::size_t(uv.y + y) * kSpriteAtlasPx + std::size_t(uv.x)) * 4;
+    const std::size_t row_off = (std::size_t(uv.y + y) * kSpriteAtlasW + std::size_t(uv.x)) * 4;
     out.insert(out.end(), px.data() + row_off, px.data() + row_off + std::size_t(kSpriteCellPx) * 4);
   }
   return out;
 }
 
 static bool verify_atlas_cells(const std::vector<uint8_t>& px) {
-  if (px.size() != std::size_t(kSpriteAtlasPx) * kSpriteAtlasPx * 4) return false;
+  if (px.size() != std::size_t(kSpriteAtlasW) * kSpriteAtlasH * 4) return false;
   auto check_group = [&](int row, int col_begin, int col_end) -> bool {
     std::set<std::vector<uint8_t>> uniq;
     for (int col = col_begin; col < col_end; ++col) {
@@ -53,8 +53,11 @@ static bool verify_atlas_cells(const std::vector<uint8_t>& px) {
     return int(uniq.size()) == (col_end - col_begin);
   };
 
-  for (int row = 0; row <= int(SpriteRow::Swim); ++row)
-    if (!check_group(row, 0, 4)) return false;
+  for (int row = 0; row <= int(SpriteRow::Swim); ++row) {
+    if (!check_group(row, 0, 4)) return false;   // Sr. del Farol
+    if (!check_group(row, 4, 8)) return false;   // La Zarigüeya
+    if (!check_group(row, 8, 12)) return false;  // El Castor
+  }
   if (!check_group(int(SpriteRow::Items), 0, 4)) return false;  // huevo de dragón
   if (!check_group(int(SpriteRow::Items), 4, 8)) return false;  // reliquia alada
   if (!check_group(int(SpriteRow::Npc), 0, 4)) return false;    // NPC Vigía / Cronista
@@ -72,10 +75,10 @@ static void place(Sim& s, float x, float y) {
 int main(int argc, char** argv) {
   if (argc < 2) return 2;
 
-  // --- 1) Atlas procedural determinístico y layout 8×8 de 16×16 ---
+  // --- 1) Atlas procedural determinístico y layout 16×8 de 16×16 ---
   const auto a = build_sprite_atlas();
   const auto b = build_sprite_atlas();
-  CHECK(a.size() == std::size_t(kSpriteAtlasPx) * kSpriteAtlasPx * 4);
+  CHECK(a.size() == std::size_t(kSpriteAtlasW) * kSpriteAtlasH * 4);
   CHECK(std::memcmp(a.data(), b.data(), a.size()) == 0);
   CHECK(verify_atlas_cells(a));
 
@@ -98,6 +101,9 @@ int main(int argc, char** argv) {
   if (const char* dir = std::getenv("EW_TEST_FIXTURES"); dir && *dir) {
     const auto bad = load_sprite_atlas_file((std::string(dir) + "/atlas_16.png").c_str());
     CHECK(bad.source == AtlasSource::Procedural && bad.px == a);
+    const auto leg = load_sprite_atlas_file((std::string(dir) + "/atlas_128.png").c_str());
+    CHECK(leg.source == AtlasSource::Png && leg.px.size() == a.size());
+    CHECK(extract_cell(leg.px, 8, 0) == extract_cell(a, 8, 0));
   }
 
   if (const char* def = std::getenv("EW_DEFAULT_SPRITES"); def && *def) {

@@ -1,6 +1,7 @@
 #pragma once
 // Datos de frame y construcción de la escena de mundo sin dependencias de GL/GLFW.
 #include "game/guide.hpp"
+#include "game/hero.hpp"
 #include "game/scene.hpp"
 #include "game/sim.hpp"
 
@@ -35,7 +36,7 @@ struct FrameData {
   std::array<float, kMaxMarkers * 4> markers{};
   std::array<float, kMaxMarkers * 3> marker_colors{};
   // Sprites pixel-art (16×16 px): (x, y, col_signed, row_signed) + tinte (r, g, b, emit_boost).
-  // col_signed >= 0 → col 0..7 normal; col_signed < 0 → espejo horizontal de col = -col_signed - 1.
+  // col_signed >= 0 → col 0..15 normal; col_signed < 0 → espejo horizontal de col = -col_signed - 1.
   // row_signed >= 0 → row 0..7 normal; row_signed < 0 → espejo vertical de row = -row_signed - 1.
   int sprite_count = 0;
   std::array<float, kMaxSprites * 4> sprites{};
@@ -61,6 +62,8 @@ struct FrameData {
   int ctl = 0;                               // página CONTROLES
   int ctl_sel = 0;                           // fila de u_txt resaltada
   int ctl_wait = 0;                          // esperando tecla/botón
+  int hero_select = 0;                       // 1 = selector de héroe abierto
+  int hero_cursor = 0;                       // opción seleccionada 0..2
   std::array<int32_t, 96> ctl_txt{};         // game::pack_text(controls_text(menu))
   // HUD de collectibles (light pass): ícono de huevo + "n/total" arriba a la izquierda.
   // total == 0 → no se dibuja. flash 0..1 = destello al agarrar uno.
@@ -122,7 +125,7 @@ inline void push_sprite(FrameData& v, float x, float y, int col, int row, bool f
       y + 8.f < v.cam_y - m || y - 8.f > v.cam_y + float(kInternalH) + m)
     return;
   const int i = v.sprite_count++;
-  const int c = std::clamp(col, 0, 7);
+  const int c = std::clamp(col, 0, 15);
   const int r = std::clamp(row, 0, 7);
   v.sprites[std::size_t(i * 4 + 0)] = x;
   v.sprites[std::size_t(i * 4 + 1)] = y;
@@ -264,7 +267,7 @@ inline void push_hazards(FrameData& v, Scene& s) {
 
 // Empaqueta cámara, vecindario 3×3, entidades, física, bosses, protagonista, agua, luz y viento.
 inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float time_s, bool demo,
-                              bool overlay_open, bool show_player_guide = false) {
+                              bool overlay_open, bool show_player_guide = false, int preview_hero_sel = -1) {
   v.marker_count = 0;
   v.sprite_count = 0;
   v.water_count = 0;
@@ -379,15 +382,16 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
 
   const auto& pl = sim.player();
   const float px = pl.pos.x, py = pl.pos.y;
-  {  // protagonista pixel-art 16×16 (Explorador del Farol): espejado según dirección y gravedad
+  {  // protagonista pixel-art 16×16 (según héroe): espejado según dirección y gravedad
     const float d = sim.down();
     const bool inv = sim.gravity_flipped();
     const bool dashing = sim.dash_ticks() > 0;
-    if (dashing) {  // estela ígnea detrás del Explorador al embestir
+    const int h_col = hero_sprite_col_offset(sim.hero());
+    if (dashing) {  // estela ígnea detrás del protagonista al embestir
       const float dir = float(sim.dash_dir());
-      push_sprite(v, std::round(px - dir * 8.f), std::round(py - 2.f * d), 1, 2,
+      push_sprite(v, std::round(px - dir * 8.f), std::round(py - 2.f * d), h_col + 1, 2,
                   sim.player_facing() < 0, inv, 0.70f, 0.34f, 0.16f, 0.08f);
-      push_sprite(v, std::round(px - dir * 4.f), std::round(py - 2.f * d), 2, 2,
+      push_sprite(v, std::round(px - dir * 4.f), std::round(py - 2.f * d), h_col + 2, 2,
                   sim.player_facing() < 0, inv, 1.05f, 0.52f, 0.22f, 0.18f);
     }
     const bool blink = sim.invuln() > 0 && (sim.invuln() / 2) % 2 == 1;
@@ -395,8 +399,20 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     const float tg = blink ? 0.55f : (dashing ? 0.90f : (inv ? 0.85f : 1.0f));
     const float tb = blink ? 0.70f : (dashing ? 0.55f : (inv ? 1.08f : 1.0f));
     const float boost = dashing ? 0.38f : (sim.double_jump_flash() > 0 ? 0.25f : 0.05f);
-    push_sprite(v, std::round(px), std::round(py - 2.f * d), sim.player_anim_frame(), int(sim.player_anim()),
+    push_sprite(v, std::round(px), std::round(py - 2.f * d), h_col + sim.player_anim_frame(), int(sim.player_anim()),
                 sim.player_facing() < 0, inv, tr, tg, tb, boost);
+  }
+  if (preview_hero_sel >= 0) {
+    const int frame = int(time_s * 4.f) & 3;
+    for (int h = 0; h < kHeroCount; ++h) {
+      const bool sel = (h == preview_hero_sel);
+      const float tr = sel ? 1.08f : 0.72f;
+      const float tg = sel ? 1.04f : 0.72f;
+      const float tb = sel ? 0.96f : 0.78f;
+      const float boost = sel ? 0.25f : 0.06f;
+      push_sprite(v, std::round(v.cam_x + 70.f), std::round(v.cam_y + 62.f + float(h) * 26.f),
+                  h * 4 + frame, int(PlayerAnim::Idle), false, false, tr, tg, tb, boost);
+    }
   }
   for (const auto& w : sim.water()) {  // hasta kMaxWaterBodies; solo los que tocan la vista
     if (v.water_count >= kMaxWaterBodies) break;

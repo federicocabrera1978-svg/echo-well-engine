@@ -3,6 +3,7 @@
 // + cuerpos de agua Hooke (sección WATER del mapa).
 #pragma once
 #include "game/boss_victory.hpp"
+#include "game/hero.hpp"
 #include "game/scene.hpp"
 #include "game/wind.hpp"
 #include "physics/verlet.hpp"
@@ -234,6 +235,8 @@ class Sim {
   bool wind_enabled() const { return wind_.enabled(); }
   void set_wind_enabled(bool e) { wind_.set_enabled(e); }
   // Estado visual de animación del protagonista (sin GL).
+  HeroKind hero() const { return hero_; }
+  void set_hero(HeroKind h) { hero_ = sanitize_hero(uint8_t(h)); }
   int player_facing() const { return facing_; }  // +1 derecha, -1 izquierda
   PlayerAnim player_anim() const { return anim_; }
   int player_anim_frame() const { return anim_frame_; }  // 0..3
@@ -299,6 +302,7 @@ class Sim {
   float boss_burst_x_ = 0, boss_burst_y_ = 0;
   BossVictorySeq victory_;
   WindField wind_;
+  HeroKind hero_ = HeroKind::Lantern;
   bool was_grounded_ = false;
   int facing_ = 1;
   PlayerAnim anim_ = PlayerAnim::Idle;

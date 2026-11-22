@@ -11,9 +11,11 @@
 // Payload v2 = v1 + controles: u8 n (= kBindCount), n × (u16 key0, u16 key1, u8 pad0, u8 pad1)
 //   (0xFFFF / 0xFF = sin asignar; tiene que pasar Bindings::valid()).
 // Payload v3 = v2 + habilidades: u32 abilities (bitmask kAbility*; bits desconocidos = BadField).
-//   v1 y v2 se siguen leyendo (v1: controles por defecto, abilities = 0; v2: abilities = 0);
-//   siempre se escribe v3.
+// Payload v4 = v3 + héroe: u8 hero (0..kHeroCount-1).
+//   v1, v2 y v3 se siguen leyendo (v1: controles por defecto, abilities = 0; v2: abilities = 0;
+//   v3: hero = HeroKind::Lantern); siempre se escribe v4.
 #include "game/bindings.hpp"
+#include "game/hero.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -24,7 +26,7 @@ namespace ew::game {
 
 class Sim;
 
-inline constexpr uint16_t kSaveVersion = 3;  // escribe v3, lee v1, v2 y v3
+inline constexpr uint16_t kSaveVersion = 4;  // escribe v4, lee v1, v2, v3 y v4
 inline constexpr std::size_t kSaveMaxMapName = 64;
 inline constexpr std::size_t kSaveMaxEntities = 4096;
 inline constexpr std::size_t kSaveMaxBytes = 4096;  // un save válido nunca pasa de esto
@@ -40,7 +42,8 @@ struct SaveData {
   float volume = 0.8f;
   std::vector<uint8_t> active;     // Entity::active por entidad (0/1)
   Bindings bind = Bindings::defaults();  // controles (v2+)
-  uint32_t abilities = 0;          // bitmask kAbility* (v3)
+  uint32_t abilities = 0;          // bitmask kAbility* (v3+)
+  HeroKind hero = HeroKind::Lantern;  // héroe elegido (v4+)
 };
 
 std::vector<uint8_t> encode_save(const SaveData& d);

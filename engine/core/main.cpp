@@ -1,5 +1,5 @@
 // echo_engine: ventana + loop + Deferred 320x180 sobre un mapa .ewmap.
-//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--next-map FILE] [--atlas FILE.png] [--sprites FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--nosound] [--nogamepad] [--nosave] [--version]
+//   echo_engine [--scale N] [--frames N] [--shaders DIR] [--map FILE] [--next-map FILE] [--atlas FILE.png] [--sprites FILE.png] [--dump FILE.ppm] [--demo] [--start X Y] [--hero farol|zarigueya|castor] [--nosound] [--nogamepad] [--nosave] [--version]
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
@@ -100,7 +100,9 @@ void poll_gamepad(bool demo, bool nogamepad, bool hanging, double now_in, const 
 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
-  bool demo = false, has_start = false, nosound = false, nogamepad = false, nosave = false, explicit_map = false;
+  bool demo = false, has_start = false, has_hero = false, nosound = false, nogamepad = false, nosave = false,
+       explicit_map = false;
+  ew::game::HeroKind cli_hero = ew::game::HeroKind::Lantern;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, sprites_path,
               next_map_override;
@@ -120,6 +122,13 @@ int main(int argc, char** argv) {
     else if (a == "--atlas" && i + 1 < argc) atlas_path = argv[++i];
     else if (a == "--sprites" && i + 1 < argc) sprites_path = argv[++i];
     else if (a == "--demo") demo = true;
+    else if (a == "--hero" && i + 1 < argc) {
+      if (!ew::game::hero_from_arg(argv[++i], cli_hero)) {
+        std::fprintf(stderr, "echo_engine: héroe desconocido '%s' (usa farol|zarigueya|castor)\n", argv[i]);
+        return 1;
+      }
+      has_hero = true;
+    }
     else if (a == "--nosound") nosound = true;
     else if (a == "--nogamepad") nogamepad = true;
     else if (a == "--nosave") nosave = true;
@@ -201,6 +210,12 @@ int main(int argc, char** argv) {
     std::vector<std::string> logs;
     flow.init_save(nosave, demo, has_start, max_frames, explicit_dir, menu, &logs);
     for (const auto& line : logs) std::printf("%s\n", line.c_str());
+  }
+  if (has_hero) {
+    menu.set_hero(cli_hero);
+    flow.sim().set_hero(cli_hero);
+  } else if (!demo && !max_frames && !has_start && !menu.has_save()) {
+    menu.open_hero_select(true);
   }
 
   int frames = 0, sim_steps = 0;
@@ -352,6 +367,7 @@ int main(int argc, char** argv) {
     mixer.set_gain(menu.volume_setting());
     mixer.set_mute(menu.muted());
     flow.sim().set_wind_enabled(menu.foliage());
+    flow.sim().set_hero(menu.hero());
 
     const double now = glfwGetTime();
     if (menu.open() || dialogue.open()) {
@@ -409,7 +425,8 @@ int main(int argc, char** argv) {
 
     ew::game::FrameData v;
     const bool overlay_open = dialogue.open() || menu.open() || end_screen.open();
-    ew::game::build_world_frame(v, flow.scene(), flow.sim(), float(now), demo, overlay_open);
+    const int preview_hero = menu.in_hero_select() ? menu.hero_cursor() : -1;
+    ew::game::build_world_frame(v, flow.scene(), flow.sim(), float(now), demo, overlay_open, false, preview_hero);
     const auto hev = ew::game::populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud,
                                                          EW_VERSION);
     if (hev.new_item) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
