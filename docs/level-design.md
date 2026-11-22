@@ -262,6 +262,23 @@ backdrops:
   (`fondos/sala*.ppm`, `fondos/level2_*.ppm`, `fondos/level3_*.ppm`, `fondos/world_*.ppm`, excluyendo
   `*_vacio.ppm`) como artifact `fondos-salas`.
 
+## Iluminación por bioma, farol y luces locales (`lighting.hpp`)
+
+El sistema multipunto sin GL (`engine/game/lighting.hpp`, invocado al final de `build_world_frame` en `engine/game/frame_view.hpp` y cubierto por el test `room_lighting` en `tests/lighting_test.cpp`) combina la luz principal del protagonista con hasta **`kMaxPointLights = 12`** luces puntuales por frame (`FrameData::point_light_count`, `point_light_pos`, `point_light_col`):
+
+- **Oscuridad ambiental (`biome_darkness`):** toma el `BackdropTheme` del chunk activo y fija `FrameData::ambient_darkness`:
+  - `0.85` en biomas profundos (`Abismo`, `Guarida`, `Cripta`).
+  - `0.68` en biomas intermedios (`Pozo`, `Raices`, `Grieta`, `Cueva`, `Invertido`, `Arena`).
+  - `0.48` en biomas tenues/arquitectónicos (`Cisterna`, `Nido`, `Engranajes`, `Santuario`).
+  - `0.0` en `Vacio`.
+- **Farol principal del héroe (`collect_room_lights`):** posiciona `light_x` / `light_y` adelantado frente al jugador (`player.pos.x + player_facing * 4 px`, `player.pos.y - 8 * down px`) con radio `lantern_radius = 125 px` para iluminar paredes, pisos y relieves cercanos.
+- **Luces puntuales (`PointLightKind`, descartadas a `> 48 px` fuera de cámara):**
+  1. **Entidades dinámicas (prioridad):** las bolas de fuego del Wyrm (`sim.fireballs()`) emiten luz **`Lava`** (`r = 44 px`); los `checkpoint` y `switch`/`flood_switch` emiten luz **`Shrine`** (cian → verde al activar el altar; ámbar → verde al accionar la palanca); los `collectible` y reliquias (`ability_double_jump`, `ability_dash`, `ability_wall_climb`) sin recoger emiten luz **`Crystal`** (`r = 32 px`).
+  2. **Luces ambientales deterministas por bioma (vecindario 3×3, siempre en aire):**
+     - **`Torch`:** hasta 3 antorchas titilantes por chunk (`r = 58 px`, cálido) junto a muros o techos en `Pozo`, `Cripta`, `Cueva`, `Santuario`, `Abismo` y `Arena`.
+     - **`Crystal`:** hasta 2 cristales bioluminiscentes por chunk (`r = 46 px`, alternando cian y violeta) anclados en techos o pisos en `Cripta`, `Santuario`, `Abismo`, `Cisterna`, `Invertido` y `Raices`.
+     - **`Lava`:** hasta 2 focos de lava/brasas por chunk (`r = 54 px`, rojo-anaranjado) sobre el suelo bajo en `Grieta`, `Guarida` y `Arena`.
+
 ## Vegetación, brisa e interacción ambiental
 
 - **Pasto pixel-art con variantes, hongos y flores (`assets/shaders/gbuffer_map.frag`):** sobre pisos y repisas sólidas (`floor_1`, despejado por `near_mech` en `|dx| ≤ 11 px, |dy| ≤ 18 px` alrededor de altares `shape 2` y palancas `shape 3`) se dibujan matas cada 5 px con claros entre sí y 3 variantes deterministas de altura: cortas (`2–3 px`), medianas arqueadas (`4–5 px`) y juncos altos (`6–8 px`), usando paletas de 3 tonos según el tema del chunk (verde musgo en `pozo`/`raices`/`nido`/`cueva`/`engranajes`, verde-azulado espectral en `cripta`/`santuario`/`abismo`/`cisterna`, oliva-ocre con punta ámbar en `grieta`/`guarida`/`arena` e índigo-lavanda en `invertido`). En los temas de catacumbas/subterráneos (`cripta`, `santuario`, `abismo`, `cisterna`, `raices`, `grieta`) brotan **hongos** chicos (tallo `2–3 px` y sombrero cian espectral u ocre con brillo tenue), mientras que en el resto de los biomas aparecen **flores silvestres** mecidas por el viento.
