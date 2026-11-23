@@ -142,6 +142,19 @@ int main(int argc, char** argv) {
     CHECK(has_light_kind(v_guar, PointLightKind::Lava));
     CHECK(check_lights_in_air_and_culled(v_guar, scene));
 
+    // Zonas nuevas: (0,3) Aqueduct (0.68) y (0,4) Tower (0.48) con cristales.
+    for (int ncy : {3, 4}) {
+      scene.follow(160.f, float(ncy) * 184.f + 92.f);
+      CHECK(scene.chunk_x() == 0 && scene.chunk_y() == ncy);
+      FrameData vn;
+      collect_room_lights(vn, scene, sim, 1.6f);
+      const float expect_dark = (ncy == 3) ? biome_darkness(BT::Aqueduct) : biome_darkness(BT::Tower);
+      CHECK(std::fabs(vn.ambient_darkness - expect_dark) < 1e-4f);
+      CHECK(vn.point_light_count > 0 && vn.point_light_count <= kMaxPointLights);
+      CHECK(has_light_kind(vn, PointLightKind::Crystal));
+      CHECK(check_lights_in_air_and_culled(vn, scene));
+    }
+
     // Checkpoint inactivo (cian) vs activo (verde santuario).
     std::size_t ck_idx = scene.entities().size();
     for (std::size_t i = 0; i < scene.entities().size(); ++i) {

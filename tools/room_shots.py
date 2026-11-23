@@ -72,6 +72,22 @@ LEVELS = [
         ("world_c52", 1888, 456),
         ("world_c62", 2176, 520),
         ("world_c72", 2480, 520),
+        ("world_c03", 160, 704),
+        ("world_c13", 480, 704),
+        ("world_c23", 800, 704),
+        ("world_c33", 1120, 704),
+        ("world_c43", 1440, 704),
+        ("world_c53", 1760, 704),
+        ("world_c63", 2080, 704),
+        ("world_c73", 2400, 704),
+        ("world_c04", 160, 888),
+        ("world_c14", 480, 888),
+        ("world_c24", 800, 888),
+        ("world_c34", 1120, 888),
+        ("world_c44", 1440, 888),
+        ("world_c54", 1760, 888),
+        ("world_c64", 2080, 888),
+        ("world_c74", 2400, 888),
     ]),
 ]
 HDR = b"P6\n320 180\n255\n"
@@ -137,7 +153,11 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     win = sys.platform == "win32"
     exe = build / ("echo_engine.exe" if win else "echo_engine")
+    if not exe.is_file():
+        exe = build / "Release" / ("echo_engine.exe" if win else "echo_engine")
     ewmapc = build / ("ewmapc.exe" if win else "ewmapc")
+    if not ewmapc.is_file():
+        ewmapc = build / "Release" / ("ewmapc.exe" if win else "ewmapc")
 
     shots = []
     for map_name, rooms in LEVELS:

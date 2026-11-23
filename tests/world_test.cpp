@@ -1,8 +1,8 @@
-// Test sin GL (Etapa 9 Fase B): mundo Metroidvania unificado 8x3 (`world.ewmap`).
-// Verifica estructura 8x3 (24 chunks), 5 huevos, 3 bosses, contención de agua,
+// Test sin GL (Etapa 9 Fase B): mundo Metroidvania unificado 8x5 (`world.ewmap`).
+// Verifica estructura 8x5 (40 chunks), 6 huevos, 3 bosses, contención de agua,
 // atajos unidireccionales (owd_wyrm_cat_l, owd_wyrm_pozo), ascensores
-// (elev_cat_pozo, elev_wyrm_pozo), caída tras Boss 1, derrota del Wyrm -> goal
-// y persistencia en save.ewsv.
+// (elev_cat_pozo, elev_wyrm_pozo), caída tras Boss 1, derrota del Wyrm -> goal,
+// zonas nuevas (Archivo Sumergido cy=3, Torre de los Ecos cy=4) y persistencia en save.ewsv.
 #include "audio/sfx.hpp"
 #include "game/campaign.hpp"
 #include "game/end_screen.hpp"
@@ -77,17 +77,25 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // --- 1) Invariantes estructurales 8x3 (24 chunks), 6 huevos, 3 bosses, contención de agua ---
-  CHECK(scene.width_px() == 2560 && scene.height_px() == 552);
-  CHECK(scene.map().header().map_w_chunks == 8 && scene.map().header().map_h_chunks == 3);
-  CHECK(scene.map().chunk_count() == 24);
-  CHECK(scene.map().backdrops().size() == 24);
+  // --- 1) Invariantes estructurales 8x5 (40 chunks), 6 huevos, 3 bosses, contención de agua ---
+  CHECK(scene.width_px() == 2560 && scene.height_px() == 920);
+  CHECK(scene.map().header().map_w_chunks == 8 && scene.map().header().map_h_chunks == 5);
+  CHECK(scene.map().chunk_count() == 40);
+  CHECK(scene.map().backdrops().size() == 40);
 
   Sim sim(scene);
   CHECK(sim.collectible_total() == 6 && sim.collected() == 0);
   CHECK(sim.boss_count() == 3 && !sim.bosses_defeated());
-  CHECK(sim.rope_count() == 4 && sim.water().size() == 6);
+  CHECK(sim.rope_count() == 6 && sim.water().size() == 8);
   CHECK(sim.mover_count() == 7);
+
+  // Zonas nuevas: pozos D1/D2 abiertos y biomas aqueduct/tower en cy=3/cy=4.
+  CHECK(!scene.solid_tile(53, 66) && !scene.solid_tile(53, 68));       // D1: (1,2) -> (1,3)
+  CHECK(!scene.solid_tile(285, 89) && !scene.solid_tile(285, 94));     // D2: (7,3) -> (7,4)
+  CHECK(scene.backdrop(0, 3).theme == uint16_t(ew::map::BackdropTheme::Aqueduct));
+  CHECK(scene.backdrop(0, 4).theme == uint16_t(ew::map::BackdropTheme::Tower));
+  CHECK(find_name(scene, "aq_ck_entrada") && find_name(scene, "aq_ck_presa") && find_name(scene, "tw_ck"));
+  CHECK(find_name(scene, "aq_lore_archivo") && find_name(scene, "aq_lore_presa") && find_name(scene, "tw_lore_campana"));
 
   // Contención de las 6 piletas (misma invariante que water_test).
   for (const auto& b : sim.water()) {
@@ -111,6 +119,15 @@ int main(int argc, char** argv) {
     CHECK(s_chk.chunk_visited(cx, cy));
     for (int f = 0; f < 5; ++f) sim_chk.step({});
     CHECK(sim_chk.deaths() == 0);
+  }
+
+  // --- 1b) Pozo D1: caer desde el Santuario (1,2) al Archivo Sumergido (1,3) ---
+  {
+    sim.reset();
+    place(sim, 428.f, 520.f);
+    for (int i = 0; i < 150; ++i) sim.step({});
+    CHECK(sim.deaths() == 0);
+    CHECK(scene.chunk_y() == 3);
   }
 
   const auto* boss1 = find_name(scene, "boss_pozo");

@@ -163,6 +163,14 @@ int main(int argc, char** argv) {
   CHECK(bio_sim.scene().chunk_x() == 1);
   CHECK(game::music_zone_for(bio_scene, bio_sim) == MusicZone::Tower);
 
+  // --- 5) Zonas musicales de los biomas nuevos dentro de world.ewmap ---------
+  place(world_sim, 160.f, 3.f * 184.f + 92.f);  // (0,3) Archivo Sumergido -> Aqueduct
+  CHECK(world_sim.scene().chunk_x() == 0 && world_sim.scene().chunk_y() == 3);
+  CHECK(game::music_zone_for(world_scene, world_sim) == MusicZone::Aqueduct);
+  place(world_sim, 160.f, 4.f * 184.f + 92.f);  // (0,4) Torre de los Ecos -> Tower
+  CHECK(world_sim.scene().chunk_x() == 0 && world_sim.scene().chunk_y() == 4);
+  CHECK(game::music_zone_for(world_scene, world_sim) == MusicZone::Tower);
+
   std::puts("audio_feel ok");
   return 0;
 }

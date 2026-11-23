@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Genera el mapa unificado Metroidvania 8x3 `assets/maps/src/world.yaml`.
+"""Genera el mapa unificado Metroidvania 8x5 `assets/maps/src/world.yaml`.
 
 Uso:
   python3 tools/gen_world.py -o assets/maps/src/world.yaml
   python3 tools/gen_world.py --check assets/maps/src/world.yaml
 
-Estructura 8x3 chunks (320x69 tiles = 2560x552 px, 24 pantallas):
+Estructura 8x5 chunks (320x115 tiles = 2560x920 px, 40 pantallas):
   - Fila cy=0 (Zona 1: El Pozo, cx=0..7): recorrido de slice.yaml sin `goal`, con el
     atajo de Zona 3 en la alcoba de (1,0), el eje del ascensor de Zona 2 en (6,0), y
     el pozo de caída tras boss_pozo en (7,0) hacia la pileta de (7,1).
@@ -14,6 +14,10 @@ Estructura 8x3 chunks (320x69 tiles = 2560x552 px, 24 pantallas):
   - Zona 3 (La Guarida del Wyrm, cx=0..3, cy=1..2): progresión derecha->izquierda
     desde door_boss2 (x=1280) hasta el jefe final `wyrm` y `goal` en (0,1), además del
     atajo directo elev_wyrm_pozo + owd_wyrm_pozo en (1,1)<->(1,0).
+  - Zona 4 (Archivo Sumergido, cy=3, cx=0..7): corredor acuático bajo la Guarida,
+    con el pozo D1 desde el Santuario (1,2), piletas, checkpoints y lore.
+  - Zona 5 (Torre de los Ecos, cy=4, cx=0..7): campanario profundo bajo el Archivo,
+    con el pozo D2 desde (7,3), checkpoint y lore.
 """
 from __future__ import annotations
 
@@ -41,9 +45,9 @@ def build_world_yaml() -> str:
     dialogs: list[str] = []
     guides: list[str] = []
 
-    # --- Estructura global 8x3 (320x69 tiles) ---
+    # --- Estructura global 8x5 (320x115 tiles) ---
     rects += [
-        "# Estructura general 8x3 (320x69 tiles = 2560x552 px)",
+        "# Estructura general 8x5 (320x115 tiles = 2560x920 px)",
         r("COL", 0, 20, 320, 6, 1),
         r("VIS", 0, 20, 320, 3, 17),
         r("VIS", 0, 23, 320, 3, 15),
@@ -52,10 +56,16 @@ def build_world_yaml() -> str:
         r("VIS", 0, 46, 320, 3, 15),
         r("COL", 0, 66, 320, 3, 1),
         r("VIS", 0, 66, 320, 3, 17),
-        r("COL", 0, 0, 1, 69, 1),
-        r("VIS", 0, 0, 1, 69, 17),
-        r("COL", 319, 0, 1, 69, 1),
-        r("VIS", 319, 0, 1, 69, 17),
+        # Zonas nuevas: Archivo Sumergido (cy=3) y Torre de los Ecos (cy=4)
+        r("COL", 0, 89, 320, 6, 1),
+        r("VIS", 0, 89, 320, 3, 17),
+        r("VIS", 0, 92, 320, 3, 15),
+        r("COL", 0, 112, 320, 3, 1),
+        r("VIS", 0, 112, 320, 3, 17),
+        r("COL", 0, 0, 1, 115, 1),
+        r("VIS", 0, 0, 1, 115, 17),
+        r("COL", 319, 0, 1, 115, 1),
+        r("VIS", 319, 0, 1, 115, 17),
     ]
 
     # --- Zona 1 (cy = 0, cx = 0..7): El Pozo (slice con conectores de mundo) ---
@@ -317,6 +327,30 @@ def build_world_yaml() -> str:
         r("META", 2, 40, 4, 3, 3),
     ]
 
+    # --- Zona 4 (cy=3): Archivo Sumergido + Zona 5 (cy=4): Torre de los Ecos ---
+    rects += [
+        "",
+        "  # --- Zonas nuevas (cy=3 Aqueduct, cy=4 Tower) ---",
+        # Pozo D1: descenso (1,2) -> (1,3) por el piso del Santuario (tiles 52..54, y 66..68)
+        r("COL", 52, 66, 3, 3, 0),
+        r("VIS", 52, 66, 3, 3, 0),
+        # Pozo D2: descenso (7,3) -> (7,4) (tiles 284..286, y 89..94)
+        r("COL", 284, 89, 3, 6, 0),
+        r("VIS", 284, 89, 3, 6, 0),
+        # Pileta W1 (entrada del Archivo, bajo D1): tiles 52..60 + muros 51/61
+        r("META", 52, 86, 9, 3, 2),
+        r("COL", 51, 86, 1, 3, 1),
+        r("VIS", 51, 86, 1, 3, 17),
+        r("COL", 61, 86, 1, 3, 1),
+        r("VIS", 61, 86, 1, 3, 17),
+        # Pileta W2 (decorado de la presa): tiles 204..209 + muros 203/210
+        r("META", 204, 86, 6, 3, 2),
+        r("COL", 203, 86, 1, 3, 1),
+        r("VIS", 203, 86, 1, 3, 17),
+        r("COL", 210, 86, 1, 3, 1),
+        r("VIS", 210, 86, 1, 3, 17),
+    ]
+
     # --- Entidades ---
     entities += [
         "# Zona 1 (El Pozo)",
@@ -395,6 +429,14 @@ def build_world_yaml() -> str:
         ent("wyrm", "boss_dragon", 176, 344),
         ent("door_wyrm_exit", "door", 56, 320),
         ent("goal", "goal", 32, 336),
+        "",
+        "  # Zona 4 (Archivo Sumergido) y Zona 5 (Torre de los Ecos)",
+        ent("aq_ck_entrada", "checkpoint", 48, 704),
+        ent("aq_lore_archivo", "lore", 800, 704),
+        ent("aq_lore_presa", "lore", 1376, 704),
+        ent("aq_ck_presa", "checkpoint", 1968, 704),
+        ent("tw_lore_campana", "lore", 800, 888),
+        ent("tw_ck", "checkpoint", 1376, 888),
     ]
 
     links += [
@@ -414,6 +456,8 @@ def build_world_yaml() -> str:
         "  - {x: 1352, y: 24,  segments: 16, seg_len: 6}",
         "  - {x: 2372, y: 400, segments: 15, seg_len: 6}",
         "  - {x: 704,  y: 208, segments: 11, seg_len: 6}",
+        "  - {x: 428,  y: 528, segments: 28, seg_len: 6}",
+        "  - {x: 2284, y: 712, segments: 30, seg_len: 6}",
     ]
 
     water += [
@@ -423,6 +467,8 @@ def build_world_yaml() -> str:
         "  - {x: 2072, y: 504, w: 80,  h: 24, stiffness: 0.02, damping: 0.04}",
         "  - {x: 984,  y: 504, w: 48,  h: 24, stiffness: 0.02, damping: 0.04}",
         "  - {x: 664,  y: 504, w: 64,  h: 24, stiffness: 0.02, damping: 0.04}",
+        "  - {x: 416,  y: 688, w: 72,  h: 24, stiffness: 0.02, damping: 0.04}",
+        "  - {x: 1632, y: 688, w: 48,  h: 24, stiffness: 0.02, damping: 0.04}",
     ]
 
     bd_grid = [
@@ -453,6 +499,24 @@ def build_world_yaml() -> str:
         (5, 2, "engranajes", 107),
         (6, 2, "pozo", 106),
         (7, 2, "cisterna", 105),
+        # cy = 3 (Archivo Sumergido / Aqueduct)
+        (0, 3, "aqueduct", 300),
+        (1, 3, "aqueduct", 301),
+        (2, 3, "aqueduct", 302),
+        (3, 3, "aqueduct", 303),
+        (4, 3, "aqueduct", 304),
+        (5, 3, "aqueduct", 305),
+        (6, 3, "aqueduct", 306),
+        (7, 3, "aqueduct", 307),
+        # cy = 4 (Torre de los Ecos / Tower)
+        (0, 4, "tower", 400),
+        (1, 4, "tower", 401),
+        (2, 4, "tower", 402),
+        (3, 4, "tower", 403),
+        (4, 4, "tower", 404),
+        (5, 4, "tower", 405),
+        (6, 4, "tower", 406),
+        (7, 4, "tower", 407),
     ]
     for cx, cy, theme, seed in bd_grid:
         backdrops.append(f"  - {{cx: {cx}, cy: {cy}, theme: {theme}, seed: {seed}}}")
@@ -474,6 +538,9 @@ def build_world_yaml() -> str:
         '  - {entity: egg_wyrm_2,       trigger: pickup,   speaker: "ECO: ULTIMO HUEVO",           text: "DOS ESCAMAS, UNA PROMESA:/LA NIDADA VUELVE TRAS EL WYRM"}',
         '  - {entity: rel_wall_climb,   trigger: pickup,   speaker: "RELIQUIA: GARRAS DEL POZO",   text: "ADQUIRISTE ESCALADA EN PARED!/DESLIZATE Y SALTA ENTRE MUROS.|VUELVE AL INICIO DE EL POZO:/SU TECHO ESCONDE UN SECRETO!"}',
         '  - {entity: lore_abismo,      trigger: interact, speaker: "ESTELA DEL PUENTE ANTIGUO",   text: "ANTES DEL POZO, LOS ALADOS/CRUZABAN ESTE PUENTE ANTIGUO.|LA NIDADA DESPERTARA CUANDO/LOS TRES GUARDIANES CAIGAN."}',
+        '  - {entity: aq_lore_archivo,  trigger: interact, speaker: "ESTELA DEL ARCHIVO",         text: "BAJO LA GUARIDA DUERME/UN ARCHIVO SUMERGIDO.|SUS TUBOS AUN RESPIRAN/AGUA ANTIGUA Y FRIA."}',
+        '  - {entity: aq_lore_presa,    trigger: interact, speaker: "ESTELA DE LA PRESA",         text: "LA PRESA CONTIENE EL OLVIDO./NO TODO SELLO ES DE PIEDRA.|SIGUE EL ECO HASTA EL FONDO/DE LA TORRE DE LAS CAMPANAS."}',
+        '  - {entity: tw_lore_campana,  trigger: interact, speaker: "CAMPANA MAYOR",               text: "AQUI SUENAN LAS CAMPANAS/DE UNA ERA ANTERIOR AL POZO.|SU ECO GUARDA EL NOMBRE/DE LA PRIMERA NIDADA."}',
     ]
     dialogs = [d.rstrip() for d in dialogs]
 
@@ -490,13 +557,15 @@ def build_world_yaml() -> str:
         "  - {target: rel_dash,        style: ability,       below_y: 184}",
         "  - {target: sw_seal3,        gate: door_wyrm_seal, below_y: 184}",
         "  - {target: wyrm,            gate: door_wyrm_exit, below_y: 184}",
+        "  - {kind: shaft, x: 428,  up_x: 428,  split_y: 552, y_top: 528, y_bot: 712}",
+        "  - {kind: shaft, x: 2284, up_x: 2284, split_y: 736, y_top: 712, y_bot: 896}",
     ]
 
     lines = [
-        "# world.yaml — Mundo Metroidvania unificado (8x3 chunks = 320x69 tiles = 2560x552 px).",
+        "# world.yaml — Mundo Metroidvania unificado (8x5 chunks = 320x115 tiles = 2560x920 px).",
         "# Generado automáticamente por tools/gen_world.py — NO editar a mano.",
         "name: world",
-        "size_chunks: [8, 3]",
+        "size_chunks: [8, 5]",
         "",
         "fill:",
         "  VIS: 0",
@@ -542,7 +611,7 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(generated, encoding="utf-8", newline="\n")
-        print(f"gen_world: {args.output} (8x3 chunks, {len(generated)} bytes)")
+        print(f"gen_world: {args.output} (8x5 chunks, {len(generated)} bytes)")
 
     if args.check:
         if not args.check.is_file():
