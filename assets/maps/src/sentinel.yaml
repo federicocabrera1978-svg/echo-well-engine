@@ -1,0 +1,30 @@
+# Arena del Centinela del Archivo (Boss intermedio).
+# Arena cerrada de 1 chunk (40x23 tiles = 320x184 px).
+# Checkpoint de entrada a la izquierda, Centinela patrullando en el centro,
+# puerta linkeada que se abre al vencerlo y salida/meta detrás.
+name: sentinel
+size_chunks: [1, 1]
+rects:
+  - {layer: COL, x: 0, y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 40, h: 3, tile: 17}
+  - {layer: COL, x: 0, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 0, y: 0, w: 1, h: 23, tile: 15}
+  - {layer: COL, x: 39, y: 0, w: 1, h: 23, tile: 1}
+  - {layer: VIS, x: 39, y: 0, w: 1, h: 23, tile: 15}
+  # Muro de cierre previo a la salida (tile 34): sólido arriba, puerta en filas 17-19
+  - {layer: COL, x: 34, y: 0, w: 1, h: 17, tile: 1}
+  - {layer: VIS, x: 34, y: 0, w: 1, h: 17, tile: 15}
+  - {layer: META, x: 35, y: 17, w: 4, h: 3, tile: 3}
+entities:
+  - {name: spawn, type: player_spawn, x: 24, y: 152}
+  - {name: ck_sentinel, type: checkpoint, x: 44, y: 152}
+  - {name: lore_sentinel, type: lore, x: 68, y: 152}
+  - {name: boss_sentinel, type: boss_sentinel, x: 176, y: 160}
+  - {name: door_exit, type: door, x: 272, y: 136}
+  - {name: goal, type: goal, x: 296, y: 152}
+links:
+  - {from: boss_sentinel, to: door_exit}
+dialogs:
+  - {entity: lore_sentinel, trigger: interact, speaker: "ESTELA SUMERGIDA", text: "EL CENTINELA DEL ARCHIVO/VIGILA LA SALIDA ESTE."}
+backdrops:
+  - {cx: 0, cy: 0, theme: aqueduct, seed: 404}

@@ -407,7 +407,7 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     v.boss_rect[std::size_t(k * 4 + 1)] = std::round(b.y);
     v.boss_rect[std::size_t(k * 4 + 2)] = b.width();
     v.boss_rect[std::size_t(k * 4 + 3)] = b.height();
-    v.boss_state[std::size_t(k * 4 + 0)] = b.dragon ? 2.f : (b.guardian2 ? 1.f : 0.f);
+    v.boss_state[std::size_t(k * 4 + 0)] = b.dragon ? 2.f : (b.sentinel ? 3.f : (b.guardian2 ? 1.f : 0.f));
     v.boss_state[std::size_t(k * 4 + 1)] = float(b.dir);
     v.boss_state[std::size_t(k * 4 + 2)] = b.defeated ? 1.f : float(b.phase);
     v.boss_state[std::size_t(k * 4 + 3)] = float(b.hits);

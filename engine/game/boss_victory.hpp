@@ -21,7 +21,7 @@ struct BossVictoryConfig {
   int particle_count = 14;     // chispas radiales CRT
 };
 
-enum class BossKind : uint8_t { Watcher = 0, Guardian2 = 1, Wyrm = 2 };
+enum class BossKind : uint8_t { Watcher = 0, Guardian2 = 1, Wyrm = 2, Sentinel = 3 };
 
 enum class VictoryPhase : uint8_t {
   Idle = 0,
@@ -43,6 +43,8 @@ struct BossVictoryDialog {
 // Diálogo de progresión al derrotar al boss de cada nivel (textos en story.hpp, fuente única).
 inline BossVictoryDialog boss_victory_dialog(BossKind kind) {
   switch (kind) {
+    case BossKind::Sentinel:
+      return {std::string(kVictorySentinelSpeaker), std::string(kVictorySentinelText)};
     case BossKind::Wyrm:
       return {std::string(kVictoryWyrmSpeaker), std::string(kVictoryWyrmText)};
     case BossKind::Guardian2:

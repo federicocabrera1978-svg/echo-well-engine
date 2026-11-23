@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     CHECK(has_dragon_lore);
   }
 
-  // Diálogos de victoria de los 3 bosses
+  // Diálogos de victoria de los bosses
   const struct {
     BossKind kind;
     std::string_view speaker;
@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
       {BossKind::Watcher, kVictoryWatcherSpeaker},
       {BossKind::Guardian2, kVictoryGuardian2Speaker},
       {BossKind::Wyrm, kVictoryWyrmSpeaker},
+      {BossKind::Sentinel, kVictorySentinelSpeaker},
   };
   for (const auto& b : bosses) {
     const BossVictoryDialog dlg = boss_victory_dialog(b.kind);

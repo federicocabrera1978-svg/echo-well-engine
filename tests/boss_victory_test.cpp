@@ -154,6 +154,10 @@ static int test_unit_sequence() {
     CHECK(dlg.text == expected.text);
     CHECK(seq.phase() == VictoryPhase::Done);
     CHECK(!seq.poll_dialog(dlg));
+
+    const auto sent_dlg = game::boss_victory_dialog(BossKind::Sentinel);
+    CHECK(sent_dlg.speaker == game::kVictorySentinelSpeaker);
+    CHECK(sent_dlg.text == game::kVictorySentinelText);
   }
 
   return 0;

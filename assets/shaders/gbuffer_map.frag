@@ -1323,14 +1323,14 @@ void main() {
     float tell = (phase == 1 || phase == 3) ? 1.0 : 0.0;
     float fx = floor(world.x - br.x) * dir;
     float fy = floor(world.y - (br.y - br.w));
-    if (kind < 2) {
-      // Coloso Acorazado (24×16 px): kind 0 = Carcelero Carmesí (Nivel 1), kind 1 = Arconte Abisal (Nivel 2)
-      if (abs(fx) <= 13.0 && fy >= -2.0 && fy < 16.0) {
+    if (kind != 2) {
+      // Coloso Acorazado / Centinela: kind 0 = Carcelero Carmesí, kind 1 = Arconte Abisal, kind 3 = Centinela Sumergido
+      if (abs(fx) <= 14.0 && fy >= -2.0 && fy < 18.0) {
         float stride = (phase == 0 || phase == 3) ? floor(sin(u_time * 12.0 + sign(fx) * 1.57) * 1.5) : 0.0;
-        vec3 arm_hi = kind == 1 ? vec3(0.42, 0.24, 0.58) : vec3(0.56, 0.16, 0.20);
-        vec3 arm_lo = kind == 1 ? vec3(0.18, 0.11, 0.28) : vec3(0.24, 0.08, 0.11);
-        vec3 trim   = kind == 1 ? vec3(0.75, 0.56, 0.95) : vec3(0.78, 0.48, 0.22);
-        vec3 glow_c = kind == 1 ? vec3(0.95, 0.38, 0.88) : vec3(1.0, 0.48, 0.14);
+        vec3 arm_hi = kind == 3 ? vec3(0.16, 0.46, 0.52) : (kind == 1 ? vec3(0.42, 0.24, 0.58) : vec3(0.56, 0.16, 0.20));
+        vec3 arm_lo = kind == 3 ? vec3(0.08, 0.22, 0.28) : (kind == 1 ? vec3(0.18, 0.11, 0.28) : vec3(0.24, 0.08, 0.11));
+        vec3 trim   = kind == 3 ? vec3(0.35, 0.85, 0.90) : (kind == 1 ? vec3(0.75, 0.56, 0.95) : vec3(0.78, 0.48, 0.22));
+        vec3 glow_c = kind == 3 ? vec3(0.40, 0.95, 0.88) : (kind == 1 ? vec3(0.95, 0.38, 0.88) : vec3(1.0, 0.48, 0.14));
         if (tell > 0.5) { arm_hi += vec3(0.22, 0.12, 0.08); glow_c = vec3(1.0, 0.85, 0.28); }
         bool drawn = false;
         vec3 col = arm_lo;
