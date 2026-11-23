@@ -249,10 +249,30 @@ rects:
   - {layer: META, x: 2  , y: 40, w: 4  , h: 3 , tile: 3}
 
   # --- Zonas nuevas (cy=3 Aqueduct, cy=4 Tower) ---
+  - {layer: COL , x: 72 , y: 66, w: 3  , h: 3 , tile: 0}
+  - {layer: VIS , x: 72 , y: 66, w: 3  , h: 3 , tile: 0}
   - {layer: COL , x: 52 , y: 66, w: 3  , h: 3 , tile: 0}
   - {layer: VIS , x: 52 , y: 66, w: 3  , h: 3 , tile: 0}
+  - {layer: COL , x: 51 , y: 69, w: 1  , h: 14, tile: 1}
+  - {layer: VIS , x: 51 , y: 69, w: 1  , h: 14, tile: 17}
+  - {layer: COL , x: 55 , y: 69, w: 1  , h: 14, tile: 1}
+  - {layer: VIS , x: 55 , y: 69, w: 1  , h: 14, tile: 17}
+  - {layer: COL , x: 52 , y: 75, w: 3  , h: 1 , tile: 3}
+  - {layer: VIS , x: 52 , y: 75, w: 3  , h: 1 , tile: 5}
+  - {layer: COL , x: 52 , y: 81, w: 3  , h: 1 , tile: 3}
+  - {layer: VIS , x: 52 , y: 81, w: 3  , h: 1 , tile: 5}
+  - {layer: COL , x: 275, y: 89, w: 3  , h: 6 , tile: 0}
+  - {layer: VIS , x: 275, y: 89, w: 3  , h: 6 , tile: 0}
   - {layer: COL , x: 284, y: 89, w: 3  , h: 6 , tile: 0}
   - {layer: VIS , x: 284, y: 89, w: 3  , h: 6 , tile: 0}
+  - {layer: COL , x: 283, y: 95, w: 1  , h: 13, tile: 1}
+  - {layer: VIS , x: 283, y: 95, w: 1  , h: 13, tile: 17}
+  - {layer: COL , x: 287, y: 95, w: 1  , h: 13, tile: 1}
+  - {layer: VIS , x: 287, y: 95, w: 1  , h: 13, tile: 17}
+  - {layer: COL , x: 284, y: 101, w: 3  , h: 1 , tile: 3}
+  - {layer: VIS , x: 284, y: 101, w: 3  , h: 1 , tile: 5}
+  - {layer: COL , x: 284, y: 106, w: 3  , h: 1 , tile: 3}
+  - {layer: VIS , x: 284, y: 106, w: 3  , h: 1 , tile: 5}
   - {layer: META, x: 52 , y: 86, w: 9  , h: 3 , tile: 2}
   - {layer: COL , x: 51 , y: 86, w: 1  , h: 3 , tile: 1}
   - {layer: VIS , x: 51 , y: 86, w: 1  , h: 3 , tile: 17}
@@ -265,8 +285,10 @@ rects:
   - {layer: VIS , x: 210, y: 86, w: 1  , h: 3 , tile: 17}
   - {layer: COL , x: 100, y: 69, w: 1  , h: 17, tile: 1}
   - {layer: VIS , x: 100, y: 69, w: 1  , h: 17, tile: 15}
-  - {layer: COL , x: 150, y: 95, w: 1  , h: 14, tile: 1}
-  - {layer: VIS , x: 150, y: 95, w: 1  , h: 14, tile: 15}
+  - {layer: COL , x: 248, y: 69, w: 1  , h: 17, tile: 1}
+  - {layer: VIS , x: 248, y: 69, w: 1  , h: 17, tile: 15}
+  - {layer: COL , x: 158, y: 95, w: 1  , h: 14, tile: 1}
+  - {layer: VIS , x: 158, y: 95, w: 1  , h: 14, tile: 15}
 
 entities:
 # Zona 1 (El Pozo)
@@ -347,12 +369,20 @@ entities:
   - {name: wyrm, type: boss_dragon, x: 176, y: 344}
   - {name: door_wyrm_exit, type: door, x: 56, y: 320}
   - {name: goal, type: goal, x: 32, y: 336}
+  - {name: lore_wyrm_seal, type: lore, x: 72, y: 336}
 
   # Zona 4 (Archivo Sumergido) y Zona 5 (Torre de los Ecos)
   - {name: aq_ck_entrada, type: checkpoint, x: 48, y: 704}
+  - {name: elev_archivo, type: elevator, x: 576, y: 704, w: 3, h: 1, to_x: 576, to_y: 520, speed: 56, pause: 0.5, tile: 6}
   - {name: aq_lore_archivo, type: lore, x: 800, y: 704}
   - {name: aq_lore_presa, type: lore, x: 1376, y: 704}
-  - {name: aq_ck_presa, type: checkpoint, x: 1968, y: 704}
+  - {name: aq_ck_presa, type: checkpoint, x: 1728, y: 704}
+  - {name: lore_sentinel, type: lore, x: 1768, y: 704}
+  - {name: boss_sentinel, type: boss_sentinel, x: 1880, y: 704}
+  - {name: door_sentinel, type: door, x: 1984, y: 688}
+  - {name: aq_ck_profundo, type: checkpoint, x: 2040, y: 704}
+  - {name: goal_archivo, type: goal, x: 2080, y: 704}
+  - {name: elev_torre, type: elevator, x: 2200, y: 888, w: 3, h: 1, to_x: 2200, to_y: 704, speed: 56, pause: 0.5, tile: 6}
   - {name: rb_aq_lid, type: reveal_block, x: 2272, y: 712}
   - {name: tw_lore_campana, type: lore, x: 800, y: 888}
   - {name: tw_ck, type: checkpoint, x: 1376, y: 888}
@@ -363,10 +393,11 @@ entities:
   - {name: egg_archivo, type: collectible, x: 840, y: 704}
   - {name: bat_torre_1, type: bat, x: 1000, y: 820}
   - {name: bat_torre_2, type: bat, x: 1680, y: 820}
-  - {name: sw_timed_torre, type: timed_switch, x: 1120, y: 888}
-  - {name: door_timed_torre, type: door, x: 1200, y: 872}
-  - {name: cr_torre, type: crystal, x: 1232, y: 880}
-  - {name: egg_torre, type: collectible, x: 1264, y: 888}
+  - {name: sw_timed_torre, type: timed_switch, x: 1320, y: 888}
+  - {name: door_timed_torre, type: door, x: 1264, y: 872}
+  - {name: cr_torre, type: crystal, x: 1224, y: 880}
+  - {name: egg_torre, type: collectible, x: 1160, y: 888}
+  - {name: sw_torre_exit, type: switch, x: 1120, y: 888}
 
 links:
   - {from: switch_start,  to: door_start}
@@ -378,7 +409,9 @@ links:
   - {from: boss_catacomb, to: door_boss2}
   - {from: sw_seal3,      to: door_wyrm_seal}
   - {from: wyrm,          to: door_wyrm_exit}
+  - {from: boss_sentinel,  to: door_sentinel}
   - {from: sw_timed_torre, to: door_timed_torre}
+  - {from: sw_torre_exit,  to: door_timed_torre}
 
 ropes:
   - {x: 392,  y: 24,  segments: 16, seg_len: 6}
@@ -461,6 +494,8 @@ dialogs:
   - {entity: aq_lore_presa,    trigger: interact, speaker: "ESTELA DE LA PRESA",         text: "LA PRESA CONTIENE EL OLVIDO./NO TODO SELLO ES DE PIEDRA.|SIGUE EL ECO HASTA EL FONDO/DE LA TORRE DE LAS CAMPANAS."}
   - {entity: tw_lore_campana,  trigger: interact, speaker: "CAMPANA MAYOR",               text: "AQUI SUENAN LAS CAMPANAS/DE UNA ERA ANTERIOR AL POZO.|SU ECO GUARDA EL NOMBRE/DE LA PRIMERA NIDADA."}
   - {entity: rel_reveal,      trigger: pickup,   speaker: "RELIQUIA: FAROL REVELADOR",   text: "TU FAROL DESVELA LOS/BLOQUES QUE NO EXISTEN.|ACERCATE A LO INVISIBLE/Y SE HARA PIEDRA."}
+  - {entity: lore_wyrm_seal,   trigger: interact, speaker: "ALTAR DEL GRAN SELLO",         text: "EL SELLO EXIGE CUATRO/GUARDIANES DEL MUNDO.|EL CENTINELA SUMERGIDO/DUERME EN EL ARCHIVO.|DESCIENDE POR EL SANTUARIO/Y COMPLETA LA NIDADA."}
+  - {entity: lore_sentinel,    trigger: interact, speaker: "ESTELA DEL CENTINELA",        text: "EL CENTINELA SUMERGIDO/CUSTODIA EL SELLO DEL AGUA.|TRES GOLPES EN SU CORONA/QUEBRARAN SU CORAZA."}
 
 guide:
   - {kind: shaft, x: 2504, up_x: 1940, split_y: 184, y_top: 152, y_bot: 320}
@@ -475,6 +510,7 @@ guide:
   - {target: rel_dash,        style: ability,       below_y: 184}
   - {target: sw_seal3,        gate: door_wyrm_seal, below_y: 184}
   - {target: wyrm,            gate: door_wyrm_exit, below_y: 184}
-  - {kind: shaft, x: 428,  up_x: 428,  split_y: 552, y_top: 528, y_bot: 712}
-  - {kind: shaft, x: 2284, up_x: 2284, split_y: 736, y_top: 712, y_bot: 896}
+  - {kind: shaft, x: 428,  up_x: 588,  split_y: 552, y_top: 528, y_bot: 712}
+  - {target: boss_sentinel,   gate: door_sentinel,  below_y: 552}
+  - {kind: shaft, x: 2284, up_x: 2200, split_y: 736, y_top: 712, y_bot: 896}
   - {target: rel_reveal,      style: ability,       below_y: 736}
