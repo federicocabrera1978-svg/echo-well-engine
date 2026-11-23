@@ -302,6 +302,8 @@ entities:
   - {name: ck_pit2, type: checkpoint, x: 2176, y: 520}
   - {name: ck_altar2, type: checkpoint, x: 2272, y: 520}
   - {name: rel_double_jump, type: ability_double_jump, x: 2480, y: 520}
+  - {name: rb_cat_bridge_a, type: reveal_block, x: 2352, y: 520}
+  - {name: rb_cat_bridge_b, type: reveal_block, x: 2376, y: 520}
   - {name: ck_east_low2, type: checkpoint, x: 1888, y: 456}
   - {name: plat_crypt2, type: mover, x: 1832, y: 464, w: 4, h: 1, to_x: 1664, to_y: 464, speed: 48, pause: 0.6, tile: 6}
   - {name: sw_sanctum2, type: switch, x: 1472, y: 520}
@@ -347,8 +349,10 @@ entities:
   - {name: aq_lore_archivo, type: lore, x: 800, y: 704}
   - {name: aq_lore_presa, type: lore, x: 1376, y: 704}
   - {name: aq_ck_presa, type: checkpoint, x: 1968, y: 704}
+  - {name: rb_aq_lid, type: reveal_block, x: 2272, y: 712}
   - {name: tw_lore_campana, type: lore, x: 800, y: 888}
   - {name: tw_ck, type: checkpoint, x: 1376, y: 888}
+  - {name: rel_reveal, type: ability_reveal, x: 1424, y: 888}
 
 links:
   - {from: switch_start,  to: door_start}
@@ -441,6 +445,7 @@ dialogs:
   - {entity: aq_lore_archivo,  trigger: interact, speaker: "ESTELA DEL ARCHIVO",         text: "BAJO LA GUARIDA DUERME/UN ARCHIVO SUMERGIDO.|SUS TUBOS AUN RESPIRAN/AGUA ANTIGUA Y FRIA."}
   - {entity: aq_lore_presa,    trigger: interact, speaker: "ESTELA DE LA PRESA",         text: "LA PRESA CONTIENE EL OLVIDO./NO TODO SELLO ES DE PIEDRA.|SIGUE EL ECO HASTA EL FONDO/DE LA TORRE DE LAS CAMPANAS."}
   - {entity: tw_lore_campana,  trigger: interact, speaker: "CAMPANA MAYOR",               text: "AQUI SUENAN LAS CAMPANAS/DE UNA ERA ANTERIOR AL POZO.|SU ECO GUARDA EL NOMBRE/DE LA PRIMERA NIDADA."}
+  - {entity: rel_reveal,      trigger: pickup,   speaker: "RELIQUIA: FAROL REVELADOR",   text: "TU FAROL DESVELA LOS/BLOQUES QUE NO EXISTEN.|ACERCATE A LO INVISIBLE/Y SE HARA PIEDRA."}
 
 guide:
   - {kind: shaft, x: 2504, up_x: 1940, split_y: 184, y_top: 152, y_bot: 320}
@@ -457,3 +462,4 @@ guide:
   - {target: wyrm,            gate: door_wyrm_exit, below_y: 184}
   - {kind: shaft, x: 428,  up_x: 428,  split_y: 552, y_top: 528, y_bot: 712}
   - {kind: shaft, x: 2284, up_x: 2284, split_y: 736, y_top: 712, y_bot: 896}
+  - {target: rel_reveal,      style: ability,       below_y: 736}

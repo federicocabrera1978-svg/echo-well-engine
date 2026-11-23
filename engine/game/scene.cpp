@@ -73,6 +73,10 @@ void Scene::rebuild_doors() const {
       if (!e.active) continue;  // fantasma: no sólido hasta revelarlo
       w = kRevealWTiles;
       h = kRevealHTiles;
+    } else if (e.type == "crystal") {
+      if (e.active) continue;  // roto: deja pasar
+      w = kCrystalWTiles;
+      h = kCrystalHTiles;
     } else {
       continue;
     }
@@ -156,11 +160,19 @@ int Scene::interact(float x, float y) {
   int best = -1;
   float best_d2 = kSwitchReach * kSwitchReach;
   for (std::size_t i = 0; i < entities_.size(); ++i) {
-    if (!is_switch_type(entities_[i].type)) continue;
+    if (!is_interactive_switch(entities_[i].type)) continue;
     const float dx = entities_[i].x - x, dy = entities_[i].y - y, d2 = dx * dx + dy * dy;
     if (d2 <= best_d2) { best_d2 = d2; best = int(i); }
   }
-  if (best >= 0) set_switch(std::size_t(best), !entities_[std::size_t(best)].active);
+  if (best >= 0) {
+    auto& e = entities_[std::size_t(best)];
+    if (is_timed_switch(e.type)) {  // temporizada: siempre reabre (Sim lleva la cuenta atrás)
+      e.active = true;
+      set_linked(std::size_t(best), true);
+    } else {
+      set_switch(std::size_t(best), !e.active);
+    }
+  }
   return best;
 }
 

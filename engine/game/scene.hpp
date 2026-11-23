@@ -25,6 +25,9 @@ struct Entity {
   float anim = 0;       // door: 0 = cerrada, 1 = abierta (lerp visual + colisión)
 };
 inline bool is_switch_type(const std::string& t) { return t == "switch" || t == "flood_switch"; }
+// Palanca temporizada: abre sus puertas durante Sim::kTimedSwitchSec y después las cierra.
+inline bool is_timed_switch(const std::string& t) { return t == "timed_switch"; }
+inline bool is_interactive_switch(const std::string& t) { return is_switch_type(t) || is_timed_switch(t); }
 inline bool one_way_unlocks_from_left(const Entity& e) {
   return e.name.ends_with("_l") || e.name.find("_from_left") != std::string::npos;
 }
@@ -33,6 +36,8 @@ inline bool one_way_unlocks_from_left(const Entity& e) {
 inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;
 // Bloque espectral (reveal_block): plataforma fantasma de 3×1 tiles (24×8 px), sólida al revelarla.
 inline constexpr int kRevealWTiles = 3, kRevealHTiles = 1;
+// Cristal rompible (crystal): 1×2 tiles (8×16 px), sólido hasta que lo rompe Dash o un pisotón.
+inline constexpr int kCrystalWTiles = 1, kCrystalHTiles = 2;
 inline constexpr float kSwitchReach = 14.f;  // px: distancia máx. player↔switch para activarlo
 inline constexpr float kDoorAnimSpeed = 4.f;   // 1/s: 0→1 en 0.25 s
 inline constexpr float kDoorSolidUntil = 0.5f; // colisiona mientras anim < esto

@@ -72,6 +72,8 @@ class Sim {
   static constexpr float kDoubleJumpSpeed = 245.f;  // px/s (segundo salto en el aire)
   static constexpr float kAbilityReach = 12.f;      // px: agarrar una reliquia de habilidad
   static constexpr float kRevealReach = 96.f;       // px: revelar un reveal_block cercano
+  static constexpr float kTimedSwitchSec = 6.f;     // s: puertas abiertas por un timed_switch
+  static constexpr int kCrystalBreakFlashFrames = 18;  // frames de escombros al romper un crystal
   static constexpr float kDialogReach = 16.f;       // px: alcance para hablar/leer NPC o estela
   static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
   static constexpr int kAbilityFlashFrames = 45;    // ~0.75 s de destello del HUD al desbloquear
@@ -263,6 +265,13 @@ class Sim {
   int wall_break_flash() const { return wall_break_flash_; }
   float wall_break_x() const { return wall_break_x_; }
   float wall_break_y() const { return wall_break_y_; }
+  int crystal_break_flash() const { return crystal_break_flash_; }
+  float crystal_break_x() const { return crystal_break_x_; }
+  float crystal_break_y() const { return crystal_break_y_; }
+  // Segundos restantes de un timed_switch (0 = cerrado/disponible). Índice en Scene::entities().
+  float timed_switch_left(int entity_idx) const {
+    return (entity_idx >= 0 && std::size_t(entity_idx) < timed_left_.size()) ? timed_left_[std::size_t(entity_idx)] : 0.f;
+  }
   bool wall_sliding() const { return wall_sliding_; }
   int wall_dir() const { return wall_dir_; }
   int boss_burst() const { return boss_burst_; }
@@ -357,6 +366,9 @@ class Sim {
   int dash_flash_ = 0;
   int wall_break_flash_ = 0;
   float wall_break_x_ = 0, wall_break_y_ = 0;
+  int crystal_break_flash_ = 0;
+  float crystal_break_x_ = 0, crystal_break_y_ = 0;
+  std::vector<float> timed_left_;  // por entidad: segundos restantes de un timed_switch
   int wall_coyote_ = 0;
   int wall_lock_ticks_ = 0;
   bool wall_sliding_ = false;
@@ -410,6 +422,9 @@ class Sim {
   void rearm_flips();
   void check_abilities();
   void reveal_blocks();
+  void break_crystals_on_fall(ew::physics::Vec2 pre_pos, float pre_vy);
+  void advance_timed_switches();
+  void reset_timed_switches();
   void build();
   void reset_movers();
   void advance_movers();

@@ -1,0 +1,28 @@
+# mechanisms.yaml — Sala de prueba de mecanismos ambientales (sin GL).
+# `crystal` (1×2 tiles) se rompe con Dash o pisotón; `timed_switch` abre `door_timed`
+# durante Sim::kTimedSwitchSec (6 s) y después la cierra sola.
+name: mechanisms
+size_chunks: [1, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0, y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 40, h: 3, tile: 17}
+  # Pared alta sobre la puerta: no se puede saltar el portón por arriba.
+  - {layer: COL, x: 32, y: 0, w: 1, h: 17, tile: 1}
+  - {layer: VIS, x: 32, y: 0, w: 1, h: 17, tile: 17}
+
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+  - {name: crystal_a, type: crystal, x: 96, y: 144}
+  - {name: sw_timed, type: timed_switch, x: 200, y: 152}
+  - {name: door_timed, type: door, x: 256, y: 136}
+  - {name: goal, type: goal, x: 296, y: 152}
+
+links:
+  - {from: sw_timed, to: door_timed}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: engranajes, seed: 7}

@@ -146,6 +146,11 @@ inline void collect_room_lights(FrameData& v, const Scene& scene, const Sim& sim
         push_light(e.x, e.y - 4.f, 26.f, PointLightKind::Shrine, 0.25f, 1.0f, 0.50f, e.x * 0.04f);
       else
         push_light(e.x, e.y - 4.f, 26.f, PointLightKind::Shrine, 1.0f, 0.55f, 0.12f, e.x * 0.04f);
+    } else if (is_timed_switch(e.type)) {
+      if (e.active)
+        push_light(e.x, e.y - 4.f, 28.f, PointLightKind::Shrine, 0.30f, 1.0f, 0.55f, e.x * 0.04f);
+      else
+        push_light(e.x, e.y - 4.f, 26.f, PointLightKind::Shrine, 0.45f, 0.90f, 1.0f, e.x * 0.04f);
     } else if (!e.active) {
       if (e.type == "ability_double_jump")
         push_light(e.x, e.y, 32.f, PointLightKind::Crystal, 0.35f, 0.92f, 1.0f, e.x * 0.05f);
@@ -157,6 +162,8 @@ inline void collect_room_lights(FrameData& v, const Scene& scene, const Sim& sim
         push_light(e.x, e.y, 32.f, PointLightKind::Crystal, 1.0f, 0.72f, 0.24f, e.x * 0.05f);
       else if (e.type == "collectible")
         push_light(e.x, e.y - 1.f, 32.f, PointLightKind::Crystal, 0.95f, 0.85f, 0.45f, e.x * 0.05f);
+      else if (e.type == "crystal")
+        push_light(e.x + 4.f, e.y + 8.f, 30.f, PointLightKind::Crystal, 0.38f, 0.90f, 1.0f, e.x * 0.05f);
     }
   }
 
