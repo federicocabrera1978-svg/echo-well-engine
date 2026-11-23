@@ -128,6 +128,13 @@ class Sim {
   // Enemigo menor (type "imp"): patrulla terrestre, cae con pisotón o embestida (Dash).
   static constexpr float kImpW = 10.f, kImpH = 10.f;
   static constexpr float kImpRange = 32.f, kImpSpeed = 34.f;
+  // Enemigo volador (type "bat"): patrulla ondulante aérea, cae con pisotón o Dash.
+  static constexpr float kBatW = 10.f, kBatH = 8.f;
+  static constexpr float kBatRange = 40.f, kBatSpeed = 38.f;
+  // Enemigo acorazado (type "crustacean"): patrulla terrestre con caparazón resistente.
+  static constexpr float kCrustaceanW = 14.f, kCrustaceanH = 10.f;
+  static constexpr float kCrustaceanRange = 36.f, kCrustaceanSpeed = 24.f;
+  static constexpr float kCrustaceanHeavyStompVy = 1.35f;
 
   // Plataforma sólida que recorre waypoints (sección MOVER / type "mover" o "elevator").
   // (x, y) es la esquina superior izquierda actual, en px; w/h en px (tiles × 8).
@@ -228,6 +235,19 @@ class Sim {
     bool defeated = false;
     std::size_t ent = 0;
   };
+  struct Bat {
+    float x = 0, y = 0, home_x = 0, home_y = 0;
+    int dir = 1;
+    float t = 0.f;
+    bool defeated = false;
+    std::size_t ent = 0;
+  };
+  struct Crustacean {
+    float x = 0, y = 0, home_x = 0, home_y = 0;
+    int dir = 1;
+    bool defeated = false;
+    std::size_t ent = 0;
+  };
   struct DustParticle {
     float x = 0, y = 0, vx = 0, vy = 0, life = 0, max_life = 0, radius = 1.4f, r = 0.8f, g = 0.78f, b = 0.70f;
   };
@@ -236,6 +256,10 @@ class Sim {
   const std::vector<Fireball>& fireballs() const { return fireballs_; }
   int imp_count() const { return int(imps_.size()); }
   const Imp& imp(int i) const { return imps_[std::size_t(i)]; }
+  int bat_count() const { return int(bats_.size()); }
+  const Bat& bat(int i) const { return bats_[std::size_t(i)]; }
+  int crustacean_count() const { return int(crustaceans_.size()); }
+  const Crustacean& crustacean(int i) const { return crustaceans_[std::size_t(i)]; }
   float elapsed_sec() const { return elapsed_sec_; }
   bool bosses_defeated() const;  // true si no hay boss vivo
   // Índice de la plataforma que está cargando al player, o -1.
@@ -403,9 +427,17 @@ class Sim {
   std::vector<Boss> bosses_;
   std::vector<Fireball> fireballs_;
   std::vector<Imp> imps_;
+  std::vector<Bat> bats_;
+  std::vector<Crustacean> crustaceans_;
   void reset_imps();
   void advance_imps();
   void collide_imps();
+  void reset_bats();
+  void advance_bats();
+  void collide_bats();
+  void reset_crustaceans();
+  void advance_crustaceans();
+  void collide_crustaceans(float pre_vy);
   void break_walls_on_dash();
   void spawn_dust(float x, float y, float vx, float vy, float life, float radius, float r, float g, float b);
   void step_game_feel();

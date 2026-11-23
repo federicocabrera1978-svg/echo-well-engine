@@ -135,11 +135,21 @@ void Sim::build() {
   bosses_.clear();
   fireballs_.clear();
   imps_.clear();
+  bats_.clear();
+  crustaceans_.clear();
   elapsed_sec_ = 0.f;
   const auto& es = scene_.entities();
   for (std::size_t i = 0; i < es.size(); ++i) {
     if (es[i].type == "imp") {
       imps_.push_back({es[i].x, es[i].y, es[i].x, es[i].y, 1, false, i});
+      continue;
+    }
+    if (es[i].type == "bat") {
+      bats_.push_back({es[i].x, es[i].y, es[i].x, es[i].y, 1, 0.f, false, i});
+      continue;
+    }
+    if (es[i].type == "crustacean") {
+      crustaceans_.push_back({es[i].x, es[i].y, es[i].x, es[i].y, 1, false, i});
       continue;
     }
     if (es[i].type != "boss" && es[i].type != "boss_dragon") continue;
@@ -153,6 +163,8 @@ void Sim::build() {
   }
   reset_bosses(false);
   reset_imps();
+  reset_bats();
+  reset_crustaceans();
 }
 
 void Sim::reset_imps() {
@@ -161,6 +173,25 @@ void Sim::reset_imps() {
     im.y = im.home_y;
     im.dir = 1;
     im.defeated = false;
+  }
+}
+
+void Sim::reset_bats() {
+  for (auto& b : bats_) {
+    b.x = b.home_x;
+    b.y = b.home_y;
+    b.dir = 1;
+    b.t = 0.f;
+    b.defeated = false;
+  }
+}
+
+void Sim::reset_crustaceans() {
+  for (auto& cr : crustaceans_) {
+    cr.x = cr.home_x;
+    cr.y = cr.home_y;
+    cr.dir = 1;
+    cr.defeated = false;
   }
 }
 
@@ -461,6 +492,8 @@ void Sim::respawn() {
   if (bosses_defeated() && !bosses_.empty()) victory_.mark_done();
   else victory_.reset();
   reset_imps();        // los enemigos menores vuelven al reaparecer
+  reset_bats();
+  reset_crustaceans();
   set_gravity_flipped(ckpt_flip_);  // la gravedad vuelve a la del checkpoint (spawn = normal)
   for (std::size_t k = 0; k < scene_.entities().size(); ++k)
     if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, flip_);
@@ -831,6 +864,8 @@ void Sim::step(const Input& in) {
   advance_movers();
   advance_bosses();
   advance_imps();
+  advance_bats();
+  advance_crustaceans();
   carry_player();
   if (wind_.enabled()) {
     for (int r = 0; r < rope_count(); ++r) {
@@ -899,6 +934,8 @@ void Sim::step(const Input& in) {
   check_dialogs_proximity();
   collide_bosses();
   collide_imps();
+  collide_bats();
+  collide_crustaceans(pre_step_vy);
   check_hazards();
   check_goal();
   update_player_anim(in);
@@ -1652,6 +1689,107 @@ void Sim::collide_imps() {
     }
     if (invuln_ > 0) continue;
     take_hit(im.x, im.y - kImpH * 0.5f);
+    return;
+  }
+}
+
+void Sim::advance_bats() {
+  for (auto& b : bats_) {
+    if (b.defeated) continue;
+    b.t += kDt;
+    b.x += float(b.dir) * kBatSpeed * kDt;
+    b.y = b.home_y + std::sin(b.t * 5.0f) * 6.0f;
+    if (b.x > b.home_x + kBatRange) { b.x = b.home_x + kBatRange; b.dir = -1; }
+    if (b.x < b.home_x - kBatRange) { b.x = b.home_x - kBatRange; b.dir = 1; }
+  }
+}
+
+void Sim::collide_bats() {
+  if (bats_.empty() || finished_) return;
+  auto& pts = world_.points();
+  auto& pl = pts[player_];
+  const float r = pl.radius, d = down();
+  for (auto& b : bats_) {
+    if (b.defeated) continue;
+    const float l = b.x - kBatW * 0.5f, rt = b.x + kBatW * 0.5f;
+    const float top = b.y - kBatH * 0.5f, bot = b.y + kBatH * 0.5f;
+    const ew::physics::Vec2 c{std::clamp(pl.pos.x, l, rt), std::clamp(pl.pos.y, top, bot)};
+    if (ew::physics::length(pl.pos - c) >= r) continue;
+    const float vy = pl.velocity().y;
+    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 2.f) : (vy < 0.f && pl.pos.y >= bot - 2.f);
+    if (dash_ticks_ > 0 || from_above) {
+      b.defeated = true;
+      wind_.push_impulse(b.x, b.y, float(b.dir) * 2.0f, 22.f, 0.35f);
+      sfx_ |= 1024u;  // kSfxHit
+      trigger_impact(3, 2.2f, 8);
+      if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+      if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
+      if (dash_ticks_ == 0 && from_above) {
+        pl.pos.y = d > 0 ? (top - r) : (bot + r);
+        pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.85f * kDt});
+      }
+      return;
+    }
+    if (invuln_ > 0) continue;
+    take_hit(b.x, b.y);
+    return;
+  }
+}
+
+void Sim::advance_crustaceans() {
+  for (auto& cr : crustaceans_) {
+    if (cr.defeated) continue;
+    cr.x += float(cr.dir) * kCrustaceanSpeed * kDt;
+    if (cr.x > cr.home_x + kCrustaceanRange) { cr.x = cr.home_x + kCrustaceanRange; cr.dir = -1; }
+    if (cr.x < cr.home_x - kCrustaceanRange) { cr.x = cr.home_x - kCrustaceanRange; cr.dir = 1; }
+  }
+}
+
+void Sim::collide_crustaceans(float pre_vy) {
+  if (crustaceans_.empty() || finished_) return;
+  auto& pts = world_.points();
+  auto& pl = pts[player_];
+  const float r = pl.radius, d = down();
+  for (auto& cr : crustaceans_) {
+    if (cr.defeated) continue;
+    const float l = cr.x - kCrustaceanW * 0.5f, rt = cr.x + kCrustaceanW * 0.5f;
+    const float top = cr.y - kCrustaceanH, bot = cr.y;
+    const ew::physics::Vec2 c{std::clamp(pl.pos.x, l, rt), std::clamp(pl.pos.y, top, bot)};
+    if (ew::physics::length(pl.pos - c) >= r) continue;
+    const float vy = pl.velocity().y;
+    const bool from_above = d > 0 ? (vy > 0.f && pl.pos.y <= top + 4.f) : (vy < 0.f && pl.pos.y >= bot - 4.f);
+    if (dash_ticks_ > 0) {
+      cr.defeated = true;
+      wind_.push_impulse(cr.x, cr.y, float(cr.dir) * 2.2f, 24.f, 0.35f);
+      sfx_ |= 512u | 1024u;  // kSfxBreak | kSfxHit
+      trigger_impact(kHitstopEnemyFrames, kShakeBreakAmp, 9);
+      if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+      if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
+      return;
+    }
+    if (from_above) {
+      const float fall_speed = std::max(vy * d, pre_vy * d);
+      if (fall_speed >= kCrustaceanHeavyStompVy) {
+        // Pisotón de gran caída: rompe el caparazón y destruye al crustáceo
+        cr.defeated = true;
+        wind_.push_impulse(cr.x, cr.y, float(cr.dir) * 2.2f, 24.f, 0.35f);
+        sfx_ |= 512u | 1024u;  // kSfxBreak | kSfxHit
+        trigger_impact(kHitstopEnemyFrames, kShakeBreakAmp, 9);
+        if (has_ability(kAbilityDoubleJump)) air_jumps_ = 1;
+        if (has_ability(kAbilityDash)) dash_charges_ = max_dash_charges();
+        pl.pos.y = d > 0 ? top - r : bot + r;
+        pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.85f * kDt});
+      } else {
+        // Salto ligero: el caparazón rígido amortigua y hace rebotar al jugador sin sufrir daño
+        sfx_ |= 1024u;  // kSfxHit
+        trigger_impact(2, 1.5f, 6);
+        pl.pos.y = d > 0 ? top - r : bot + r;
+        pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.75f * kDt});
+      }
+      return;
+    }
+    if (invuln_ > 0) continue;
+    take_hit(cr.x, cr.y - kCrustaceanH * 0.5f);
     return;
   }
 }

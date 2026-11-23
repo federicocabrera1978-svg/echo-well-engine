@@ -160,6 +160,14 @@ add_test(NAME ewmap_load_mechanisms
           --name mechanisms --chunks 1 --ents 5 --links 1 --backdrops 1
           --has player_spawn --has crystal --has timed_switch --has door --has goal)
 set_tests_properties(ewmap_load_mechanisms PROPERTIES DEPENDS ewmapc_mechanisms)
+add_test(NAME ewmapc_enemies
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/enemies.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/enemies.ewmap)
+add_test(NAME ewmap_load_enemies
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/enemies.ewmap
+          --name enemies --chunks 1 --ents 4 --backdrops 1
+          --has player_spawn --has bat --has crustacean --has goal)
+set_tests_properties(ewmap_load_enemies PROPERTIES DEPENDS ewmapc_enemies)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
 add_test(NAME ewmapc_backdrop_ok
@@ -200,6 +208,7 @@ set(EW_WORLD_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/world.ewmap)
 set(EW_BIOMES_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/biomes.ewmap)
 set(EW_REVEAL_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/reveal.ewmap)
 set(EW_MECHANISMS_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/mechanisms.ewmap)
+set(EW_ENEMIES_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/enemies.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -260,7 +269,11 @@ add_custom_command(OUTPUT ${EW_MECHANISMS_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/mechanisms.yaml -o ${EW_MECHANISMS_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/mechanisms.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP} ${EW_BIOMES_MAP} ${EW_REVEAL_MAP} ${EW_MECHANISMS_MAP})
+add_custom_command(OUTPUT ${EW_ENEMIES_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/enemies.yaml -o ${EW_ENEMIES_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/enemies.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP} ${EW_BIOMES_MAP} ${EW_REVEAL_MAP} ${EW_MECHANISMS_MAP} ${EW_ENEMIES_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -298,6 +311,10 @@ add_executable(mechanisms_env_test tests/mechanisms_env_test.cpp)
 target_link_libraries(mechanisms_env_test PRIVATE echo_game echo_audio)
 add_dependencies(mechanisms_env_test ew_maps)
 add_test(NAME mechanisms_env COMMAND mechanisms_env_test ${EW_MECHANISMS_MAP})
+add_executable(enemies_test tests/enemies_test.cpp)
+target_link_libraries(enemies_test PRIVATE echo_game echo_audio)
+add_dependencies(enemies_test ew_maps)
+add_test(NAME enemies_archetypes COMMAND enemies_test ${EW_ENEMIES_MAP})
 add_executable(game_feel_test tests/game_feel_test.cpp)
 target_link_libraries(game_feel_test PRIVATE echo_game)
 add_dependencies(game_feel_test ew_maps)

@@ -438,6 +438,23 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     push_marker(v, im.x + 2.f, im.y - 9.5f + bob, 1.2f, 1, 0.55f, 0.28f, 0.32f);
     push_marker(v, im.x + float(im.dir) * 2.f, im.y - 5.5f + bob, 1.2f, 0, 1.0f, 0.42f, 0.15f);
   }
+  for (int bi = 0; bi < sim.bat_count(); ++bi) {  // murciélagos / crías aladas de la torre
+    const auto& b = sim.bat(bi);
+    if (b.defeated) continue;
+    const float wing = std::sin(time_s * 16.f + float(bi) * 1.7f) * 3.2f;
+    push_marker(v, b.x, b.y, 3.8f, 1, 0.22f, 0.16f, 0.38f);
+    push_marker(v, b.x - 4.5f, b.y + wing, 2.2f, 0, 0.35f, 0.25f, 0.55f);
+    push_marker(v, b.x + 4.5f, b.y + wing, 2.2f, 0, 0.35f, 0.25f, 0.55f);
+    push_marker(v, b.x + float(b.dir) * 1.8f, b.y - 0.5f, 1.1f, 0, 0.95f, 0.20f, 0.25f);
+  }
+  for (int ci = 0; ci < sim.crustacean_count(); ++ci) {  // centinelas acorazados del archivo
+    const auto& cr = sim.crustacean(ci);
+    if (cr.defeated) continue;
+    const float crawl = std::sin(time_s * 10.f + float(ci)) * 0.5f;
+    push_marker(v, cr.x, cr.y - 5.f, 5.5f, 1, 0.20f, 0.38f, 0.44f);
+    push_marker(v, cr.x, cr.y - 7.5f, 3.2f, 0, 0.35f, 0.65f, 0.72f);
+    push_marker(v, cr.x + float(cr.dir) * 4.5f, cr.y - 4.f + crawl, 1.2f, 0, 0.90f, 0.85f, 0.30f);
+  }
   push_hazards(v, scene);
   if (sim.finished())
     if (const auto* g = scene.find_type("goal"))
