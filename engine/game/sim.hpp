@@ -122,6 +122,17 @@ class Sim {
   static constexpr float kDragonHopSpeed = 240.f;
   static constexpr float kDragonChargeSpeed = 145.f;
   static constexpr float kDragonChargeSec = 0.70f;
+  // Boss centinela intermedio (type "boss_sentinel"): guardián del archivo, 3 golpes, salto con abanico triple y carga.
+  static constexpr float kSentinelW = 26.f, kSentinelH = 18.f;
+  static constexpr int kSentinelHits = 3;
+  static constexpr float kSentinelRange = 72.f;
+  static constexpr float kSentinelSpeed = 40.f;
+  static constexpr float kSentinelSpeedPerHit = 12.f;
+  static constexpr float kSentinelWalkSec = 1.4f;
+  static constexpr float kSentinelTellSec = 0.50f;
+  static constexpr float kSentinelHopSpeed = 220.f;
+  static constexpr float kSentinelChargeSpeed = 125.f;
+  static constexpr float kSentinelChargeSec = 0.55f;
   static constexpr float kFireballRadius = 3.f;
   static constexpr float kFireballSpeed = 88.f;
   static constexpr float kFireballLife = 0.90f;
@@ -216,13 +227,14 @@ class Sim {
     std::size_t ent = 0;  // índice en Scene::entities()
     bool dragon = false;  // true si es "boss_dragon" multipatrón
     bool guardian2 = false;  // true si es boss_catacomb (Nivel 2, coloso ascendido)
+    bool sentinel = false;   // true si es boss_sentinel (Centinela del Archivo)
     int cycle = 0;
-    int max_hits() const { return dragon ? kDragonHits : kBossHits; }
-    float width() const { return dragon ? kDragonW : kBossW; }
-    float height() const { return dragon ? kDragonH : kBossH; }
+    int max_hits() const { return dragon ? kDragonHits : (sentinel ? kSentinelHits : kBossHits); }
+    float width() const { return dragon ? kDragonW : (sentinel ? kSentinelW : kBossW); }
+    float height() const { return dragon ? kDragonH : (sentinel ? kSentinelH : kBossH); }
     float speed() const {
-      const float base = guardian2 ? (kBossSpeed + 12.f) : kBossSpeed;
-      const float step = kBossSpeedPerHit + (guardian2 ? 7.f : 0.f);
+      const float base = sentinel ? kSentinelSpeed : (guardian2 ? (kBossSpeed + 12.f) : kBossSpeed);
+      const float step = sentinel ? kSentinelSpeedPerHit : (kBossSpeedPerHit + (guardian2 ? 7.f : 0.f));
       return base + step * float(hits);
     }
   };

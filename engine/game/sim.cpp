@@ -152,12 +152,13 @@ void Sim::build() {
       crustaceans_.push_back({es[i].x, es[i].y, es[i].x, es[i].y, 1, false, i});
       continue;
     }
-    if (es[i].type != "boss" && es[i].type != "boss_dragon") continue;
+    if (es[i].type != "boss" && es[i].type != "boss_dragon" && es[i].type != "boss_sentinel") continue;
     Boss b;
     b.home_x = es[i].x;
     b.home_y = es[i].y;
     b.ent = i;
     b.dragon = (es[i].type == "boss_dragon");
+    b.sentinel = (es[i].type == "boss_sentinel" || es[i].name == "boss_sentinel" || es[i].name == "boss_archivo");
     b.guardian2 = (es[i].name == "boss_catacomb");
     bosses_.push_back(b);
   }
@@ -222,7 +223,7 @@ void Sim::advance_bosses() {
   for (auto& b : bosses_) {
     if (b.defeated) continue;
     if (b.hurt > 0) b.hurt = std::max(0.f, b.hurt - kDt);
-    const float range = b.dragon ? kDragonRange : kBossRange;
+    const float range = b.dragon ? kDragonRange : (b.sentinel ? kSentinelRange : kBossRange);
     const float lo = b.home_x - range, hi = b.home_x + range;
     auto walk = [&](float v) {
       b.x += float(b.dir) * v * kDt;
@@ -230,6 +231,49 @@ void Sim::advance_bosses() {
       if (b.x < lo) { b.x = lo; b.dir = 1; }
     };
     b.t += kDt;
+    if (b.sentinel) {
+      if (b.phase == 0) {
+        walk(b.speed());
+        if (b.t >= kSentinelWalkSec) { b.phase = 1; b.t = 0; }
+      } else if (b.phase == 1) {
+        if (b.t >= kSentinelTellSec) {
+          b.dir = (player().pos.x >= b.x) ? 1 : -1;
+          b.t = 0;
+          if (b.hits >= 1 && (b.cycle % 2 != 0)) {
+            b.phase = 3;
+          } else {
+            b.phase = 2;
+            b.vy = -kSentinelHopSpeed;
+            const float fy = b.y - kSentinelH * 0.6f;
+            if (fireballs_.size() + 3 <= 8) {
+              fireballs_.push_back({b.x - 8.f, fy, -70.f, -40.f, 0.45f});
+              fireballs_.push_back({b.x, fy, 0.f, -55.f, 0.42f});
+              fireballs_.push_back({b.x + 8.f, fy, 70.f, -40.f, 0.45f});
+            }
+          }
+        }
+      } else if (b.phase == 2) {
+        walk(b.speed() * 1.35f);
+        b.vy += 600.f * kDt;
+        b.y += b.vy * kDt;
+        if (b.y >= b.home_y) {
+          b.y = b.home_y;
+          b.vy = 0;
+          b.phase = 0;
+          b.t = 0;
+          ++b.cycle;
+          wind_.push_impulse(b.x, b.y, float(b.dir) * 2.4f, 30.f, 0.40f);
+        }
+      } else {
+        walk(kSentinelChargeSpeed + float(b.hits) * 12.f);
+        if (b.t >= kSentinelChargeSec) {
+          b.phase = 0;
+          b.t = 0;
+          ++b.cycle;
+        }
+      }
+      continue;
+    }
     if (!b.dragon) {
       if (b.phase == 0) {
         walk(b.speed());
@@ -1626,7 +1670,7 @@ void Sim::collide_bosses() {
         fireballs_.clear();
         scene_.set_linked(b.ent, true);  // abre las puertas linkeadas
         const float cy = b.y - bh * 0.5f;
-        const BossKind kind = b.dragon ? BossKind::Wyrm : (b.guardian2 ? BossKind::Guardian2 : BossKind::Watcher);
+        const BossKind kind = b.dragon ? BossKind::Wyrm : (b.sentinel ? BossKind::Sentinel : (b.guardian2 ? BossKind::Guardian2 : BossKind::Watcher));
         victory_.start(b.x, cy, kind);
         boss_burst_x_ = b.x;
         boss_burst_y_ = cy;

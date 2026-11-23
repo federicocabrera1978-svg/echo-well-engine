@@ -28,6 +28,9 @@ inline constexpr std::string_view kVictoryGuardian2Text =
 inline constexpr std::string_view kVictoryWyrmSpeaker = "CORONA DEL WYRM";
 inline constexpr std::string_view kVictoryWyrmText =
     "EL WYRM CAYO Y SU LARGA/GUARDIA HA TERMINADO.|LA NIDADA YA NO ESTA SOLA:/TU FAROL LA DESPERTO.";
+inline constexpr std::string_view kVictorySentinelSpeaker = "SELLO DEL ARCHIVO";
+inline constexpr std::string_view kVictorySentinelText =
+    "EL CENTINELA SUMERGIDO CAE./SU SELLO DE AGUA SE QUIEBRA.|LOS SECRETOS DEL ARCHIVO/QUEDAN EXPUESTOS A TU FAROL.";
 
 // Límites de un diálogo (la caja ocupa 32 columnas con 1 de margen por lado).
 inline constexpr std::size_t kStoryLineMax = 30, kStoryLinesPerPage = 2, kStoryPagesMax = 3, kStorySpeakerMax = 32;
