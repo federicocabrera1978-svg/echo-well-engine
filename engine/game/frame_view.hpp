@@ -179,14 +179,31 @@ inline void push_movers(FrameData& v, const Sim& sim, const Scene* scene = nullp
   }
 }
 
-inline void push_entities(FrameData& v, const Scene& s, float time_s) {
-  for (const auto& e : s.entities()) {
-    if (e.type == "switch" || e.type == "flood_switch") {  // abre-puertas pixel-art elevado (shape 3)
-      push_marker(v, std::round(e.x), std::round(e.y), 10.f, 3,
-                  e.active ? 0.25f : 1.0f, e.active ? 1.0f : 0.55f, e.active ? 0.50f : 0.12f);
-      if (!e.active) {  // flecha pulsante sobre el abre-puertas aún sin accionar
-        const float bob = std::round(std::sin(time_s * 6.5f + e.x * 0.1f) * 2.f);
-        push_marker(v, std::round(e.x), std::round(e.y - 17.f + bob), 6.f, 4, 0.f, 1.f, 0.f);
+inline void push_entities(FrameData& v, const Scene& s, float time_s, const Sim* sim = nullptr) {
+  const auto& ents = s.entities();
+  for (std::size_t ei = 0; ei < ents.size(); ++ei) {
+    const auto& e = ents[ei];
+    if (e.type == "switch" || e.type == "flood_switch" || e.type == "timed_switch") {  // abre-puertas pixel-art (shape 3)
+      if (e.type == "timed_switch") {  // temporizada: ámbar/cian en reposo, verde con cuenta atrás activa
+        const float left = sim ? sim->timed_switch_left(int(ei)) : 0.f;
+        const bool open = e.active && left > 0.f;
+        push_marker(v, std::round(e.x), std::round(e.y), 10.f, 3,
+                    open ? 0.25f : 0.45f, open ? 1.0f : 0.92f, open ? 0.50f : 1.0f);
+        if (open) {
+          const float f = std::min(1.f, left / Sim::kTimedSwitchSec);
+          push_marker(v, std::round(e.x), std::round(e.y - 17.f), 2.f + 4.f * f, 0,
+                      0.65f, 1.0f, 0.45f);
+        } else {
+          const float bob = std::round(std::sin(time_s * 6.5f + e.x * 0.1f) * 2.f);
+          push_marker(v, std::round(e.x), std::round(e.y - 17.f + bob), 6.f, 4, 0.25f, 0.85f, 1.0f);
+        }
+      } else {
+        push_marker(v, std::round(e.x), std::round(e.y), 10.f, 3,
+                    e.active ? 0.25f : 1.0f, e.active ? 1.0f : 0.55f, e.active ? 0.50f : 0.12f);
+        if (!e.active) {  // flecha pulsante sobre el abre-puertas aún sin accionar
+          const float bob = std::round(std::sin(time_s * 6.5f + e.x * 0.1f) * 2.f);
+          push_marker(v, std::round(e.x), std::round(e.y - 17.f + bob), 6.f, 4, 0.f, 1.f, 0.f);
+        }
       }
     } else if (e.type == "door") {  // se desliza hacia arriba al abrir (anim 0..1)
       const int h = kDoorHTiles;
@@ -255,6 +272,13 @@ inline void push_entities(FrameData& v, const Scene& s, float time_s) {
       if (!e.active) {
         const float pulse = 0.70f + 0.30f * std::sin(time_s * 3.5f + e.x * 0.1f);
         push_marker(v, e.x + 12.f, e.y + 4.f, 1.6f, 0, 0.40f * pulse, 0.88f * pulse, 1.0f * pulse);
+      }
+    } else if (e.type == "crystal") {  // cristal rompible 1×2 tiles (rompible con Dash o pisotón)
+      if (!e.active) {
+        const float pulse = 0.82f + 0.18f * std::sin(time_s * 4.5f + e.x * 0.07f);
+        push_marker(v, e.x + 4.f, e.y + 12.f, 3.6f, 1, 0.24f * pulse, 0.72f * pulse, 0.90f * pulse);
+        push_marker(v, e.x + 4.f, e.y + 5.f, 2.6f, 0, 0.48f * pulse, 0.94f * pulse, 1.0f * pulse);
+        push_marker(v, e.x + 4.f, e.y + 15.f, 1.2f, 0, 0.90f * pulse, 1.0f * pulse, 1.0f * pulse);
       }
     } else if (e.type == "break_wall") {  // muro agrietado rompible con Dash (1×3 tiles)
       if (!e.active) {
@@ -360,7 +384,7 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
     v.bg_seed[i] = scene.active_backdrops()[i].seed;
   }
 
-  push_entities(v, scene, time_s);
+  push_entities(v, scene, time_s, &sim);
   if (show_player_guide && !demo) {
     if (const auto ga = compute_guide_arrow(scene, sim, time_s); ga.valid)
       push_marker(v, ga.x, ga.y, 6.f, 4, ga.ux, ga.uy, float(ga.style));
@@ -445,6 +469,15 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
       const float sx = (k & 1) ? 1.f : -1.f, sy = (k & 2) ? 1.f : -1.f;
       push_marker(v, sim.wall_break_x() + sx * spread, sim.wall_break_y() + sy * (spread * 0.7f - 2.f),
                   2.f * f, 1, 0.95f * f, 0.55f * f, 0.25f * f);
+    }
+  }
+  if (sim.crystal_break_flash() > 0) {  // esquirlas cian al romper un crystal (Dash o pisotón)
+    const float f = float(sim.crystal_break_flash()) / float(Sim::kCrystalBreakFlashFrames);
+    const float spread = (1.f - f) * 12.f;
+    for (int k = 0; k < 5; ++k) {
+      const float sx = (k % 2 == 0) ? 1.f : -1.f, sy = (k < 2) ? -1.f : 1.f;
+      push_marker(v, sim.crystal_break_x() + sx * spread, sim.crystal_break_y() + sy * (spread * 0.8f - 1.f),
+                  1.8f * f, 1, 0.42f * f, 0.92f * f, 1.0f * f);
     }
   }
 

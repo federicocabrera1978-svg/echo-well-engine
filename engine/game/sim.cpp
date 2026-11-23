@@ -50,6 +50,10 @@ void Sim::build() {
   wall_break_flash_ = 0;
   wall_break_x_ = 0;
   wall_break_y_ = 0;
+  crystal_break_flash_ = 0;
+  crystal_break_x_ = 0;
+  crystal_break_y_ = 0;
+  timed_left_.assign(scene_.entities().size(), 0.f);
   wall_coyote_ = 0;
   wall_lock_ticks_ = 0;
   wall_sliding_ = false;
@@ -410,6 +414,7 @@ const Entity* Sim::checkpoint() const {
 
 void Sim::respawn() {
   if (held_) release();
+  reset_timed_switches();  // las palancas temporizadas se apagan al morir / R corto
   const Entity* at = checkpoint();
   if (!at) at = scene_.find_type("player_spawn");
   const Vec2 p = at ? Vec2{at->x, at->y} : Vec2{16, 16};
@@ -589,6 +594,7 @@ void Sim::step(const Input& in) {
   if (dash_cd_ > 0) --dash_cd_;
   if (dash_flash_ > 0) --dash_flash_;
   if (wall_break_flash_ > 0) --wall_break_flash_;
+  if (crystal_break_flash_ > 0) --crystal_break_flash_;
   if (dash_ticks_ > 0) {
     --dash_ticks_;
     if (dash_ticks_ == 0) {
@@ -645,8 +651,11 @@ void Sim::step(const Input& in) {
     // Interacción (switch / diálogo / puerta unidireccional / ascensor) tiene prioridad sobre el Dash.
     bool interacted = false;
     if (in.interact) {
-      if (scene_.interact(pl.pos.x, pl.pos.y) >= 0) {
+      const int sw = scene_.interact(pl.pos.x, pl.pos.y);
+      if (sw >= 0) {
         sfx_ |= ew::audio::kSfxSwitch;
+        if (scene_.entities()[std::size_t(sw)].type == "timed_switch")  // arranca/reinicia la cuenta
+          timed_left_[std::size_t(sw)] = kTimedSwitchSec;
         interacted = true;
       } else if (const int dlg = nearby_interact_dialog(); dlg >= 0) {
         auto& d = scene_.dialogs_mut()[std::size_t(dlg)];
@@ -834,6 +843,10 @@ void Sim::step(const Input& in) {
       }
     }
   }
+  const bool pre_step_falling = world_.points()[player_].velocity().y * down() > 0.f;
+  const float pre_step_vy = world_.points()[player_].velocity().y;
+  if (!held_ && dash_ticks_ == 0 && pre_step_falling)
+    break_crystals_on_fall(world_.points()[player_].pos, pre_step_vy);  // pisotón: antes de resolver la colisión
   world_.step(kDt, solid_fn_);
   if (held_) {  // el player viaja pegado al nodo (hereda su velocidad)
     const auto& node = world_.points()[held_index()];
@@ -856,6 +869,7 @@ void Sim::step(const Input& in) {
   }
   scene_.follow(world_.points()[player_].pos.x, world_.points()[player_].pos.y, kDt);
   scene_.tick(kDt);
+  advance_timed_switches();
   const bool in_w = player_in_water();
   if (in_w && !was_in_water_) sfx_ |= 32u;  // kSfxSplash
   if (in_w && !held_) {
@@ -1121,6 +1135,69 @@ void Sim::reveal_blocks() {
     const float cy = e.y + float(kRevealHTiles * ew::map::kTileSize) * 0.5f;
     const float dx = cx - p.x, dy = cy - p.y;
     if (dx * dx + dy * dy <= r2) e.active = true;  // revelado de forma permanente
+  }
+}
+
+// Palancas temporizadas: cuenta atrás determinista por entidad; al llegar a 0 cierra sus puertas.
+void Sim::advance_timed_switches() {
+  const auto& ents = scene_.entities();
+  if (timed_left_.size() != ents.size()) timed_left_.resize(ents.size(), 0.f);
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (!is_timed_switch(ents[i].type) || timed_left_[i] <= 0.f) continue;
+    timed_left_[i] -= kDt;
+    if (timed_left_[i] <= 0.f) {
+      timed_left_[i] = 0.f;
+      scene_.set_linked(i, false);  // active = false + puertas enlazadas cerradas
+      sfx_ |= ew::audio::kSfxSwitch;
+    }
+  }
+}
+
+// Al morir / R corto las palancas temporizadas vuelven a su estado cerrado (no se guardan "abiertas").
+void Sim::reset_timed_switches() {
+  const auto& ents = scene_.entities();
+  if (timed_left_.size() != ents.size()) timed_left_.assign(ents.size(), 0.f);
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (!is_timed_switch(ents[i].type)) continue;
+    timed_left_[i] = 0.f;
+    if (ents[i].active) scene_.set_linked(i, false);
+  }
+}
+
+// Cristales: caerles encima (pisotón) los rompe antes de que la física resuelva el empuje lateral.
+// Se llama antes de world_.step; da un rebote corto y deja que el player atraviese el hueco.
+void Sim::break_crystals_on_fall(Vec2 pre_pos, float pre_vy) {
+  const float d = down();
+  if (pre_vy * d < 0.8f) return;  // no venía cayendo contra su "abajo"
+  const auto& ents = scene_.entities();
+  const float ts = float(ew::map::kTileSize);
+  for (std::size_t i = 0; i < ents.size(); ++i) {
+    if (ents[i].type != "crystal" || ents[i].active) continue;
+    const float l = ents[i].x, r = l + float(kCrystalWTiles) * ts;
+    const float top = ents[i].y, bot = top + float(kCrystalHTiles) * ts;
+    if (pre_pos.x + kPlayerRadius <= l + 0.5f || pre_pos.x - kPlayerRadius >= r - 0.5f) continue;
+    // Borde delantero del círculo en el sentido de la caída y superficie del cristal.
+    const float lead = d > 0 ? pre_pos.y + kPlayerRadius : pre_pos.y - kPlayerRadius;
+    const float surface = d > 0 ? top : bot;
+    const float gap = d > 0 ? (surface - lead) : (lead - surface);
+    const float travel = pre_vy * d;  // px que recorrería este paso
+    if (gap < -2.f || gap > std::max(travel + 2.f, 3.f)) continue;
+    scene_.set_active(i, true);
+    crystal_break_flash_ = kCrystalBreakFlashFrames;
+    crystal_break_x_ = l + (r - l) * 0.5f;
+    crystal_break_y_ = top + (bot - top) * 0.5f;
+    for (int k = 0; k < 6; ++k) {
+      const float sx = (k % 2 == 0) ? -1.f : 1.f;
+      const float sy = (k < 2) ? -1.f : 1.f;
+      spawn_dust(crystal_break_x_ + sx * 2.f, crystal_break_y_ + sy * 5.f, sx * (18.f + 4.f * float(k)),
+                 -d * (10.f + 6.f * float(k % 3)), 0.30f, 1.6f, 0.42f, 0.92f, 1.0f);
+    }
+    sfx_ |= 512u;  // kSfxBreak
+    trigger_impact(kHitstopEnemyFrames, kShakeBreakAmp, 9);
+    auto& pl = world_.points()[player_];
+    pl.set_velocity({pl.velocity().x, -d * kJumpSpeed * 0.45f * kDt});
+    pl.grounded = false;
+    return;
   }
 }
 
@@ -1447,17 +1524,31 @@ void Sim::collide_movers() {
 void Sim::break_walls_on_dash() {
   const auto& pl = player();
   const float reach_x = pl.pos.x + float(dash_dir_) * 4.5f;
-  const float wall_w = float(kDoorWTiles * ew::map::kTileSize);
-  const float wall_h = float(kDoorHTiles * ew::map::kTileSize);
   const auto& ents = scene_.entities();
   for (std::size_t i = 0; i < ents.size(); ++i) {
-    if (ents[i].type != "break_wall" || ents[i].active) continue;
+    const bool wall = ents[i].type == "break_wall";
+    const bool crystal = ents[i].type == "crystal";
+    if ((!wall && !crystal) || ents[i].active) continue;
+    const float w = crystal ? float(kCrystalWTiles * ew::map::kTileSize) : float(kDoorWTiles * ew::map::kTileSize);
+    const float h = crystal ? float(kCrystalHTiles * ew::map::kTileSize) : float(kDoorHTiles * ew::map::kTileSize);
     if (circle_hits_aabb({reach_x, pl.pos.y}, kPlayerRadius + 1.5f,
-                         ents[i].x, ents[i].y, ents[i].x + wall_w, ents[i].y + wall_h, 0.f)) {
+                         ents[i].x, ents[i].y, ents[i].x + w, ents[i].y + h, 0.f)) {
       scene_.set_active(i, true);
-      wall_break_flash_ = kWallBreakFlashFrames;
-      wall_break_x_ = ents[i].x + wall_w * 0.5f;
-      wall_break_y_ = ents[i].y + wall_h * 0.5f;
+      if (crystal) {
+        crystal_break_flash_ = kCrystalBreakFlashFrames;
+        crystal_break_x_ = ents[i].x + w * 0.5f;
+        crystal_break_y_ = ents[i].y + h * 0.5f;
+        for (int k = 0; k < 6; ++k) {
+          const float sx = (k % 2 == 0) ? -1.f : 1.f;
+          const float sy = (k < 2) ? -1.f : 1.f;
+          spawn_dust(crystal_break_x_ + sx * 2.f, crystal_break_y_ + sy * 5.f, sx * (20.f + 4.f * float(k)),
+                     float(k % 3) * 6.f - 6.f, 0.28f, 1.5f, 0.48f, 0.94f, 1.0f);
+        }
+      } else {
+        wall_break_flash_ = kWallBreakFlashFrames;
+        wall_break_x_ = ents[i].x + w * 0.5f;
+        wall_break_y_ = ents[i].y + h * 0.5f;
+      }
       sfx_ |= 512u;  // kSfxBreak
       trigger_impact(kHitstopEnemyFrames, kShakeBreakAmp, 9);
     }

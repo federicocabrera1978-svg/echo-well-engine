@@ -390,6 +390,10 @@ def build_world_yaml() -> str:
         ent("ck_pit2", "checkpoint", 2176, 520),
         ent("ck_altar2", "checkpoint", 2272, 520),
         ent("rel_double_jump", "ability_double_jump", 2480, 520),
+        # Atajo fantasma sobre el foso de pinchos de la Cisterna del Altar (7,2): dos bloques
+        # espectrales de 3x1 tiles que forman un puente cuando el Farol Revelador los desvela.
+        ent("rb_cat_bridge_a", "reveal_block", 2352, 520),
+        ent("rb_cat_bridge_b", "reveal_block", 2376, 520),
         ent("ck_east_low2", "checkpoint", 1888, 456),
         ent("plat_crypt2", "mover", 1832, 464, "w: 4, h: 1, to_x: 1664, to_y: 464, speed: 48, pause: 0.6, tile: 6"),
         ent("sw_sanctum2", "switch", 1472, 520),
@@ -435,8 +439,13 @@ def build_world_yaml() -> str:
         ent("aq_lore_archivo", "lore", 800, 704),
         ent("aq_lore_presa", "lore", 1376, 704),
         ent("aq_ck_presa", "checkpoint", 1968, 704),
+        # Tapa fantasmal del pozo D2 (7,3 -> 7,4): al revelarla se puede cruzar el Archivo
+        # sin caer a la Torre (atajo de backtracking opcional).
+        ent("rb_aq_lid", "reveal_block", 2272, 712),
         ent("tw_lore_campana", "lore", 800, 888),
         ent("tw_ck", "checkpoint", 1376, 888),
+        # Reliquia del Farol Revelador en la Torre de los Ecos (cy=4).
+        ent("rel_reveal", "ability_reveal", 1424, 888),
     ]
 
     links += [
@@ -541,6 +550,7 @@ def build_world_yaml() -> str:
         '  - {entity: aq_lore_archivo,  trigger: interact, speaker: "ESTELA DEL ARCHIVO",         text: "BAJO LA GUARIDA DUERME/UN ARCHIVO SUMERGIDO.|SUS TUBOS AUN RESPIRAN/AGUA ANTIGUA Y FRIA."}',
         '  - {entity: aq_lore_presa,    trigger: interact, speaker: "ESTELA DE LA PRESA",         text: "LA PRESA CONTIENE EL OLVIDO./NO TODO SELLO ES DE PIEDRA.|SIGUE EL ECO HASTA EL FONDO/DE LA TORRE DE LAS CAMPANAS."}',
         '  - {entity: tw_lore_campana,  trigger: interact, speaker: "CAMPANA MAYOR",               text: "AQUI SUENAN LAS CAMPANAS/DE UNA ERA ANTERIOR AL POZO.|SU ECO GUARDA EL NOMBRE/DE LA PRIMERA NIDADA."}',
+        '  - {entity: rel_reveal,      trigger: pickup,   speaker: "RELIQUIA: FAROL REVELADOR",   text: "TU FAROL DESVELA LOS/BLOQUES QUE NO EXISTEN.|ACERCATE A LO INVISIBLE/Y SE HARA PIEDRA."}',
     ]
     dialogs = [d.rstrip() for d in dialogs]
 
@@ -559,6 +569,7 @@ def build_world_yaml() -> str:
         "  - {target: wyrm,            gate: door_wyrm_exit, below_y: 184}",
         "  - {kind: shaft, x: 428,  up_x: 428,  split_y: 552, y_top: 528, y_bot: 712}",
         "  - {kind: shaft, x: 2284, up_x: 2284, split_y: 736, y_top: 712, y_bot: 896}",
+        "  - {target: rel_reveal,      style: ability,       below_y: 736}",
     ]
 
     lines = [

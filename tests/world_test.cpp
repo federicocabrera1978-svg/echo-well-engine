@@ -146,6 +146,20 @@ int main(int argc, char** argv) {
   CHECK(boss1 && door_b1 && ck_cat && sw_elev_cat && elev_cat && owd_cat);
   CHECK(boss2 && door_b2 && elev_wyrm && owd_pozo && wyrm && door_exit && goal);
 
+  // Farol Revelador (ability_reveal) en la Torre de los Ecos + 3 bloques espectrales de backtracking.
+  const auto* rel_reveal = find_name(scene, "rel_reveal");
+  const auto* rb_cat_a = find_name(scene, "rb_cat_bridge_a");
+  const auto* rb_cat_b = find_name(scene, "rb_cat_bridge_b");
+  const auto* rb_aq_lid = find_name(scene, "rb_aq_lid");
+  CHECK(rel_reveal && rel_reveal->type == "ability_reveal");
+  CHECK(rel_reveal->x >= 1280.f && rel_reveal->x < 1600.f);  // Torre de los Ecos (4,4)
+  CHECK(rel_reveal->y >= 736.f && rel_reveal->y < 920.f);
+  CHECK(rb_cat_a && rb_cat_b && rb_aq_lid);
+  CHECK(rb_cat_a->type == "reveal_block" && rb_cat_b->type == "reveal_block" && rb_aq_lid->type == "reveal_block");
+  CHECK(!rb_cat_a->active && !rb_cat_b->active && !rb_aq_lid->active);
+  CHECK(!scene.door_blocks(295, 65) && !scene.door_blocks(298, 65));  // puente fantasma: aún no sólido
+  CHECK(!scene.door_blocks(285, 89));                                 // tapa D2: aún no sólida
+
   // --- 2) flood_switch en (2,0) solo inunda la cisterna de (3,0), no piletas de Zona 2/3 ---
   {
     const float y_cat_drop0 = sim.water()[2].rest_y();
@@ -363,6 +377,43 @@ int main(int argc, char** argv) {
       sim.step(in);
     }
     CHECK(in_chamber && egg_sec->active && sim.collected() == 1);
+  }
+
+  // --- 7b) Farol Revelador: bloques espectrales solo sólidos al revelarlos (sticky + save) ---
+  {
+    sim.reset();
+    sim.grant_ability(game::kAbilityReveal);
+    place(sim, 2340.f, 516.f);
+    for (int i = 0; i < 10; ++i) sim.step({});
+    CHECK(rb_cat_a->active && rb_cat_b->active);
+    CHECK(scene.door_blocks(295, 65) && scene.door_blocks(298, 65));  // puente sobre el foso de (7,2)
+    CHECK(scene.solid_tile(295, 65) && scene.solid_tile(298, 65));
+
+    // Tapa el pozo D2 del Archivo Sumergido: el hueco se vuelve sólido al desvelarlo.
+    place(sim, 2244.f, 708.f);
+    for (int i = 0; i < 10; ++i) sim.step({});
+    CHECK(rb_aq_lid->active);
+    CHECK(scene.door_blocks(285, 89) && scene.solid_tile(285, 89));
+
+    const auto bytes = game::encode_save(game::capture_save(sim));
+    game::SaveData decoded;
+    CHECK(game::decode_save(bytes.data(), bytes.size(), decoded) == game::SaveError::None);
+    CHECK((decoded.abilities & game::kAbilityReveal) != 0u);
+
+    Scene s_rev;
+    CHECK(s_rev.load(argv[1], err));
+    Sim sim_rev(s_rev);
+    CHECK(game::apply_save(sim_rev, decoded) == game::SaveError::None);
+    CHECK(sim_rev.has_ability(game::kAbilityReveal));
+    CHECK(find_name(s_rev, "rb_cat_bridge_a")->active && find_name(s_rev, "rb_aq_lid")->active);
+    CHECK(s_rev.door_blocks(295, 65) && s_rev.door_blocks(285, 89));
+
+    // R largo limpia la reliquia y devuelve los bloques a fantasma.
+    sim_rev.reset();
+    CHECK(!sim_rev.has_ability(game::kAbilityReveal));
+    CHECK(!find_name(s_rev, "rb_cat_bridge_a")->active && !find_name(s_rev, "rb_aq_lid")->active);
+    CHECK(!s_rev.door_blocks(295, 65) && !s_rev.door_blocks(285, 89));
+    sim.reset();
   }
 
   // --- 8) Derrotar Boss 1, Boss 2 y Wyrm -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
