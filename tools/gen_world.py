@@ -349,6 +349,12 @@ def build_world_yaml() -> str:
         r("VIS", 203, 86, 1, 3, 17),
         r("COL", 210, 86, 1, 3, 1),
         r("VIS", 210, 86, 1, 3, 17),
+        # Muro de contencion del Archivo (tx=100, ty=69..85) con hueco para cr_archivo (ty=86..87)
+        r("COL", 100, 69, 1, 17, 1),
+        r("VIS", 100, 69, 1, 17, 15),
+        # Muro del Campanario en la Torre (tx=150, ty=95..108) con hueco para door_timed_torre (ty=109..111)
+        r("COL", 150, 95, 1, 14, 1),
+        r("VIS", 150, 95, 1, 14, 15),
     ]
 
     # --- Entidades ---
@@ -446,6 +452,18 @@ def build_world_yaml() -> str:
         ent("tw_ck", "checkpoint", 1376, 888),
         # Reliquia del Farol Revelador en la Torre de los Ecos (cy=4).
         ent("rel_reveal", "ability_reveal", 1424, 888),
+        # Enemigos y puzzles del Archivo Sumergido
+        ent("crust_archivo_1", "crustacean", 640, 704),
+        ent("crust_archivo_2", "crustacean", 960, 704),
+        ent("cr_archivo", "crystal", 800, 688),
+        ent("egg_archivo", "collectible", 840, 704),
+        # Enemigos y puzzles de la Torre de los Ecos
+        ent("bat_torre_1", "bat", 1000, 820),
+        ent("bat_torre_2", "bat", 1680, 820),
+        ent("sw_timed_torre", "timed_switch", 1120, 888),
+        ent("door_timed_torre", "door", 1200, 872),
+        ent("cr_torre", "crystal", 1232, 880),
+        ent("egg_torre", "collectible", 1264, 888),
     ]
 
     links += [
@@ -458,6 +476,7 @@ def build_world_yaml() -> str:
         "  - {from: boss_catacomb, to: door_boss2}",
         "  - {from: sw_seal3,      to: door_wyrm_seal}",
         "  - {from: wyrm,          to: door_wyrm_exit}",
+        "  - {from: sw_timed_torre, to: door_timed_torre}",
     ]
 
     ropes += [

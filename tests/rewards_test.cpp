@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
   }
 
   Sim sim(scene);
-  CHECK(sim.collectible_total() == 6);
+  CHECK(sim.collectible_total() == 8);
   CHECK(scene.tile(80, 19, ew::map::Layer::META) == Sim::kMetaHazard);
 
   PauseMenu menu;
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
     DialogueBox dlg;
     HudTracker ht;
     flow.sim().grant_ability(game::kAbilityAll);
-    for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto"}) {
+    for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto", "egg_archivo", "egg_torre"}) {
       collect_egg(flow.sim(), flow.scene(), egg_name);
     }
     CHECK(flow.sim().all_eggs_collected());
@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
     CHECK(fv_end.end_true == 1);
   }
 
-  // 4b) 5/6 en world -> campaign_done = true pero true_ending = false (kEndTitleVictory)
+  // 4b) 7/8 en world -> campaign_done = true pero true_ending = false (kEndTitleVictory)
   {
     LevelFlow flow;
     LevelFlowConfig cfg;
@@ -282,10 +282,10 @@ int main(int argc, char** argv) {
     PauseMenu m;
     EndScreen es;
     DialogueBox dlg;
-    for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2"}) {
+    for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto", "egg_archivo"}) {
       collect_egg(flow.sim(), flow.scene(), egg_name);
     }
-    CHECK(flow.sim().collected() == 5 && !flow.sim().all_eggs_collected());
+    CHECK(flow.sim().collected() == 7 && !flow.sim().all_eggs_collected());
     defeat_all_bosses(flow.sim(), 296.f, 280.f);
     const auto* goal = find_name(flow.scene(), "goal");
     CHECK(goal);
