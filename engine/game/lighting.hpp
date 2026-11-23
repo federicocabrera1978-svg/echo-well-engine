@@ -153,6 +153,8 @@ inline void collect_room_lights(FrameData& v, const Scene& scene, const Sim& sim
         push_light(e.x, e.y, 32.f, PointLightKind::Crystal, 1.0f, 0.52f, 0.24f, e.x * 0.05f);
       else if (e.type == "ability_wall_climb")
         push_light(e.x, e.y, 32.f, PointLightKind::Crystal, 0.35f, 1.0f, 0.60f, e.x * 0.05f);
+      else if (e.type == "ability_reveal")
+        push_light(e.x, e.y, 32.f, PointLightKind::Crystal, 1.0f, 0.72f, 0.24f, e.x * 0.05f);
       else if (e.type == "collectible")
         push_light(e.x, e.y - 1.f, 32.f, PointLightKind::Crystal, 0.95f, 0.85f, 0.45f, e.x * 0.05f);
     }

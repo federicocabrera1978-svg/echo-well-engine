@@ -31,6 +31,8 @@ inline bool one_way_unlocks_from_left(const Entity& e) {
 
 // Puerta: 1×3 tiles (8×24 px) con esquina superior izquierda en (x, y).
 inline constexpr int kDoorWTiles = 1, kDoorHTiles = 3;
+// Bloque espectral (reveal_block): plataforma fantasma de 3×1 tiles (24×8 px), sólida al revelarla.
+inline constexpr int kRevealWTiles = 3, kRevealHTiles = 1;
 inline constexpr float kSwitchReach = 14.f;  // px: distancia máx. player↔switch para activarlo
 inline constexpr float kDoorAnimSpeed = 4.f;   // 1/s: 0→1 en 0.25 s
 inline constexpr float kDoorSolidUntil = 0.5f; // colisiona mientras anim < esto

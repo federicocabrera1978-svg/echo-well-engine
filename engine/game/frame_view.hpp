@@ -242,6 +242,20 @@ inline void push_entities(FrameData& v, const Scene& s, float time_s) {
         push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 6.5f) & 3), 6, false, false,
                     0.35f, 1.45f, 0.65f, 0.24f);
       }
+    } else if (e.type == "ability_reveal") {  // reliquia del Farol Revelador (ámbar cálida)
+      if (!e.active) {
+        const float bob = std::round(std::sin(time_s * 4.0f) * 1.5f);
+        push_sprite(v, std::round(e.x), std::round(e.y + bob), 4 + (int(time_s * 6.5f) & 3), 6, false, false,
+                    1.6f, 0.72f, 0.20f, 0.30f);
+      }
+    } else if (e.type == "reveal_block") {  // bloque espectral 3×1 tiles: fantasma -> sólido al revelarlo
+      const float alpha = e.active ? 0.95f : 0.28f;
+      for (int k = 0; k < kRevealWTiles; ++k)
+        push_marker(v, e.x + 4.f + 8.f * float(k), e.y + 4.f, 3.8f, 1, 0.28f * alpha, 0.80f * alpha, 1.0f * alpha);
+      if (!e.active) {
+        const float pulse = 0.70f + 0.30f * std::sin(time_s * 3.5f + e.x * 0.1f);
+        push_marker(v, e.x + 12.f, e.y + 4.f, 1.6f, 0, 0.40f * pulse, 0.88f * pulse, 1.0f * pulse);
+      }
     } else if (e.type == "break_wall") {  // muro agrietado rompible con Dash (1×3 tiles)
       if (!e.active) {
         const float pulse = 0.78f + 0.22f * std::sin(time_s * 4.0f);

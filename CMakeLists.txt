@@ -144,6 +144,14 @@ add_test(NAME ewmap_load_biomes
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/biomes.ewmap
           --name biomes --chunks 2 --ents 1 --backdrops 2 --has player_spawn)
 set_tests_properties(ewmap_load_biomes PROPERTIES DEPENDS ewmapc_biomes)
+add_test(NAME ewmapc_reveal
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/reveal.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/reveal.ewmap)
+add_test(NAME ewmap_load_reveal
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/reveal.ewmap
+          --name reveal --chunks 2 --ents 4 --backdrops 2 --dialogs 1
+          --has player_spawn --has ability_reveal --has reveal_block --has goal)
+set_tests_properties(ewmap_load_reveal PROPERTIES DEPENDS ewmapc_reveal)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
 add_test(NAME ewmapc_backdrop_ok
@@ -182,6 +190,7 @@ set(EW_LEVEL2_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level2.ewmap)
 set(EW_LEVEL3_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level3.ewmap)
 set(EW_WORLD_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/world.ewmap)
 set(EW_BIOMES_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/biomes.ewmap)
+set(EW_REVEAL_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/reveal.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -234,7 +243,11 @@ add_custom_command(OUTPUT ${EW_BIOMES_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml -o ${EW_BIOMES_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP} ${EW_BIOMES_MAP})
+add_custom_command(OUTPUT ${EW_REVEAL_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/reveal.yaml -o ${EW_REVEAL_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/reveal.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP} ${EW_BIOMES_MAP} ${EW_REVEAL_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -264,6 +277,10 @@ add_executable(ability_test tests/ability_test.cpp)
 target_link_libraries(ability_test PRIVATE echo_game)
 add_dependencies(ability_test ew_maps)
 add_test(NAME ability_double_jump COMMAND ability_test ${EW_ABILITY_MAP})
+add_executable(reveal_test tests/reveal_test.cpp)
+target_link_libraries(reveal_test PRIVATE echo_game)
+add_dependencies(reveal_test ew_maps)
+add_test(NAME reveal_blocks COMMAND reveal_test ${EW_REVEAL_MAP})
 add_executable(game_feel_test tests/game_feel_test.cpp)
 target_link_libraries(game_feel_test PRIVATE echo_game)
 add_dependencies(game_feel_test ew_maps)

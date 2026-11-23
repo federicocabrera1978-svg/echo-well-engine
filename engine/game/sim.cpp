@@ -372,6 +372,7 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
     if (ents[i].type == "ability_double_jump") ab |= kAbilityDoubleJump;
     if (ents[i].type == "ability_dash") ab |= kAbilityDash;
     if (ents[i].type == "ability_wall_climb") ab |= kAbilityWallClimb;
+    if (ents[i].type == "ability_reveal") ab |= kAbilityReveal;
   }
   abilities_ = ab;
   for (auto& b : bosses_)
@@ -880,6 +881,7 @@ void Sim::step(const Input& in) {
   check_checkpoints();
   check_collectibles();
   check_abilities();
+  reveal_blocks();
   check_dialogs_proximity();
   collide_bosses();
   collide_imps();
@@ -1096,6 +1098,7 @@ void Sim::check_abilities() {
     if (ents[i].type == "ability_double_jump") grant = kAbilityDoubleJump;
     else if (ents[i].type == "ability_dash") grant = kAbilityDash;
     else if (ents[i].type == "ability_wall_climb") grant = kAbilityWallClimb;
+    else if (ents[i].type == "ability_reveal") grant = kAbilityReveal;
     else continue;
     const float dx = ents[i].x - p.pos.x, dy = ents[i].y - p.pos.y;
     if (dx * dx + dy * dy > r2) continue;
@@ -1104,6 +1107,20 @@ void Sim::check_abilities() {
     ability_flash_ = kAbilityFlashFrames;
     sfx_ |= 128u;  // kSfxAbility
     trigger_entity_dialog(i, ew::map::DialogTrigger::Pickup);
+  }
+}
+
+void Sim::reveal_blocks() {
+  if (!has_ability(kAbilityReveal)) return;
+  const auto& p = player().pos;
+  const float r2 = kRevealReach * kRevealReach;
+  auto& ents = scene_.entities_mut();
+  for (auto& e : ents) {
+    if (e.type != "reveal_block" || e.active) continue;
+    const float cx = e.x + float(kRevealWTiles * ew::map::kTileSize) * 0.5f;
+    const float cy = e.y + float(kRevealHTiles * ew::map::kTileSize) * 0.5f;
+    const float dx = cx - p.x, dy = cy - p.y;
+    if (dx * dx + dy * dy <= r2) e.active = true;  // revelado de forma permanente
   }
 }
 

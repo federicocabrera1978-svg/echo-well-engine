@@ -17,7 +17,8 @@ namespace ew::game {
 inline constexpr uint32_t kAbilityDoubleJump = 1u << 0;
 inline constexpr uint32_t kAbilityDash = 1u << 1;
 inline constexpr uint32_t kAbilityWallClimb = 1u << 2;
-inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump | kAbilityDash | kAbilityWallClimb;
+inline constexpr uint32_t kAbilityReveal = 1u << 3;  // Farol Revelador: solidifica reveal_block cercano
+inline constexpr uint32_t kAbilityAll = kAbilityDoubleJump | kAbilityDash | kAbilityWallClimb | kAbilityReveal;
 
 // Estado de animación del protagonista (mapea a filas 0..5 de assets/atlas/sprites.png).
 enum class PlayerAnim : uint8_t {
@@ -70,6 +71,7 @@ class Sim {
   static constexpr float kFlipRearm = 18.f;       // px: alejarse para que el orbe vuelva a armarse
   static constexpr float kDoubleJumpSpeed = 245.f;  // px/s (segundo salto en el aire)
   static constexpr float kAbilityReach = 12.f;      // px: agarrar una reliquia de habilidad
+  static constexpr float kRevealReach = 96.f;       // px: revelar un reveal_block cercano
   static constexpr float kDialogReach = 16.f;       // px: alcance para hablar/leer NPC o estela
   static constexpr int kDoubleJumpFlashFrames = 14; // ~0.23 s de aro bajo los pies
   static constexpr int kAbilityFlashFrames = 45;    // ~0.75 s de destello del HUD al desbloquear
@@ -407,6 +409,7 @@ class Sim {
   void check_gravity_flips();
   void rearm_flips();
   void check_abilities();
+  void reveal_blocks();
   void build();
   void reset_movers();
   void advance_movers();

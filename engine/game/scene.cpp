@@ -60,15 +60,24 @@ bool Scene::solid_tile(int tx, int ty) {
 void Scene::rebuild_doors() const {
   door_boxes_.clear();
   for (const auto& e : entities_) {
+    int w = 0, h = 0;
     if (e.type == "door" || e.type == "one_way_door") {
       if (e.active && e.anim >= kDoorSolidUntil) continue;
+      w = kDoorWTiles;
+      h = kDoorHTiles;
     } else if (e.type == "break_wall") {
       if (e.active) continue;
+      w = kDoorWTiles;
+      h = kDoorHTiles;
+    } else if (e.type == "reveal_block") {
+      if (!e.active) continue;  // fantasma: no sólido hasta revelarlo
+      w = kRevealWTiles;
+      h = kRevealHTiles;
     } else {
       continue;
     }
     const int dx = int(std::floor(e.x / kTileSize)), dy = int(std::floor(e.y / kTileSize));
-    door_boxes_.push_back({dx, dy, dx + kDoorWTiles, dy + kDoorHTiles});
+    door_boxes_.push_back({dx, dy, dx + w, dy + h});
   }
   doors_dirty_ = false;
 }
