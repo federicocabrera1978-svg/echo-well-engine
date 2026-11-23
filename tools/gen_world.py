@@ -331,12 +331,38 @@ def build_world_yaml() -> str:
     rects += [
         "",
         "  # --- Zonas nuevas (cy=3 Aqueduct, cy=4 Tower) ---",
+        # Eje de ascensor elev_archivo en (1,2)->(1,3) (tiles 72..74, y 66..68)
+        r("COL", 72, 66, 3, 3, 0),
+        r("VIS", 72, 66, 3, 3, 0),
         # Pozo D1: descenso (1,2) -> (1,3) por el piso del Santuario (tiles 52..54, y 66..68)
         r("COL", 52, 66, 3, 3, 0),
         r("VIS", 52, 66, 3, 3, 0),
+        # Chimenea de Pozo D1 (muros guía 24 px para Wall-Climb en tx=51 y tx=55, y=69..82)
+        r("COL", 51, 69, 1, 14, 1),
+        r("VIS", 51, 69, 1, 14, 17),
+        r("COL", 55, 69, 1, 14, 1),
+        r("VIS", 55, 69, 1, 14, 17),
+        # Plataformas de descanso en chimenea D1 (one-way, tiles 52..54 en ty=75 y ty=81)
+        r("COL", 52, 75, 3, 1, 3),
+        r("VIS", 52, 75, 3, 1, 5),
+        r("COL", 52, 81, 3, 1, 3),
+        r("VIS", 52, 81, 3, 1, 5),
+        # Eje de ascensor elev_torre en (6,3)->(6,4) (tiles 275..277, y 89..94)
+        r("COL", 275, 89, 3, 6, 0),
+        r("VIS", 275, 89, 3, 6, 0),
         # Pozo D2: descenso (7,3) -> (7,4) (tiles 284..286, y 89..94)
         r("COL", 284, 89, 3, 6, 0),
         r("VIS", 284, 89, 3, 6, 0),
+        # Chimenea de Pozo D2 (muros guía 24 px para Wall-Climb en tx=283 y tx=287, y=95..107)
+        r("COL", 283, 95, 1, 13, 1),
+        r("VIS", 283, 95, 1, 13, 17),
+        r("COL", 287, 95, 1, 13, 1),
+        r("VIS", 287, 95, 1, 13, 17),
+        # Plataformas de descanso en chimenea D2 (one-way, tiles 284..286 en ty=101 y ty=106)
+        r("COL", 284, 101, 3, 1, 3),
+        r("VIS", 284, 101, 3, 1, 5),
+        r("COL", 284, 106, 3, 1, 3),
+        r("VIS", 284, 106, 3, 1, 5),
         # Pileta W1 (entrada del Archivo, bajo D1): tiles 52..60 + muros 51/61
         r("META", 52, 86, 9, 3, 2),
         r("COL", 51, 86, 1, 3, 1),
@@ -352,9 +378,12 @@ def build_world_yaml() -> str:
         # Muro de contencion del Archivo (tx=100, ty=69..85) con hueco para cr_archivo (ty=86..87)
         r("COL", 100, 69, 1, 17, 1),
         r("VIS", 100, 69, 1, 17, 15),
-        # Muro del Campanario en la Torre (tx=150, ty=95..108) con hueco para door_timed_torre (ty=109..111)
-        r("COL", 150, 95, 1, 14, 1),
-        r("VIS", 150, 95, 1, 14, 15),
+        # Arena del Centinela del Archivo (tx=248, ty=69..85 muro de cierre, puerta door_sentinel en ty=86..88)
+        r("COL", 248, 69, 1, 17, 1),
+        r("VIS", 248, 69, 1, 17, 15),
+        # Muro del Campanario en la Torre (tx=158, ty=95..108) con hueco para door_timed_torre (ty=109..111)
+        r("COL", 158, 95, 1, 14, 1),
+        r("VIS", 158, 95, 1, 14, 15),
     ]
 
     # --- Entidades ---
@@ -439,12 +468,20 @@ def build_world_yaml() -> str:
         ent("wyrm", "boss_dragon", 176, 344),
         ent("door_wyrm_exit", "door", 56, 320),
         ent("goal", "goal", 32, 336),
+        ent("lore_wyrm_seal", "lore", 72, 336),
         "",
         "  # Zona 4 (Archivo Sumergido) y Zona 5 (Torre de los Ecos)",
         ent("aq_ck_entrada", "checkpoint", 48, 704),
+        ent("elev_archivo", "elevator", 576, 704, "w: 3, h: 1, to_x: 576, to_y: 520, speed: 56, pause: 0.5, tile: 6"),
         ent("aq_lore_archivo", "lore", 800, 704),
         ent("aq_lore_presa", "lore", 1376, 704),
-        ent("aq_ck_presa", "checkpoint", 1968, 704),
+        ent("aq_ck_presa", "checkpoint", 1728, 704),
+        ent("lore_sentinel", "lore", 1768, 704),
+        ent("boss_sentinel", "boss_sentinel", 1880, 704),
+        ent("door_sentinel", "door", 1984, 688),
+        ent("aq_ck_profundo", "checkpoint", 2040, 704),
+        ent("goal_archivo", "goal", 2080, 704),
+        ent("elev_torre", "elevator", 2200, 888, "w: 3, h: 1, to_x: 2200, to_y: 704, speed: 56, pause: 0.5, tile: 6"),
         # Tapa fantasmal del pozo D2 (7,3 -> 7,4): al revelarla se puede cruzar el Archivo
         # sin caer a la Torre (atajo de backtracking opcional).
         ent("rb_aq_lid", "reveal_block", 2272, 712),
@@ -460,10 +497,11 @@ def build_world_yaml() -> str:
         # Enemigos y puzzles de la Torre de los Ecos
         ent("bat_torre_1", "bat", 1000, 820),
         ent("bat_torre_2", "bat", 1680, 820),
-        ent("sw_timed_torre", "timed_switch", 1120, 888),
-        ent("door_timed_torre", "door", 1200, 872),
-        ent("cr_torre", "crystal", 1232, 880),
-        ent("egg_torre", "collectible", 1264, 888),
+        ent("sw_timed_torre", "timed_switch", 1320, 888),
+        ent("door_timed_torre", "door", 1264, 872),
+        ent("cr_torre", "crystal", 1224, 880),
+        ent("egg_torre", "collectible", 1160, 888),
+        ent("sw_torre_exit", "switch", 1120, 888),
     ]
 
     links += [
@@ -476,7 +514,9 @@ def build_world_yaml() -> str:
         "  - {from: boss_catacomb, to: door_boss2}",
         "  - {from: sw_seal3,      to: door_wyrm_seal}",
         "  - {from: wyrm,          to: door_wyrm_exit}",
+        "  - {from: boss_sentinel,  to: door_sentinel}",
         "  - {from: sw_timed_torre, to: door_timed_torre}",
+        "  - {from: sw_torre_exit,  to: door_timed_torre}",
     ]
 
     ropes += [
@@ -570,6 +610,8 @@ def build_world_yaml() -> str:
         '  - {entity: aq_lore_presa,    trigger: interact, speaker: "ESTELA DE LA PRESA",         text: "LA PRESA CONTIENE EL OLVIDO./NO TODO SELLO ES DE PIEDRA.|SIGUE EL ECO HASTA EL FONDO/DE LA TORRE DE LAS CAMPANAS."}',
         '  - {entity: tw_lore_campana,  trigger: interact, speaker: "CAMPANA MAYOR",               text: "AQUI SUENAN LAS CAMPANAS/DE UNA ERA ANTERIOR AL POZO.|SU ECO GUARDA EL NOMBRE/DE LA PRIMERA NIDADA."}',
         '  - {entity: rel_reveal,      trigger: pickup,   speaker: "RELIQUIA: FAROL REVELADOR",   text: "TU FAROL DESVELA LOS/BLOQUES QUE NO EXISTEN.|ACERCATE A LO INVISIBLE/Y SE HARA PIEDRA."}',
+        '  - {entity: lore_wyrm_seal,   trigger: interact, speaker: "ALTAR DEL GRAN SELLO",         text: "EL SELLO EXIGE CUATRO/GUARDIANES DEL MUNDO.|EL CENTINELA SUMERGIDO/DUERME EN EL ARCHIVO.|DESCIENDE POR EL SANTUARIO/Y COMPLETA LA NIDADA."}',
+        '  - {entity: lore_sentinel,    trigger: interact, speaker: "ESTELA DEL CENTINELA",        text: "EL CENTINELA SUMERGIDO/CUSTODIA EL SELLO DEL AGUA.|TRES GOLPES EN SU CORONA/QUEBRARAN SU CORAZA."}',
     ]
     dialogs = [d.rstrip() for d in dialogs]
 
@@ -586,8 +628,9 @@ def build_world_yaml() -> str:
         "  - {target: rel_dash,        style: ability,       below_y: 184}",
         "  - {target: sw_seal3,        gate: door_wyrm_seal, below_y: 184}",
         "  - {target: wyrm,            gate: door_wyrm_exit, below_y: 184}",
-        "  - {kind: shaft, x: 428,  up_x: 428,  split_y: 552, y_top: 528, y_bot: 712}",
-        "  - {kind: shaft, x: 2284, up_x: 2284, split_y: 736, y_top: 712, y_bot: 896}",
+        "  - {kind: shaft, x: 428,  up_x: 588,  split_y: 552, y_top: 528, y_bot: 712}",
+        "  - {target: boss_sentinel,   gate: door_sentinel,  below_y: 552}",
+        "  - {kind: shaft, x: 2284, up_x: 2200, split_y: 736, y_top: 712, y_bot: 896}",
         "  - {target: rel_reveal,      style: ability,       below_y: 736}",
     ]
 

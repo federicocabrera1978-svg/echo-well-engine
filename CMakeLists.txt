@@ -133,9 +133,9 @@ add_test(NAME ewmap_load_level3
 set_tests_properties(ewmap_load_level3 PROPERTIES DEPENDS ewmapc_level3)
 add_test(NAME ewmap_load_world
   COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/world.ewmap
-          --name world --chunks 40 --ents 91 --links 10 --water 8 --ropes 6 --movers 7 --backdrops 40 --dialogs 20 --guides 15
+          --name world --chunks 40 --ents 100 --links 12 --water 8 --ropes 6 --movers 9 --backdrops 40 --dialogs 22 --guides 16
           --has player_spawn --has ability_double_jump --has ability_dash --has ability_wall_climb --has ability_reveal --has break_wall --has reveal_block --has crystal --has timed_switch --has bat --has crustacean --has collectible --has switch --has flood_switch --has door
-          --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore)
+          --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has boss_sentinel --has imp --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_world PROPERTIES DEPENDS ewmapc_world)
 add_test(NAME ewmapc_biomes
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml

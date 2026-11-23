@@ -1,8 +1,9 @@
 // Test sin GL (Etapa 9 Fase B): mundo Metroidvania unificado 8x5 (`world.ewmap`).
-// Verifica estructura 8x5 (40 chunks), 8 huevos, 3 bosses, contención de agua,
+// Verifica estructura 8x5 (40 chunks), 8 huevos, 4 bosses, contención de agua,
 // atajos unidireccionales (owd_wyrm_cat_l, owd_wyrm_pozo), ascensores
-// (elev_cat_pozo, elev_wyrm_pozo), caída tras Boss 1, derrota del Wyrm -> goal,
-// zonas nuevas (Archivo Sumergido cy=3, Torre de los Ecos cy=4) y persistencia en save.ewsv.
+// (elev_cat_pozo, elev_wyrm_pozo, elev_archivo, elev_torre), caída tras Boss 1,
+// derrota de bosses -> goal, zonas nuevas (Archivo Sumergido cy=3, Torre de los Ecos cy=4)
+// y persistencia en save.ewsv.
 #include "audio/sfx.hpp"
 #include "game/campaign.hpp"
 #include "game/end_screen.hpp"
@@ -85,14 +86,16 @@ int main(int argc, char** argv) {
 
   Sim sim(scene);
   CHECK(sim.collectible_total() == 8 && sim.collected() == 0);
-  CHECK(sim.boss_count() == 3 && !sim.bosses_defeated());
+  CHECK(sim.boss_count() == 4 && !sim.bosses_defeated());
   CHECK(sim.rope_count() == 6 && sim.water().size() == 8);
-  CHECK(sim.mover_count() == 7);
+  CHECK(sim.mover_count() == 9);
   CHECK(sim.bat_count() == 2 && sim.crustacean_count() == 2);
 
-  // Zonas nuevas: pozos D1/D2 abiertos y biomas aqueduct/tower en cy=3/cy=4.
+  // Zonas nuevas: pozos D1/D2 abiertos, chimeneas de escalada 24 px y biomas aqueduct/tower en cy=3/cy=4.
   CHECK(!scene.solid_tile(53, 66) && !scene.solid_tile(53, 68));       // D1: (1,2) -> (1,3)
   CHECK(!scene.solid_tile(285, 89) && !scene.solid_tile(285, 94));     // D2: (7,3) -> (7,4)
+  CHECK(scene.solid_tile(51, 75) && scene.solid_tile(55, 75));         // chimenea D1 (muros laterales 24 px)
+  CHECK(scene.solid_tile(283, 100) && scene.solid_tile(287, 100));     // chimenea D2 (muros laterales 24 px)
   CHECK(scene.backdrop(0, 3).theme == uint16_t(ew::map::BackdropTheme::Aqueduct));
   CHECK(scene.backdrop(0, 4).theme == uint16_t(ew::map::BackdropTheme::Tower));
   CHECK(find_name(scene, "aq_ck_entrada") && find_name(scene, "aq_ck_presa") && find_name(scene, "tw_ck"));
@@ -100,6 +103,9 @@ int main(int argc, char** argv) {
   CHECK(find_name(scene, "cr_archivo") && find_name(scene, "egg_archivo"));
   CHECK(find_name(scene, "sw_timed_torre") && find_name(scene, "door_timed_torre"));
   CHECK(find_name(scene, "cr_torre") && find_name(scene, "egg_torre"));
+  CHECK(find_name(scene, "elev_archivo") && find_name(scene, "elev_torre"));
+  CHECK(find_name(scene, "boss_sentinel") && find_name(scene, "door_sentinel"));
+  CHECK(find_name(scene, "lore_wyrm_seal") && find_name(scene, "lore_sentinel"));
 
   // Contención de las 6 piletas (misma invariante que water_test).
   for (const auto& b : sim.water()) {
@@ -132,6 +138,34 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 150; ++i) sim.step({});
     CHECK(sim.deaths() == 0);
     CHECK(scene.chunk_y() == 3);
+  }
+
+  // --- 1c) Ascensores de retorno: elev_archivo (cy=3 -> cy=2) y elev_torre (cy=4 -> cy=3) ---
+  {
+    sim.reset();
+    const auto* elev_arch = find_name(scene, "elev_archivo");
+    const auto* elev_tw = find_name(scene, "elev_torre");
+    CHECK(elev_arch && elev_arch->active);
+    CHECK(elev_tw && elev_tw->active);
+    const int arch_idx = find_mover_idx(sim, scene, "elev_archivo");
+    const int tw_idx = find_mover_idx(sim, scene, "elev_torre");
+    CHECK(arch_idx >= 0 && tw_idx >= 0);
+
+    // Subir en elev_archivo desde el fondo del Archivo (704) al Santuario (520)
+    place(sim, 588.f, 700.f);
+    sim.step({});
+    CHECK(sim.ridden() == arch_idx);
+    for (int i = 0; i < 260 && sim.player().pos.y > 530.f; ++i) sim.step({});
+    CHECK(sim.player().pos.y <= 530.f && scene.chunk_y() == 2);
+
+    // Subir en elev_torre desde el fondo de la Torre (888) al Archivo (704)
+    sim.reset();
+    place(sim, 2212.f, 884.f);
+    sim.step({});
+    CHECK(sim.ridden() == tw_idx);
+    for (int i = 0; i < 260 && sim.player().pos.y > 720.f; ++i) sim.step({});
+    CHECK(sim.player().pos.y <= 720.f && scene.chunk_y() == 3);
+    sim.reset();
   }
 
   const auto* boss1 = find_name(scene, "boss_pozo");
@@ -461,7 +495,7 @@ int main(int argc, char** argv) {
 
     // Torre: sw_timed_torre abre door_timed_torre, permitiendo romper cr_torre y llegar a egg_torre
     CHECK(!sw_timed_torre->active && !door_timed_torre->active && !cr_torre->active && !egg_torre->active);
-    CHECK(scene.door_blocks(150, 109) && scene.door_blocks(150, 110));
+    CHECK(scene.door_blocks(158, 109) && scene.door_blocks(158, 110));
     place(sim, sw_timed_torre->x, sw_timed_torre->y);
     sim.step({});
     { Input act; act.interact = true; sim.step(act); }
@@ -469,25 +503,33 @@ int main(int argc, char** argv) {
 
     // Esperar a que la puerta se abra
     for (int i = 0; i < 20; ++i) sim.step({});
-    CHECK(!scene.door_blocks(150, 109));
+    CHECK(!scene.door_blocks(158, 109));
 
-    // Cruzar y romper cr_torre con Dash
-    place(sim, 1210.f, 880.f);
+    // Cruzar y romper cr_torre con Dash hacia la izquierda
+    place(sim, 1250.f, 880.f);
     sim.step({});
     Input dt;
-    dt.move_x = 1.f;
+    dt.move_x = -1.f;
     dt.dash = true;
     sim.step(dt);
-    for (int i = 0; i < 20 && !cr_torre->active; ++i) sim.step({1.f});
+    for (int i = 0; i < 20 && !cr_torre->active; ++i) sim.step({-1.f});
     CHECK(cr_torre->active);
     // Recoger huevo de la torre
     place(sim, egg_torre->x, egg_torre->y);
     sim.step({});
     CHECK(egg_torre->active && sim.collected() == 2);
+
+    // Salida segura desde el interior: sw_torre_exit abre door_timed_torre
+    const auto* sw_exit = find_name(scene, "sw_torre_exit");
+    CHECK(sw_exit);
+    place(sim, sw_exit->x, sw_exit->y);
+    sim.step({});
+    { Input act; act.interact = true; sim.step(act); }
+    CHECK(sw_exit->active && door_timed_torre->active);
     sim.reset();
   }
 
-  // --- 8) Derrotar Boss 1, Boss 2 y Wyrm -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
+  // --- 8) Derrotar Boss 1, Boss 2, Wyrm y Centinela -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
   sim.reset();
   sim.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb);
 
@@ -519,7 +561,24 @@ int main(int argc, char** argv) {
   sim.step({});
   CHECK(sim.checkpoint() && sim.checkpoint()->name == "ck_wyrm_arena");
   defeat_boss_at(sim, 2, 296.f, 280.f);
-  CHECK(sim.boss(2).defeated && sim.bosses_defeated() && door_exit->active);
+  CHECK(sim.boss(2).defeated && door_exit->active);
+  // Con Wyrm vencido pero Boss 3 (Centinela) vivo: no está completo todavía.
+  CHECK(!sim.bosses_defeated());
+
+  // Tocar goal tras vencer al Wyrm SIN vencer al Centinela no completa el mapa (anti-final prematuro).
+  place(sim, 72.f, 336.f);
+  sim.step({});
+  place(sim, goal->x, goal->y);
+  sim.step({});
+  CHECK(!sim.finished());
+
+  // Derrotar a Boss 3: Centinela del Archivo (3 golpes)
+  const auto* b_sentinel = find_name(scene, "boss_sentinel");
+  const auto* door_sentinel = find_name(scene, "door_sentinel");
+  CHECK(b_sentinel && door_sentinel);
+  defeat_boss_at(sim, 3, 1728.f, 704.f);
+  CHECK(sim.boss(3).defeated && door_sentinel->active);
+  CHECK(sim.bosses_defeated());
 
   // Activar atajos y ascensor antes de cruzar a goal para validar save.ewsv completo.
   place(sim, 1964.f, 336.f);
@@ -578,6 +637,7 @@ int main(int argc, char** argv) {
   CHECK(sim2.bosses_defeated());
   CHECK(sim2.has_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb));
   CHECK(find_name(s2, "elev_cat_pozo")->active);
+  CHECK(find_name(s2, "elev_archivo")->active && find_name(s2, "elev_torre")->active);
   CHECK(find_name(s2, "owd_wyrm_cat_l")->active && !s2.door_blocks(160, 63));
   CHECK(find_name(s2, "owd_wyrm_pozo")->active && !s2.door_blocks(51, 17));
 
