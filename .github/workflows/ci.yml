@@ -51,6 +51,8 @@ jobs:
           ./build/ewmap_smoke assets/maps/bin/reveal.ewmap --name reveal --chunks 2 --ents 4 --backdrops 2 --dialogs 1 --has player_spawn --has ability_reveal --has reveal_block --has goal
           ./build/ewmapc --crc assets/maps/src/mechanisms.yaml -o assets/maps/bin/mechanisms.ewmap
           ./build/ewmap_smoke assets/maps/bin/mechanisms.ewmap --name mechanisms --chunks 1 --ents 5 --links 1 --backdrops 1 --has player_spawn --has crystal --has timed_switch --has door --has goal
+          ./build/ewmapc --crc assets/maps/src/enemies.yaml -o assets/maps/bin/enemies.ewmap
+          ./build/ewmap_smoke assets/maps/bin/enemies.ewmap --name enemies --chunks 1 --ents 4 --backdrops 1 --has player_spawn --has bat --has crustacean --has goal
 
   sanitizers:
     runs-on: ubuntu-latest

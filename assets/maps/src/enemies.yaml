@@ -1,0 +1,25 @@
+# enemies.yaml — Sala de prueba para nuevos arquetipos de enemigos menores (sin GL).
+# `bat`: patrulla ondulante aérea en la torre, cae con pisotón o Dash y recarga saltos.
+# `crustacean`: patrulla terrestre acorazada, salto ligero rebota sin dañarlo;
+# Dash o pisotón de gran caída rompen su caparazón.
+name: enemies
+size_chunks: [1, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0, y: 20, w: 40, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 40, h: 3, tile: 17}
+  # Plataforma elevada para testear pisotón de gran caída
+  - {layer: COL, x: 22, y: 8, w: 10, h: 1, tile: 1}
+  - {layer: VIS, x: 22, y: 8, w: 10, h: 1, tile: 17}
+
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+  - {name: bat_a, type: bat, x: 140, y: 110}
+  - {name: crust_a, type: crustacean, x: 230, y: 152}
+  - {name: goal, type: goal, x: 300, y: 152}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: tower, seed: 1}
