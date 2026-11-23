@@ -64,6 +64,8 @@ int main(int argc, char** argv) {
   CHECK(biome_darkness(BT::Arena) >= 0.65f);
   CHECK(biome_darkness(BT::Cisterna) > 0.f && biome_darkness(BT::Cisterna) < 0.65f);
   CHECK(biome_darkness(BT::Santuario) > 0.f && biome_darkness(BT::Santuario) < 0.65f);
+  CHECK(biome_darkness(BT::Aqueduct) >= 0.65f);
+  CHECK(biome_darkness(BT::Tower) > 0.f && biome_darkness(BT::Tower) < 0.65f);
 
   // --- 2) world.ewmap: Zonas 1, 2 y 3 + farol del héroe -----------------------
   {

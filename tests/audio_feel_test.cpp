@@ -46,8 +46,8 @@ uint32_t walk_collect_sfx(Sim& s, float move_x, int steps) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 3) {
-    std::fprintf(stderr, "uso: audio_feel_test <world.ewmap> <mover.ewmap>\n");
+  if (argc < 4) {
+    std::fprintf(stderr, "uso: audio_feel_test <world.ewmap> <mover.ewmap> <biomes.ewmap>\n");
     return 2;
   }
 
@@ -148,6 +148,20 @@ int main(int argc, char** argv) {
   CHECK(mover_sim.surface_under_feet() == SurfaceKind::Metal);
   const uint32_t metal_sfx = walk_collect_sfx(mover_sim, 0.5f, 12);
   CHECK((metal_sfx & audio::kSfxStepMetal) != 0);
+
+  // --- 4) Zonas musicales de los biomas nuevos (aqueduct, tower) -------------
+  Scene bio_scene;
+  if (!bio_scene.load(argv[3], err)) {
+    std::fprintf(stderr, "load biomes error: %s\n", err.c_str());
+    return 1;
+  }
+  Sim bio_sim(bio_scene);
+  place(bio_sim, 160.f, 92.f);
+  CHECK(bio_sim.scene().chunk_x() == 0);
+  CHECK(game::music_zone_for(bio_scene, bio_sim) == MusicZone::Aqueduct);
+  place(bio_sim, 480.f, 92.f);
+  CHECK(bio_sim.scene().chunk_x() == 1);
+  CHECK(game::music_zone_for(bio_scene, bio_sim) == MusicZone::Tower);
 
   std::puts("audio_feel ok");
   return 0;

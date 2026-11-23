@@ -45,6 +45,8 @@ jobs:
           ./build/ewmap_smoke assets/maps/bin/level3.ewmap --name level3 --chunks 6 --ents 22 --links 2 --water 1 --ropes 1 --movers 1 --backdrops 6 --dialogs 4 --guides 3 --has player_spawn --has ability_double_jump --has ability_dash --has break_wall --has collectible --has switch --has door --has mover --has gravity_flip --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore
           ./build/ewmapc --crc assets/maps/src/world.yaml -o assets/maps/bin/world.ewmap
           ./build/ewmap_smoke assets/maps/bin/world.ewmap --name world --chunks 24 --ents 71 --links 9 --water 6 --ropes 4 --movers 7 --backdrops 24 --dialogs 16 --guides 12 --has player_spawn --has ability_double_jump --has ability_dash --has ability_wall_climb --has break_wall --has collectible --has switch --has flood_switch --has door --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore
+          ./build/ewmapc --crc assets/maps/src/biomes.yaml -o assets/maps/bin/biomes.ewmap
+          ./build/ewmap_smoke assets/maps/bin/biomes.ewmap --name biomes --chunks 2 --ents 1 --backdrops 2 --has player_spawn
 
   sanitizers:
     runs-on: ubuntu-latest

@@ -95,7 +95,7 @@ int main() {
     CHECK(def.music_fade() == 1.f);
     CHECK(def.music_enabled());
   }
-  for (MusicZone z : {MusicZone::Well, MusicZone::Catacombs, MusicZone::WyrmLair, MusicZone::Boss}) {
+  for (MusicZone z : {MusicZone::Well, MusicZone::Catacombs, MusicZone::WyrmLair, MusicZone::Boss, MusicZone::Aqueduct, MusicZone::Tower}) {
     Mixer mz;
     mz.set_music_zone(z);
     CHECK(mz.music_zone() == z);

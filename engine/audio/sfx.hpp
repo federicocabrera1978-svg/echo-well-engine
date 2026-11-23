@@ -28,7 +28,7 @@ enum class SfxId : uint8_t {
 };
 
 // Zonas musicales procedurales (Silence por defecto para no alterar renders sin música).
-enum class MusicZone : uint8_t { Silence = 0, Well = 1, Catacombs = 2, WyrmLair = 3, Boss = 4 };
+enum class MusicZone : uint8_t { Silence = 0, Well = 1, Catacombs = 2, WyrmLair = 3, Boss = 4, Aqueduct = 5, Tower = 6 };
 
 inline constexpr int kRate = 44100;
 inline constexpr int kMaxVoices = 8;
