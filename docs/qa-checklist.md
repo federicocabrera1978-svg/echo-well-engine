@@ -1,6 +1,6 @@
 # Checklist de QA — Echo Well v0.1.0
 
-Versión de prueba para QA del mundo Metroidvania unificado (**`world.ewmap`**, grilla `8×3`: **El Pozo → Las Catacumbas → La Guarida del Wyrm** con atajos de un solo sentido y ascensores; el ejecutable arranca ahí por defecto, mientras los capítulos sueltos `slice`, `level2` y `level3` siguen probándose con `--map`), habilidades desbloqueables (**Doble Salto**, **Dash** y **Trepar / Salto en Pared**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
+Versión de prueba para QA del mundo Metroidvania unificado (**`world.ewmap`**, grilla `8×5`: **El Pozo → Las Catacumbas → La Guarida del Wyrm → Archivo Sumergido → Torre de los Ecos** con atajos de un solo sentido y ascensores; el ejecutable arranca ahí por defecto, mientras los capítulos sueltos `slice`, `level2` y `level3` siguen probándose con `--map`), habilidades desbloqueables (**Doble Salto**, **Dash** y **Trepar / Salto en Pared**), diálogos de huevos de dragón, mini-mapa exploratorio y pelea final contra el Wyrm. No es un release público. Los paquetes salen como *artifacts* del CI de GitHub Actions en `main`.
 
 Antes de empezar, anotá la versión: `echo_engine --version` (tiene que decir `v0.1.0`).
 También aparece en el título de la ventana y abajo a la derecha del menú de pausa.
@@ -155,7 +155,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   1. En `(0,0)`, recogé o conservá Doble Salto + Dash, rompé `wall_entry` embistiendo y saltá sobre el foso hacia `(1,0)`.
   2. En `(1,0)` recogé `egg_wyrm_1` sobre la repisa alta (`1/2`), bajá por el pozo vertical al agua de `(1,1)`, cruzá el corredor invertido con `flip_up3` / `flip_down3`, rompé `wall_secret3` hacia `(0,1)`, derrotá al diablillo `imp_santuario` embistiendo con Dash o con pisotón para activar `sw_seal3` (abre `door_wyrm_seal`) y tomar `egg_wyrm_2` (`2/2`).
   3. Subí de vuelta a `(1,0)`, observando en el **mini-mapa** arriba a la derecha cómo se ilumina cada sala visitada; entrá por `door_wyrm_seal` a `(2,0)` y vencé al jefe dragón **`wyrm`** (`boss_dragon`, 4 pisotones sobre su corona dorada, saltando su embestida o atravesando sus bolas de fuego con Dash) para abrir `door_wyrm_exit` y ver la pantalla de victoria final (**`VICTORIA: EL WYRM CAYO`** con tiempo y rango **S/A/B**).
-- [ ] **Atajos, puertas de un solo sentido (`one_way_door`) y ascensores (`elevator`) en `world` (`8×3`):**
+- [ ] **Atajos, puertas de un solo sentido (`one_way_door`) y ascensores (`elevator`) en `world` (`8×5`):**
   - **`owd_wyrm_cat_l` (entre `(3,2)` y `(4,2)`, Las Catacumbas ↔ La Guarida del Wyrm):** desde la derecha (Zona 2, Las Catacumbas) **no se abre** ni al empujar ni al pulsar E/X/↓ (suena clink metálico); al llegar por la izquierda desde Zona 3 (La Guarida del Wyrm) **se abre de forma permanente** dejando libre el atajo.
   - **`owd_wyrm_pozo` (en `(1,0)`, El Pozo):** desde la izquierda (lado inicial de El Pozo) **no se abre**; al subir desde Zona 3 por la derecha **se abre de forma permanente** y conserva su estado abierto tras morir, R corto y al recargar `save.ewsv`.
   - **`sw_elev_cat` → `elev_cat_pozo` (entre `(6,1)` y `(6,0)`):** verificá que `elev_cat_pozo` arranca bloqueado (sellando el piso en `(6,0)`), que al activar `sw_elev_cat` en `(6,1)` se desbloquea, se puede llamar con E/X/↓ desde arriba o abajo y te **sube directo a `(6,0)` en El Pozo** sin aplastarte ni invertir la gravedad.
@@ -170,6 +170,11 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - Al juntar `2` huevos, verificá que aparece el **`2.º` corazón** en el HUD (`+1HP`), que podés absorber 1 golpe de pinchos o enemigo (`imp` / boss) quedando con `1` corazón e invulnerabilidad temporal (`60` frames), y que tocar un checkpoint o hacer respawn recarga ambos corazones.
   - Al juntar `4` huevos (con Dash desbloqueado), verificá el ícono dorado-cian de **Dash II** en el HUD y que podés encadenar **`2` embestidas seguidas en el aire** (`14` frames de duración cada una) antes de volver a apoyar.
   - Al completar `world` con **`6/6` huevos**, verificá la pantalla **`FINAL VERDADERO`** (`NIDADA A SALVO: TODOS LOS HUEVOS`, marco dorado-cian y etiquetas `DASH II` / `+1HP`), distinta de la victoria estándar (`VICTORIA: EL WYRM CAYO`) al terminar con `< 6` huevos.
+- [ ] **Zonas nuevas — Archivo Sumergido (`cy=3`) y Torre de los Ecos (`cy=4`):**
+  - Desde el **Santuario del Wyrm** `(1,2)` (tras activar el sello y derrotar al diablillo), bajá por el pozo `D1` —una cuerda cuelga del borde— hasta el **Archivo Sumergido** (`aqueduct`, 8 salas con piletas, estelas `aq_lore_archivo` / `aq_lore_presa` y checkpoints `aq_ck_entrada` / `aq_ck_presa`).
+  - Recorré el corredor hacia la derecha, nadá las piletas (W1 en `(1,3)` y W2 en `(5,3)`) y bajá por el pozo `D2` en `(7,3)` (otra cuerda) hasta la **Torre de los Ecos** (`tower`, estela `tw_lore_campana` y checkpoint `tw_ck`).
+  - Verificá que podés volver a subir trepando las cuerdas de `D2` y `D1` (o con salto en pared) y que el mini-mapa sigue contando el `%` explorado sobre **40 salas**.
+  - Verificá el fondo `aqueduct` (bloques húmedos, caños, burbujas) y `tower` (vitrales, campanas, polvo), la oscuridad propia de cada bioma y el cambio de música (acuática en el Archivo, campanario en la Torre).
 
 ## 4. Guardar partida
 

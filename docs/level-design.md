@@ -260,7 +260,7 @@ backdrops:
   la sala depende de verlos de lejos. Los tiles `VIS` sin `COL` (columnas de decorado) se siguen
   dibujando encima del fondo.
 - Para mirar los fondos: `tools/room_shots.py build out --png` (con display o `xvfb-run`) captura
-  y valida las 46 salas de campaña (`slice`: 8, `level2`: 8, `level3`: 6, `world`: 24) y compara cada
+  y valida las 62 salas de campaña (`slice`: 8, `level2`: 8, `level3`: 6, `world`: 40) y compara cada
   una con su misma sala en `vacio`. CI lo corre en el job `engine` y sube las capturas reales
   (`fondos/sala*.ppm`, `fondos/level2_*.ppm`, `fondos/level3_*.ppm`, `fondos/world_*.ppm`, excluyendo
   `*_vacio.ppm`) como artifact `fondos-salas`.
@@ -351,7 +351,7 @@ compilar y pasar por `ewmap_smoke`).
 
 ## Enganchar la sala al juego
 
-El prototipo arranca en **`world`** (`EW_DEFAULT_MAP`: `build/maps/world.ewmap`, mundo unificado `8×3`). Para probar la tuya o los capítulos sueltos (como `slice`) no hace falta cambiar el default:
+El prototipo arranca en **`world`** (`EW_DEFAULT_MAP`: `build/maps/world.ewmap`, mundo unificado `8×5`). Para probar la tuya o los capítulos sueltos (como `slice`) no hace falta cambiar el default:
 
 ```sh
 ./build/echo_engine --map build/maps/room.ewmap
