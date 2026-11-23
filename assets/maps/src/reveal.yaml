@@ -1,0 +1,27 @@
+# reveal.yaml — Mapa de prueba del Farol Revelador (ability_reveal) + bloque espectral reveal_block.
+# El hueco de 3 tiles (128..152 px) solo se cruza cuando el farol revela el bloque fantasma.
+name: reveal
+size_chunks: [2, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0, y: 20, w: 80, h: 3, tile: 1}
+  - {layer: VIS, x: 0, y: 20, w: 80, h: 3, tile: 17}
+  - {layer: COL, x: 16, y: 20, w: 3, h: 3, tile: 0}
+  - {layer: VIS, x: 16, y: 20, w: 3, h: 3, tile: 0}
+  - {layer: META, x: 16, y: 21, w: 3, h: 2, tile: 4}
+
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+  - {name: rel_reveal, type: ability_reveal, x: 64, y: 152}
+  - {name: rb_bridge, type: reveal_block, x: 128, y: 160}
+  - {name: goal, type: goal, x: 288, y: 152}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: cueva, seed: 1}
+  - {cx: 1, cy: 0, theme: cueva, seed: 2}
+
+dialogs:
+  - {entity: rel_reveal, trigger: pickup, speaker: "RELIQUIA: FAROL REVELADOR", text: "TU FAROL AHORA DESVELA/LOS BLOQUES QUE NO EXISTEN.|ACERCATE A LO INVISIBLE/SE HARA PIEDRA BAJO TUS PIES."}
