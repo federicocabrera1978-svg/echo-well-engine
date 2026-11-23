@@ -1,5 +1,5 @@
 // Test sin GL (Etapa 9 Fase B): mundo Metroidvania unificado 8x5 (`world.ewmap`).
-// Verifica estructura 8x5 (40 chunks), 6 huevos, 3 bosses, contención de agua,
+// Verifica estructura 8x5 (40 chunks), 8 huevos, 3 bosses, contención de agua,
 // atajos unidireccionales (owd_wyrm_cat_l, owd_wyrm_pozo), ascensores
 // (elev_cat_pozo, elev_wyrm_pozo), caída tras Boss 1, derrota del Wyrm -> goal,
 // zonas nuevas (Archivo Sumergido cy=3, Torre de los Ecos cy=4) y persistencia en save.ewsv.
@@ -77,17 +77,18 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // --- 1) Invariantes estructurales 8x5 (40 chunks), 6 huevos, 3 bosses, contención de agua ---
+  // --- 1) Invariantes estructurales 8x5 (40 chunks), 8 huevos, 3 bosses, contención de agua ---
   CHECK(scene.width_px() == 2560 && scene.height_px() == 920);
   CHECK(scene.map().header().map_w_chunks == 8 && scene.map().header().map_h_chunks == 5);
   CHECK(scene.map().chunk_count() == 40);
   CHECK(scene.map().backdrops().size() == 40);
 
   Sim sim(scene);
-  CHECK(sim.collectible_total() == 6 && sim.collected() == 0);
+  CHECK(sim.collectible_total() == 8 && sim.collected() == 0);
   CHECK(sim.boss_count() == 3 && !sim.bosses_defeated());
   CHECK(sim.rope_count() == 6 && sim.water().size() == 8);
   CHECK(sim.mover_count() == 7);
+  CHECK(sim.bat_count() == 2 && sim.crustacean_count() == 2);
 
   // Zonas nuevas: pozos D1/D2 abiertos y biomas aqueduct/tower en cy=3/cy=4.
   CHECK(!scene.solid_tile(53, 66) && !scene.solid_tile(53, 68));       // D1: (1,2) -> (1,3)
@@ -96,6 +97,9 @@ int main(int argc, char** argv) {
   CHECK(scene.backdrop(0, 4).theme == uint16_t(ew::map::BackdropTheme::Tower));
   CHECK(find_name(scene, "aq_ck_entrada") && find_name(scene, "aq_ck_presa") && find_name(scene, "tw_ck"));
   CHECK(find_name(scene, "aq_lore_archivo") && find_name(scene, "aq_lore_presa") && find_name(scene, "tw_lore_campana"));
+  CHECK(find_name(scene, "cr_archivo") && find_name(scene, "egg_archivo"));
+  CHECK(find_name(scene, "sw_timed_torre") && find_name(scene, "door_timed_torre"));
+  CHECK(find_name(scene, "cr_torre") && find_name(scene, "egg_torre"));
 
   // Contención de las 6 piletas (misma invariante que water_test).
   for (const auto& b : sim.water()) {
@@ -159,6 +163,23 @@ int main(int argc, char** argv) {
   CHECK(!rb_cat_a->active && !rb_cat_b->active && !rb_aq_lid->active);
   CHECK(!scene.door_blocks(295, 65) && !scene.door_blocks(298, 65));  // puente fantasma: aún no sólido
   CHECK(!scene.door_blocks(285, 89));                                 // tapa D2: aún no sólida
+
+  // Mecanismos y enemigos de Archivo Sumergido y Torre de los Ecos
+  const auto* cr_archivo = find_name(scene, "cr_archivo");
+  const auto* egg_archivo = find_name(scene, "egg_archivo");
+  const auto* crust_arch1 = find_name(scene, "crust_archivo_1");
+  const auto* crust_arch2 = find_name(scene, "crust_archivo_2");
+  const auto* sw_timed_torre = find_name(scene, "sw_timed_torre");
+  const auto* door_timed_torre = find_name(scene, "door_timed_torre");
+  const auto* cr_torre = find_name(scene, "cr_torre");
+  const auto* egg_torre = find_name(scene, "egg_torre");
+  const auto* bat_torre1 = find_name(scene, "bat_torre_1");
+  const auto* bat_torre2 = find_name(scene, "bat_torre_2");
+  CHECK(cr_archivo && egg_archivo && crust_arch1 && crust_arch2);
+  CHECK(sw_timed_torre && door_timed_torre && cr_torre && egg_torre && bat_torre1 && bat_torre2);
+  CHECK(cr_archivo->type == "crystal" && egg_archivo->type == "collectible");
+  CHECK(sw_timed_torre->type == "timed_switch" && door_timed_torre->type == "door");
+  CHECK(cr_torre->type == "crystal" && egg_torre->type == "collectible");
 
   // --- 2) flood_switch en (2,0) solo inunda la cisterna de (3,0), no piletas de Zona 2/3 ---
   {
@@ -416,19 +437,69 @@ int main(int argc, char** argv) {
     sim.reset();
   }
 
+  // --- 7c) Puzzles ambientales: cristal en Archivo y palanca temporizada + cristal en Torre ---
+  {
+    sim.reset();
+    sim.grant_ability(game::kAbilityDash);
+
+    // Archivo Sumergido: cr_archivo bloquea el paso hacia egg_archivo
+    CHECK(!cr_archivo->active && !egg_archivo->active);
+    CHECK(scene.door_blocks(100, 86) && scene.door_blocks(100, 87));
+    place(sim, 780.f, 688.f);
+    sim.step({});
+    Input d;
+    d.move_x = 1.f;
+    d.dash = true;
+    sim.step(d);
+    for (int i = 0; i < 20 && !cr_archivo->active; ++i) sim.step({1.f});
+    CHECK(cr_archivo->active);
+    CHECK(!scene.door_blocks(100, 86) && !scene.door_blocks(100, 87));
+    // Recoger huevo del archivo
+    place(sim, egg_archivo->x, egg_archivo->y);
+    sim.step({});
+    CHECK(egg_archivo->active && sim.collected() == 1);
+
+    // Torre: sw_timed_torre abre door_timed_torre, permitiendo romper cr_torre y llegar a egg_torre
+    CHECK(!sw_timed_torre->active && !door_timed_torre->active && !cr_torre->active && !egg_torre->active);
+    CHECK(scene.door_blocks(150, 109) && scene.door_blocks(150, 110));
+    place(sim, sw_timed_torre->x, sw_timed_torre->y);
+    sim.step({});
+    { Input act; act.interact = true; sim.step(act); }
+    CHECK(sw_timed_torre->active && door_timed_torre->active);
+
+    // Esperar a que la puerta se abra
+    for (int i = 0; i < 20; ++i) sim.step({});
+    CHECK(!scene.door_blocks(150, 109));
+
+    // Cruzar y romper cr_torre con Dash
+    place(sim, 1210.f, 880.f);
+    sim.step({});
+    Input dt;
+    dt.move_x = 1.f;
+    dt.dash = true;
+    sim.step(dt);
+    for (int i = 0; i < 20 && !cr_torre->active; ++i) sim.step({1.f});
+    CHECK(cr_torre->active);
+    // Recoger huevo de la torre
+    place(sim, egg_torre->x, egg_torre->y);
+    sim.step({});
+    CHECK(egg_torre->active && sim.collected() == 2);
+    sim.reset();
+  }
+
   // --- 8) Derrotar Boss 1, Boss 2 y Wyrm -> door_wyrm_exit -> goal -> EndScreen + save.ewsv ---
   sim.reset();
   sim.grant_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb);
 
-  // Recoger los 6 huevos y activar checkpoints/puertas clave.
-  for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto"}) {
+  // Recoger los 8 huevos y activar checkpoints/puertas clave.
+  for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto", "egg_archivo", "egg_torre"}) {
     const auto* eg = find_name(scene, egg_name);
     CHECK(eg);
     place(sim, eg->x, eg->y);
     sim.step({});
     CHECK(eg->active);
   }
-  CHECK(sim.collected() == 6);
+  CHECK(sim.collected() == 8);
   CHECK(sim.max_hp() == 2 && sim.hp() == 2 && sim.dash_upgraded() && sim.all_eggs_collected());
 
   // Derrotar Boss 1 y Boss 2.
@@ -487,7 +558,7 @@ int main(int argc, char** argv) {
     const auto txt = game::end_screen_text(es);
     CHECK(txt[0] == game::kEndTitleTrue);
     CHECK(txt[1] == game::kEndSubtitleTrue);
-    CHECK(txt[2] == "HUEVOS:  6/6");
+    CHECK(txt[2] == "HUEVOS:  8/8");
     CHECK(txt[4].find("DASH II") != std::string::npos);
     CHECK(txt[4].find("+1HP") != std::string::npos);
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
@@ -503,7 +574,7 @@ int main(int argc, char** argv) {
   CHECK(s2.load(argv[1], err));
   Sim sim2(s2);
   CHECK(game::apply_save(sim2, decoded) == game::SaveError::None);
-  CHECK(sim2.collected() == 6);
+  CHECK(sim2.collected() == 8);
   CHECK(sim2.bosses_defeated());
   CHECK(sim2.has_ability(game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb));
   CHECK(find_name(s2, "elev_cat_pozo")->active);

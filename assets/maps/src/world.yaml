@@ -263,6 +263,10 @@ rects:
   - {layer: VIS , x: 203, y: 86, w: 1  , h: 3 , tile: 17}
   - {layer: COL , x: 210, y: 86, w: 1  , h: 3 , tile: 1}
   - {layer: VIS , x: 210, y: 86, w: 1  , h: 3 , tile: 17}
+  - {layer: COL , x: 100, y: 69, w: 1  , h: 17, tile: 1}
+  - {layer: VIS , x: 100, y: 69, w: 1  , h: 17, tile: 15}
+  - {layer: COL , x: 150, y: 95, w: 1  , h: 14, tile: 1}
+  - {layer: VIS , x: 150, y: 95, w: 1  , h: 14, tile: 15}
 
 entities:
 # Zona 1 (El Pozo)
@@ -353,6 +357,16 @@ entities:
   - {name: tw_lore_campana, type: lore, x: 800, y: 888}
   - {name: tw_ck, type: checkpoint, x: 1376, y: 888}
   - {name: rel_reveal, type: ability_reveal, x: 1424, y: 888}
+  - {name: crust_archivo_1, type: crustacean, x: 640, y: 704}
+  - {name: crust_archivo_2, type: crustacean, x: 960, y: 704}
+  - {name: cr_archivo, type: crystal, x: 800, y: 688}
+  - {name: egg_archivo, type: collectible, x: 840, y: 704}
+  - {name: bat_torre_1, type: bat, x: 1000, y: 820}
+  - {name: bat_torre_2, type: bat, x: 1680, y: 820}
+  - {name: sw_timed_torre, type: timed_switch, x: 1120, y: 888}
+  - {name: door_timed_torre, type: door, x: 1200, y: 872}
+  - {name: cr_torre, type: crystal, x: 1232, y: 880}
+  - {name: egg_torre, type: collectible, x: 1264, y: 888}
 
 links:
   - {from: switch_start,  to: door_start}
@@ -364,6 +378,7 @@ links:
   - {from: boss_catacomb, to: door_boss2}
   - {from: sw_seal3,      to: door_wyrm_seal}
   - {from: wyrm,          to: door_wyrm_exit}
+  - {from: sw_timed_torre, to: door_timed_torre}
 
 ropes:
   - {x: 392,  y: 24,  segments: 16, seg_len: 6}
