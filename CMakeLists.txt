@@ -137,6 +137,13 @@ add_test(NAME ewmap_load_world
           --has player_spawn --has ability_double_jump --has ability_dash --has ability_wall_climb --has break_wall --has collectible --has switch --has flood_switch --has door
           --has one_way_door --has mover --has elevator --has gravity_flip --has boss --has boss_dragon --has imp --has checkpoint --has goal --has npc --has lore)
 set_tests_properties(ewmap_load_world PROPERTIES DEPENDS ewmapc_world)
+add_test(NAME ewmapc_biomes
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml
+          -o ${CMAKE_CURRENT_BINARY_DIR}/biomes.ewmap)
+add_test(NAME ewmap_load_biomes
+  COMMAND ewmap_smoke ${CMAKE_CURRENT_BINARY_DIR}/biomes.ewmap
+          --name biomes --chunks 2 --ents 1 --backdrops 2 --has player_spawn)
+set_tests_properties(ewmap_load_biomes PROPERTIES DEPENDS ewmapc_biomes)
 # Fondos (BACKDROP): fuente mínima válida + fuentes que ewmapc tiene que rechazar.
 set(EW_BD_FIX ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/backdrops)
 add_test(NAME ewmapc_backdrop_ok
@@ -174,6 +181,7 @@ set(EW_WALLCLIMB_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/wallclimb.ewmap)
 set(EW_LEVEL2_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level2.ewmap)
 set(EW_LEVEL3_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/level3.ewmap)
 set(EW_WORLD_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/world.ewmap)
+set(EW_BIOMES_MAP ${CMAKE_CURRENT_BINARY_DIR}/maps/biomes.ewmap)
 add_custom_command(OUTPUT ${EW_HELLO_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/hello.yaml -o ${EW_HELLO_MAP}
@@ -222,7 +230,11 @@ add_custom_command(OUTPUT ${EW_WORLD_MAP}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
   COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/world.yaml -o ${EW_WORLD_MAP}
   DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/world.yaml)
-add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP})
+add_custom_command(OUTPUT ${EW_BIOMES_MAP}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/maps
+  COMMAND ewmapc --crc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml -o ${EW_BIOMES_MAP}
+  DEPENDS ewmapc ${CMAKE_CURRENT_SOURCE_DIR}/assets/maps/src/biomes.yaml)
+add_custom_target(ew_maps ALL DEPENDS ${EW_HELLO_MAP} ${EW_SLICE_MAP} ${EW_ROOM_MAP} ${EW_MOVER_MAP} ${EW_GRAVITY_MAP} ${EW_BOSS_MAP} ${EW_ABILITY_MAP} ${EW_DASH_MAP} ${EW_WALLCLIMB_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP} ${EW_BIOMES_MAP})
 
 add_executable(scene_test tests/scene_test.cpp)
 target_link_libraries(scene_test PRIVATE echo_game)
@@ -311,7 +323,7 @@ add_test(NAME collectible_rewards COMMAND rewards_test ${EW_WORLD_MAP})
 add_executable(backdrop_test tests/backdrop_test.cpp)
 target_link_libraries(backdrop_test PRIVATE echo_game)
 add_dependencies(backdrop_test ew_maps)
-add_test(NAME backdrops COMMAND backdrop_test ${EW_SLICE_MAP} ${EW_HELLO_MAP} ${CMAKE_CURRENT_BINARY_DIR}/backdrop_ok.ewmap ${EW_LEVEL2_MAP})
+add_test(NAME backdrops COMMAND backdrop_test ${EW_SLICE_MAP} ${EW_HELLO_MAP} ${CMAKE_CURRENT_BINARY_DIR}/backdrop_ok.ewmap ${EW_LEVEL2_MAP} ${EW_BIOMES_MAP})
 set_tests_properties(backdrops PROPERTIES DEPENDS ewmapc_backdrop_ok)
 add_executable(lighting_test tests/lighting_test.cpp)
 target_link_libraries(lighting_test PRIVATE echo_game)
@@ -363,7 +375,7 @@ add_test(NAME sfx COMMAND sfx_test)
 add_executable(audio_feel_test tests/audio_feel_test.cpp)
 target_link_libraries(audio_feel_test PRIVATE echo_game echo_audio)
 add_dependencies(audio_feel_test ew_maps)
-add_test(NAME audio_feel COMMAND audio_feel_test ${EW_WORLD_MAP} ${EW_MOVER_MAP})
+add_test(NAME audio_feel COMMAND audio_feel_test ${EW_WORLD_MAP} ${EW_MOVER_MAP} ${EW_BIOMES_MAP})
 
 add_executable(gamepad_test tests/gamepad_test.cpp)
 target_link_libraries(gamepad_test PRIVATE echo_game)

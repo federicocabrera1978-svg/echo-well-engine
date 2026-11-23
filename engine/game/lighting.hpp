@@ -31,11 +31,13 @@ inline float biome_darkness(ew::map::BackdropTheme t) {
     case ew::map::BackdropTheme::Cueva:
     case ew::map::BackdropTheme::Invertido:
     case ew::map::BackdropTheme::Arena:
+    case ew::map::BackdropTheme::Aqueduct:
       return 0.68f;
     case ew::map::BackdropTheme::Cisterna:
     case ew::map::BackdropTheme::Nido:
     case ew::map::BackdropTheme::Engranajes:
     case ew::map::BackdropTheme::Santuario:
+    case ew::map::BackdropTheme::Tower:
       return 0.48f;
   }
   return 0.68f;
@@ -78,13 +80,13 @@ inline bool solid_at_world_px(const Scene& scene, float wx, float wy) {
 inline bool has_torch_theme(ew::map::BackdropTheme t) {
   using BT = ew::map::BackdropTheme;
   return t == BT::Pozo || t == BT::Cripta || t == BT::Cueva || t == BT::Santuario ||
-         t == BT::Abismo || t == BT::Arena;
+         t == BT::Abismo || t == BT::Arena || t == BT::Tower;
 }
 
 inline bool has_crystal_theme(ew::map::BackdropTheme t) {
   using BT = ew::map::BackdropTheme;
   return t == BT::Cripta || t == BT::Santuario || t == BT::Abismo || t == BT::Cisterna ||
-         t == BT::Invertido || t == BT::Raices;
+         t == BT::Invertido || t == BT::Raices || t == BT::Aqueduct || t == BT::Tower;
 }
 
 inline bool has_lava_theme(ew::map::BackdropTheme t) {

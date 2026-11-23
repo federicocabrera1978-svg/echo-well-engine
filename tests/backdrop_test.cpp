@@ -1,5 +1,5 @@
 // Test sin GL: fondos por chunk (sección BACKDROP opcional del .ewmap).
-//   backdrop_test slice.ewmap hello.ewmap backdrop_ok.ewmap
+//   backdrop_test slice.ewmap hello.ewmap backdrop_ok.ewmap [level2.ewmap] [biomes.ewmap]
 // - nombres ↔ ids, saneo de ids desconocidos
 // - slice: un tema por sala; vecindario 3×3 de Scene (fuera del mapa = cueva)
 // - hello: mapa sin sección BACKDROP → cueva en todos lados (retrocompatible)
@@ -48,10 +48,10 @@ bool same(BackdropCell c, BT t) { return c.theme == uint16_t(t); }
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 4) { std::fprintf(stderr, "uso: backdrop_test slice.ewmap hello.ewmap backdrop_ok.ewmap\n"); return 2; }
+  if (argc < 4) { std::fprintf(stderr, "uso: backdrop_test slice.ewmap hello.ewmap backdrop_ok.ewmap [level2.ewmap] [biomes.ewmap]\n"); return 2; }
 
   // --- tabla de nombres -------------------------------------------------------
-  CHECK(kBackdropCount == 14);
+  CHECK(kBackdropCount == 16);
   CHECK(kBackdropNames.size() == kBackdropCount);
   for (uint16_t i = 0; i < kBackdropCount; ++i) {
     CHECK(backdrop_from_name(kBackdropNames[i]) == i);
@@ -62,6 +62,8 @@ int main(int argc, char** argv) {
   CHECK(backdrop_from_name("guarida") == int(BT::Guarida));
   CHECK(backdrop_from_name("santuario") == int(BT::Santuario));
   CHECK(backdrop_from_name("abismo") == int(BT::Abismo));
+  CHECK(backdrop_from_name("aqueduct") == int(BT::Aqueduct));
+  CHECK(backdrop_from_name("tower") == int(BT::Tower));
   CHECK(backdrop_from_name("lava") == -1);
   CHECK(backdrop_from_name("") == -1);
   CHECK(backdrop_from_name("Pozo") == -1);  // sensible a mayúsculas, como el resto del YAML
@@ -69,6 +71,8 @@ int main(int argc, char** argv) {
   CHECK(backdrop_sanitize(kBackdropCount) == 0 && backdrop_sanitize(0xFFFF) == 0);
   static_assert(backdrop_from_name("arena") == int(BT::Arena));
   static_assert(backdrop_from_name("abismo") == int(BT::Abismo));
+  static_assert(backdrop_from_name("aqueduct") == int(BT::Aqueduct));
+  static_assert(backdrop_from_name("tower") == int(BT::Tower));
 
   // --- slice: un fondo por sala ------------------------------------------------
   {
@@ -187,6 +191,20 @@ int main(int argc, char** argv) {
     CHECK(same(c10_nb[4], BT::Abismo) && c10_nb[4].seed == 7);
     CHECK(same(c10_nb[5], BT::Invertido));
     CHECK(same(c10_nb[7], BT::Pozo));
+  }
+
+  // --- biomes: temas nuevos aqueduct/tower cargados desde el binario ----------
+  if (argc >= 6) {
+    ew::game::Scene s;
+    std::string err;
+    if (!s.load(argv[5], err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 1; }
+    CHECK(s.map().backdrops().size() == 2);
+    CHECK(same(s.backdrop(0, 0), BT::Aqueduct) && s.backdrop(0, 0).seed == 3);
+    CHECK(same(s.backdrop(1, 0), BT::Tower) && s.backdrop(1, 0).seed == 5);
+    s.follow(160, 92);
+    CHECK(s.chunk_x() == 0 && same(s.active_backdrops()[4], BT::Aqueduct));
+    s.follow(480, 92);
+    CHECK(s.chunk_x() == 1 && same(s.active_backdrops()[4], BT::Tower));
   }
 
   std::printf("backdrop_test OK\n");

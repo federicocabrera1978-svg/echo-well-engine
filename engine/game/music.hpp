@@ -30,6 +30,10 @@ inline ew::audio::MusicZone music_zone_for(const Scene& scene, const Sim& sim) {
     case BT::Grieta:
     case BT::Arena:
       return ew::audio::MusicZone::WyrmLair;
+    case BT::Aqueduct:
+      return ew::audio::MusicZone::Aqueduct;
+    case BT::Tower:
+      return ew::audio::MusicZone::Tower;
     case BT::Pozo:
     case BT::Raices:
     case BT::Cisterna:

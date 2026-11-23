@@ -1,0 +1,19 @@
+# biomes.yaml — Mapa de prueba para los biomas nuevos (aqueduct + tower).
+# Editado a mano (no lo genera tools/gen_world.py): 2 chunks, uno por bioma, para
+# validar que ewmapc acepta `theme: aqueduct` / `theme: tower`, que MapLoader los
+# carga y que music_zone_for / biome_darkness los mapean bien. No entra en la campaña.
+name: biomes
+size_chunks: [2, 1]
+
+fill:
+  VIS: 0
+
+rects:
+  - {layer: COL, x: 0, y: 20, w: 80, h: 3, tile: 1}
+
+entities:
+  - {name: spawn, type: player_spawn, x: 32, y: 152}
+
+backdrops:
+  - {cx: 0, cy: 0, theme: aqueduct, seed: 3}
+  - {cx: 1, cy: 0, theme: tower, seed: 5}

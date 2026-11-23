@@ -97,7 +97,17 @@ float wind_sway(vec2 wpos, float seed) {
 
 // Paleta de 3 tonos (root, mid, tip) para pasto y enredaderas según tema del chunk.
 void grass_palette(int theme, out vec3 root, out vec3 mid, out vec3 tip) {
-  if (theme == 10 || theme == 12 || theme == 13 || theme == 4) {
+  if (theme == 14) {
+    // aqueduct: algas subacuáticas verde-azulado profundo
+    root = vec3(0.04, 0.14, 0.18);
+    mid  = vec3(0.08, 0.34, 0.40);
+    tip  = vec3(0.20, 0.62, 0.66);
+  } else if (theme == 15) {
+    // tower: liquen pálido con eco violáceo
+    root = vec3(0.12, 0.10, 0.18);
+    mid  = vec3(0.26, 0.22, 0.40);
+    tip  = vec3(0.52, 0.46, 0.74);
+  } else if (theme == 10 || theme == 12 || theme == 13 || theme == 4) {
     // cripta / santuario / abismo / cisterna: verde-azulado espectral
     root = vec3(0.07, 0.20, 0.22);
     mid  = vec3(0.14, 0.42, 0.44);
@@ -635,6 +645,68 @@ vec4 bg_abismo(vec2 q, vec2 f, float s, out float emit) {
   return vec4(c, h);
 }
 
+// 14: Archivo Sumergido — bloques húmedos, caños, marcas de agua, burbujas y verdín
+vec4 bg_aqueduct(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  vec3 b = bricks(q, vec2(24.0, 12.0), s);
+  float n = vnoise(q * 0.10 + s);
+  vec3 c = vec3(0.06, 0.15, 0.18) * (0.75 + 0.25 * q4(b.x)) * (0.85 + 0.15 * n);
+  float h = bevel(b.y);
+  if (b.y < 1.0) c = vec3(0.02, 0.05, 0.07);
+  // marcas del nivel del agua (sumergido) y verdín por debajo
+  if (q.y > 132.0) c = mix(c, vec3(0.03, 0.10, 0.12), 0.5);
+  if (abs(q.y - 132.0) < 1.0 || abs(q.y - 96.0) < 0.6) c = vec3(0.10, 0.24, 0.25);
+  // caño horizontal con bridas y bajada vertical
+  float px = 84.0 + mod(s * 47.0, 152.0);
+  float hp = pipe_h(abs(q.y - 52.0), 5.0);
+  if (hp >= 0.0) {
+    bool fl = mod(q.x + 8.0, 64.0) < 4.0;
+    c = vec3(0.15, 0.20, 0.22) * (0.6 + 0.4 * hp) * (fl ? 1.25 : 1.0); h = hp;
+  }
+  float hv = pipe_h(abs(q.x - px), 4.0);
+  if (hv >= 0.0 && q.y < 52.0) { c = vec3(0.14, 0.19, 0.21) * (0.6 + 0.4 * hv); h = hv; }
+  // burbujas que suben (brillo cian, luz propia)
+  float bub = motes(q, 18.0, vec2(1.0, -26.0), s + 2.0, 0.30);
+  if (bub > 0.0) { c = vec3(0.70, 0.95, 1.0); emit = 0.8 * bub; }
+  return vec4(c, h);
+}
+
+// 15: Torre de los Ecos — sillares altos, vitrales ojivales, campanas y polvo que cae
+vec4 bg_tower(vec2 q, vec2 f, float s, out float emit) {
+  emit = 0.0;
+  vec3 b = bricks(q, vec2(16.0, 8.0), s);
+  float n = vnoise(q * 0.12 + s);
+  vec3 c = vec3(0.10, 0.11, 0.16) * (0.75 + 0.25 * q4(b.x)) * (0.9 + 0.1 * n);
+  float h = bevel(b.y);
+  if (b.y < 1.0) c = vec3(0.03, 0.03, 0.06);
+  // vitrales ojivales altos cada 80 px
+  float bay = mod(q.x - 8.0, 80.0) - 40.0;
+  float ax = abs(bay);
+  if (ax < 16.0 && q.y > 30.0 && q.y < 96.0) {
+    float tint = step(0.0, sin(ax * 0.45) * cos(q.y * 0.16));
+    c = mix(vec3(0.08, 0.10, 0.20), vec3(0.16, 0.14, 0.30), tint);
+    h = 0.4;
+    emit = 0.16;
+    if (abs(ax) < 1.2 || (q.y > 84.0 && q.y < 90.0)) { c = vec3(0.05, 0.06, 0.10); h = 0.5; emit = 0.0; }
+  }
+  // campanas colgando en la parte alta
+  float k = floor((q.x + 20.0) / 40.0);
+  float hk = hash12(vec2(k, s + 4.0));
+  float bx = k * 40.0 + 10.0 + floor(hk * 20.0);
+  if (q.x >= bx - 4.0 && q.x <= bx + 4.0 && q.y >= 24.0 && q.y <= 34.0) {
+    float dy = q.y - 24.0;
+    float wdt = 2.0 + dy * 0.5;
+    if (abs(q.x - bx) < wdt) {
+      c = vec3(0.34, 0.30, 0.22) * (0.8 + 0.2 * hk); h = 1.0;
+      if (abs(q.x - bx) < 0.6 && q.y >= 32.0) c = vec3(0.55, 0.50, 0.38);
+    }
+  }
+  // eco: motas de polvo que caen lento (luz propia tenue)
+  float p = motes(q, 20.0, vec2(0.0, 6.0), s + 3.0, 0.22);
+  if (p > 0.0) { c = vec3(0.82, 0.86, 0.98); emit = 0.6 * p; }
+  return vec4(c, h);
+}
+
 vec4 bg_theme_px(int theme, vec2 q, vec2 f, float s, out float emit) {
   emit = 0.0;
   if (theme == 1) return bg_pozo(q, f, s, emit);
@@ -650,6 +722,8 @@ vec4 bg_theme_px(int theme, vec2 q, vec2 f, float s, out float emit) {
   if (theme == 11) return bg_guarida(q, f, s, emit);
   if (theme == 12) return bg_santuario(q, f, s, emit);
   if (theme == 13) return bg_abismo(q, f, s, emit);
+  if (theme == 14) return bg_aqueduct(q, f, s, emit);
+  if (theme == 15) return bg_tower(q, f, s, emit);
   return bg_cueva(q, f, s, emit);
 }
 
@@ -875,7 +949,7 @@ void main() {
         if (floor_1 && !near_mech) {
           float py = float(7 - l.y);
           bool catacomb = (r_theme == 10 || r_theme == 12 || r_theme == 13 ||
-                           r_theme == 4 || r_theme == 1 || r_theme == 2);
+                           r_theme == 4 || r_theme == 1 || r_theme == 2 || r_theme == 14);
           for (int ox = -2; ox <= 2; ++ox) {
             float rx = wx + float(ox);
             int rx_tx = int(floor((rx - u_chunk.x) / 8.0));
@@ -941,7 +1015,7 @@ void main() {
                 bool is_cap = (py == stem_h && abs(wx - cap_x) <= 1.0) || (py == stem_h + 1.0 && wx == cap_x);
                 if (is_cap || is_stem) {
                   bool glow_m = hash12(vec2(f_tuft, r_seed + 4.0)) > 0.45;
-                  vec3 cap_col = (r_theme == 10 || r_theme == 12 || r_theme == 13)
+                  vec3 cap_col = (r_theme == 10 || r_theme == 12 || r_theme == 13 || r_theme == 14)
                                      ? vec3(0.42, 0.84, 0.90)
                                      : vec3(0.78, 0.54, 0.28);
                   albedo = is_cap ? cap_col : vec3(0.74, 0.70, 0.62);
@@ -961,7 +1035,8 @@ void main() {
                 if (is_petal || is_stem) {
                   vec3 fl_col = (r_theme == 3 || r_theme == 11 || r_theme == 8)
                                     ? vec3(0.96, 0.68, 0.22)
-                                    : (r_theme == 7 ? vec3(0.84, 0.66, 1.0) : vec3(0.95, 0.88, 0.52));
+                                    : (r_theme == 7 ? vec3(0.84, 0.66, 1.0)
+                                                    : (r_theme == 15 ? vec3(0.72, 0.70, 1.0) : vec3(0.95, 0.88, 0.52)));
                   albedo = is_petal ? ((wx == fl_x && py == stem_h) ? vec3(1.0, 0.96, 0.78) : fl_col) : g_mid;
                   n = normalize(vec3(sw_here * 0.2, -0.5, 1.0));
                   depth = 0.428;

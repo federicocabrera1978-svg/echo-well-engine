@@ -103,6 +103,28 @@ float synth_zone(MusicZone z, double t) {
       const float arp = 0.60f * osc_sin(t, f) + 0.26f * osc_sin(t, f * 2.f) + 0.14f * osc_sin(t, f * 3.f);
       return std::clamp(bass + 0.36f * a_env * arp, -1.f, 1.f);
     }
+    case MusicZone::Aqueduct: {
+      // Sumergido (Re lidio-acuático): drone bajo + arpegio de gotas con campana suave.
+      static constexpr float kNotes[8] = {293.66f, 329.63f, 392.00f, 440.00f, 493.88f, 440.00f, 392.00f, 329.63f};
+      const float swell = 0.70f + 0.30f * osc_sin(t, 0.07f);
+      const float drone = 0.34f * osc_sin(t, 73.42f) + 0.20f * osc_sin(t, 110.00f) + 0.12f * osc_sin(t, 146.83f);
+      int idx = 0;
+      const float env = arp_note(t, 0.85, 8, idx);
+      const float f = kNotes[idx];
+      const float drop = 0.66f * osc_sin(t, f) + 0.34f * osc_sin(t, f * 1.005f);
+      return std::clamp(swell * drone + 0.30f * env * drop, -1.f, 1.f);
+    }
+    case MusicZone::Tower: {
+      // Campanario (Do jónico-eco): repique metálico + bordón grave y armónicos de campana.
+      static constexpr float kNotes[8] = {261.63f, 329.63f, 392.00f, 523.25f, 392.00f, 349.23f, 329.63f, 293.66f};
+      const float sway = 0.72f + 0.28f * osc_sin(t, 0.10f);
+      const float drone = 0.36f * osc_sin(t, 65.41f) + 0.20f * osc_sin(t, 98.00f) + 0.12f * osc_sin(t, 130.81f);
+      int idx = 0;
+      const float env = arp_note(t, 0.55, 8, idx);
+      const float f = kNotes[idx];
+      const float bell = 0.62f * osc_sin(t, f) + 0.26f * osc_sin(t, f * 2.76f) + 0.12f * osc_sin(t, f * 3.93f);
+      return std::clamp(sway * drone + 0.34f * env * bell, -1.f, 1.f);
+    }
     default:
       return 0.f;
   }
