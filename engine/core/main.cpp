@@ -104,7 +104,7 @@ void poll_gamepad(bool demo, bool nogamepad, bool hanging, double now_in, const 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
   bool demo = false, has_start = false, has_hero = false, nosound = false, nogamepad = false, nosave = false,
-       explicit_map = false;
+       explicit_map = false, show_timer = false;
   ew::game::HeroKind cli_hero = ew::game::HeroKind::Lantern;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, sprites_path,
@@ -135,6 +135,7 @@ int main(int argc, char** argv) {
     else if (a == "--nosound") nosound = true;
     else if (a == "--nogamepad") nogamepad = true;
     else if (a == "--nosave") nosave = true;
+    else if (a == "--timer") show_timer = true;
     else if (a == "--version") { std::printf("echo_engine v%s\n", EW_VERSION); return 0; }
     else if (a == "--start" && i + 2 < argc) {
       start_x = float(std::atof(argv[++i]));
@@ -225,7 +226,7 @@ int main(int argc, char** argv) {
   bool jump_was_down = false, jump_up_was_down = false, act_was_down = false, grab_was_down = false;
   bool dash_was_down = false, r_was_down = false, r_full_sent = false;
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false,
-       m_ok_was = false, m_b_was = false, map_open = false, map_key_was = false;
+       m_ok_was = false, m_b_was = false, map_open = false, map_key_was = false, timer_key_was = false;
   int map_travel_cursor = 0;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   uint32_t pad_prev = 0;
@@ -306,6 +307,10 @@ int main(int argc, char** argv) {
       const bool map_down = key(GLFW_KEY_M) || key(GLFW_KEY_TAB);
       const bool map_toggle = map_down && !map_key_was;
       map_key_was = map_down;
+      const bool timer_down = key(GLFW_KEY_T);
+      if (timer_down && !timer_key_was && !menu.open() && !dialogue.open() && !end_screen.open())
+        show_timer = !show_timer;
+      timer_key_was = timer_down;
       if (menu.open()) {
         map_open = false;
         mi.toggle = nav_toggle;
@@ -468,7 +473,7 @@ int main(int argc, char** argv) {
     const int preview_hero = menu.in_hero_select() ? menu.hero_cursor() : -1;
     ew::game::build_world_frame(v, flow.scene(), flow.sim(), float(now), demo, overlay_open, false, preview_hero);
     const auto hev = ew::game::populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud,
-                                                         EW_VERSION, map_open, map_travel_cursor);
+                                                         EW_VERSION, map_open, map_travel_cursor, show_timer);
     if (hev.new_item) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
     if (hev.new_double_jump) std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");

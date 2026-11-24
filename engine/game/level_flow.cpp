@@ -2,6 +2,7 @@
 
 #include "core/paths.hpp"
 #include "game/campaign.hpp"
+#include "game/minimap.hpp"
 
 namespace ew::game {
 
@@ -227,6 +228,7 @@ LevelFlow::PostStepResult LevelFlow::post_step(PauseMenu& menu, EndScreen& end_s
     st.true_ending = st.campaign_done && st.items_total > 0 && st.items >= st.items_total;
     st.max_hp = sim_->max_hp();
     st.dash_upgraded = sim_->dash_upgraded();
+    st.explored_pct = compute_minimap(*scene_).explored_pct;
     end_screen.open(st);
     announced_goal_ = true;
     res.opened_end = true;
