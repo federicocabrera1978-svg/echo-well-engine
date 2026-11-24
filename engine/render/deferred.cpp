@@ -206,7 +206,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl"), v.ctl);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_sel"), v.ctl_sel);
   Uniform1i(GetUniformLocation(light_prog_, "u_ctl_wait"), v.ctl_wait);
-  if (v.pause || v.hero_select || v.end_screen || v.dlg || v.map_open)
+  if (v.pause || v.hero_select || v.end_screen || v.dlg || v.map_open || v.toast_alpha > 0.01f)
     Uniform1iv(GetUniformLocation(light_prog_, "u_txt"), 96, v.ctl_txt.data());
   Uniform1i(GetUniformLocation(light_prog_, "u_items"), v.items);
   Uniform1i(GetUniformLocation(light_prog_, "u_items_total"), v.items_total);
@@ -231,6 +231,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_seals_total"), v.seals_total);
   Uniform1i(GetUniformLocation(light_prog_, "u_map_open"), v.map_open);
   Uniform2f(GetUniformLocation(light_prog_, "u_map_target"), float(v.map_target_cx), float(v.map_target_cy));
+  Uniform2f(GetUniformLocation(light_prog_, "u_toast"), v.toast_alpha, float(v.toast_kind));
   Uniform4f(GetUniformLocation(light_prog_, "u_boss_hud"),
             float(v.boss_hp), float(v.boss_max_hp), float(v.boss_kind), v.boss_hurt_flash);
   Uniform4f(GetUniformLocation(light_prog_, "u_boss_burst"), v.boss_burst_x, v.boss_burst_y, v.boss_burst_t, v.boss_flash);

@@ -53,6 +53,7 @@ uniform int u_seals_mask;      // bitmask de Sellos Elementales rotos (0=Piedra,
 uniform int u_seals_total;     // total de sellos en el mapa (3 en world, 0 en otros)
 uniform int u_map_open;        // 1 = overlay de Mapa Expandido abierto (M / Tab)
 uniform vec2 u_map_target;     // (cx, cy) destino seleccionado para Viaje Rápido (-1 = ninguno)
+uniform vec2 u_toast;          // (alpha 0..1, kind: 0=zona, 1=hito, 2=sello roto) banner inferior
 uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
@@ -574,6 +575,27 @@ vec3 hud_seals(vec3 c, vec2 px) {
   return c;
 }
 
+// Banner inferior no intrusivo (y=160..174, fuera de top_half y=16..89): zona, hito o sello roto.
+vec3 hud_toast(vec3 c, vec2 px) {
+  float a = clamp(u_toast.x, 0.0, 1.0);
+  if (a <= 0.01) return c;
+  int kind = clamp(int(u_toast.y + 0.5), 0, 2);
+  vec2 ip = floor(px);
+  if (ip.x >= 56.0 && ip.x <= 263.0 && ip.y >= 160.0 && ip.y <= 174.0) {
+    bool bdr = (ip.x == 56.0 || ip.x == 263.0 || ip.y == 160.0 || ip.y == 174.0);
+    vec3 bcol = (kind == 1) ? vec3(0.98, 0.84, 0.34)
+              : (kind == 2) ? vec3(0.32, 0.96, 0.82)
+                            : vec3(0.56, 0.74, 0.94);
+    vec3 bg = bdr ? bcol : vec3(0.04, 0.05, 0.09);
+    c = mix(c, bg, (bdr ? 0.85 : 0.72) * a);
+  }
+  vec3 tcol = (kind == 1) ? vec3(1.0, 0.92, 0.48)
+            : (kind == 2) ? vec3(0.45, 1.0, 0.88)
+                          : vec3(0.92, 0.95, 1.0);
+  c = mix(c, tcol, txt_glyph(0, px - vec2(64.0, 165.0), 1.0) * a);
+  return c;
+}
+
 // Overlay de Mapa Expandido (M / Tab): grilla ampliada 8x5 + zona actual + huevos + Tres Sellos.
 vec3 world_map_page(vec3 c, vec2 px) {
   c = mix(c, vec3(0.03, 0.04, 0.06), 0.84);
@@ -870,6 +892,8 @@ void main() {
   if (u_abilities != 0 && u_hero_sel == 0) c = hud_abilities(c, px);
   if (u_boss_hud.y > 0.5 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_boss_bar(c, px);
   if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_minimap(c, px);
+  if (u_toast.x > 0.01 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0 && u_map_open == 0)
+    c = hud_toast(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 
   if (u_map_open > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {
