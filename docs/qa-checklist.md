@@ -88,11 +88,12 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - Escuchar el cambio suave (~1,5 s) entre la atmósfera de *El Pozo*, *Las Catacumbas*, *La Guarida del Wyrm* y la música de combate al entrar en la arena de un boss (y la atenuación al pausar o silencio total con `--nosound` / `MUTE`).
 - [ ] **Lectura visual limpia sin flecha junto al protagonista.** Verificá que no aparece ninguna flecha orbitando al lado del personaje (los abre-puertas sin accionar conservan únicamente su indicador `↓` arriba). La lógica de cálculo basada en la sección `GUIDE` (`engine/game/guide.hpp`) sigue cubierta por `guide_arrows`.
 - [ ] **Diálogos dracónicos y lore de los huevos (`npc`, `lore`, `collectible`).** En la entrada de `slice` (Vigía del Farol) y en `level2` (Cronista de las Catacumbas y Estela del Santuario), al acercarte aparece un indicador dorado y apretar **E**/**X**/**↓** abre la caja de diálogo pixel-art (con `Enter`/`Espacio`/`E` avanza página y `Esc` cierra). Al recoger cada huevo de dragón o la reliquia alada se dispara automáticamente el eco dracónico que revela la historia.
-- [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `world`, `slice`, `level2`, `level3`).**
+- [ ] **Mini-mapa exploratorio Metroidvania (esquina superior derecha en `world`, `slice`, `level2`, `level3`) y HUD de Boss.**
   - Las salas no visitadas permanecen **ocultas** (sin revelarse en la grilla hasta entrar a ellas).
   - Al explorar nuevos chunks, cada sala visitada se revela en el mini-mapa (resaltando la sala actual) y se actualiza el contador de **porcentaje explorado (`%`)** hasta `100%` al recorrer todo el mapa.
-  - En las salas ya visitadas con puertas cerradas (`door` / `one_way_door`) o muros agrietados intactos (`break_wall`) aparece un **marcador carmesí**, que desaparece al abrir la puerta o romper el muro.
+  - En las salas ya visitadas con puertas cerradas (`door` / `one_way_door`), muros agrietados intactos (`break_wall`) o barreras de cristal sin romper (`crystal`) aparece un **marcador carmesí**, que desaparece al abrir la puerta o destruir la barrera.
   - En las salas ya visitadas con huevos sin recoger (`collectible`) aparece un **marcador dorado**, que desaparece al agarrar el huevo.
+  - Al entrar a la arena de un Boss activo (`dx <= 220 px, dy <= 120 px`), aparece en el centro superior del HUD (`y = 3..14`) la **barra de vida del Boss** con su emblema de corona y `3` o `4` segmentos coloreados según el jefe, que destellan y se apagan con cada golpe hasta vencerlo.
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
   arriba a la izquierda dice `0/1`. El switch abre la puerta y hay que nadar la pileta (el
   agua frena la caída y se nada hacia arriba). Una cuerda sube una pared que no se salta (la
