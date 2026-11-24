@@ -100,6 +100,8 @@ struct FrameData {
   int seals_mask = 0, seals_total = 0;       // bitmask y total de Sellos Elementales (3 en world)
   int map_open = 0;                          // 1 = overlay de Mapa Expandido abierto (M / Tab)
   int map_target_cx = -1, map_target_cy = -1; // chunk destino resaltado para Viaje Rápido (-1 = ninguno)
+  float toast_alpha = 0.f;                   // 0..1 banner breve inferior (cambio de zona / hito / sello)
+  int toast_kind = 0;                        // 0=zona, 1=hito, 2=sello roto
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;

@@ -26,6 +26,11 @@ struct HudTracker {
   int last_deaths = 0;
   float damage_flash = 0.f;
   float milestone_flash = 0.f;
+  std::string last_zone;
+  uint32_t last_seals = 0;
+  std::string toast_text;
+  int toast_ticks = 0;
+  int toast_kind = 0;
 };
 
 struct HudEvents {
@@ -194,6 +199,43 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     }
     v.ctl_txt = pack_text(world_map_text(zone_name_for(scene), mm.explored_pct, v.items, v.items_total,
                                          mm.seals_mask, mm.seals_total, tlabel, tunlocked));
+  }
+
+  const std::string_view cur_zone = zone_name_for(scene);
+  const uint32_t new_seals = mm.seals_mask & ~tracker.last_seals;
+  if (new_seals != 0u && !tracker.last_zone.empty()) {
+    tracker.toast_text = (new_seals & 1u) ? "SELLO DE PIEDRA ROTO"
+                       : (new_seals & 2u) ? "SELLO DE SOMBRA ROTO"
+                                          : "SELLO DEL AGUA ROTO";
+    tracker.toast_kind = 2;
+    tracker.toast_ticks = 140;
+  } else if (ev.new_dash_upgrade) {
+    tracker.toast_text = "HITO: DASH II DESBLOQUEADO";
+    tracker.toast_kind = 1;
+    tracker.toast_ticks = 140;
+  } else if (ev.new_extra_hp) {
+    tracker.toast_text = (v.max_hp >= 3) ? "HITO: 3 CORAZONES" : "HITO: +1 CORAZON";
+    tracker.toast_kind = 1;
+    tracker.toast_ticks = 140;
+  } else if (!tracker.last_zone.empty() && cur_zone != tracker.last_zone) {
+    tracker.toast_text = std::string(cur_zone);
+    tracker.toast_kind = 0;
+    tracker.toast_ticks = 120;
+  }
+  tracker.last_zone = std::string(cur_zone);
+  tracker.last_seals = mm.seals_mask;
+
+  v.toast_alpha = 0.f;
+  v.toast_kind = tracker.toast_kind;
+  if (tracker.toast_ticks > 0 && !menu.open() && !end_screen.open() && !dialogue.open() && !v.map_open) {
+    v.toast_alpha = std::min(1.f, float(tracker.toast_ticks) / 24.f);
+    std::array<std::string, kTxtRows> rows{};
+    std::string line = tracker.toast_text;
+    if (line.size() > std::size_t(kTxtCols)) line.resize(std::size_t(kTxtCols));
+    const std::size_t pad = (std::size_t(kTxtCols) - line.size()) / 2;
+    rows[0] = std::string(pad, ' ') + line;
+    v.ctl_txt = pack_text(rows);
+    --tracker.toast_ticks;
   }
   return ev;
 }

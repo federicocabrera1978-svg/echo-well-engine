@@ -229,6 +229,13 @@ int main(int argc, char** argv) {
     CHECK(scw.chunk_x() == ft1[1].cx && scw.chunk_y() == ft1[1].cy);
     CHECK(simw.checkpoint_index() == ft1[1].ent_idx);
     CHECK(simw.hp() == simw.max_hp());
+
+    // Al cerrar el mapa tras cambiar de zona (Campanario -> Las Catacumbas), dispara banner de zona (toast_kind=0).
+    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false);
+    CHECK(vw.toast_alpha > 0.9f && vw.toast_kind == 0);
+    for (int f = 0; f < 130; ++f)
+      game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false);
+    CHECK(vw.toast_alpha == 0.f);
   }
 
   std::puts("minimap_test OK");
