@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
   bool jump_was_down = false, jump_up_was_down = false, act_was_down = false, grab_was_down = false;
   bool dash_was_down = false, r_was_down = false, r_full_sent = false;
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false,
-       m_ok_was = false, m_b_was = false;
+       m_ok_was = false, m_b_was = false, map_open = false, map_key_was = false;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   uint32_t pad_prev = 0;
   ew::game::Input latched_in;
@@ -302,7 +302,11 @@ int main(int argc, char** argv) {
       const bool nav_up = up && !m_up_was, nav_dn = dn && !m_dn_was;
       const bool nav_lt = lt && !m_lt_was, nav_rt = rt && !m_rt_was, nav_ok = ok && !m_ok_was;
       m_up_was = up; m_dn_was = dn; m_lt_was = lt; m_rt_was = rt; m_ok_was = ok;
+      const bool map_down = key(GLFW_KEY_M) || key(GLFW_KEY_TAB);
+      const bool map_toggle = map_down && !map_key_was;
+      map_key_was = map_down;
       if (menu.open()) {
+        map_open = false;
         mi.toggle = nav_toggle;
         if (menu.waiting()) {
           if (g_last_key != GLFW_KEY_ESCAPE) mi.key = g_last_key;
@@ -312,13 +316,18 @@ int main(int argc, char** argv) {
         }
         mi.up = nav_up; mi.down = nav_dn; mi.left = nav_lt; mi.right = nav_rt; mi.confirm = nav_ok;
       } else if (dialogue.open()) {
+        map_open = false;
         if (nav_toggle) dialogue.close();
         else if (nav_ok || in.interact) dialogue.advance();
       } else if (end_screen.open()) {
+        map_open = false;
         if (nav_toggle) ei.toggle = true;
         else if (flow.sim().finish_t() >= 0.35f) { ei.up = nav_up; ei.down = nav_dn; ei.confirm = nav_ok; }
+      } else if (map_open) {
+        if (nav_toggle || map_toggle || (pad_b && !m_b_was)) map_open = false;
       } else {
-        mi.toggle = nav_toggle;
+        if (map_toggle) map_open = true;
+        else mi.toggle = nav_toggle;
       }
     }
     g_last_key = -1;
@@ -374,7 +383,7 @@ int main(int argc, char** argv) {
     flow.sim().set_hero(menu.hero());
 
     const double now = glfwGetTime();
-    if (menu.open() || dialogue.open()) {
+    if (menu.open() || dialogue.open() || map_open) {
       acc = 0;
       latched_in = {};
     } else if (end_screen.open()) {
@@ -436,11 +445,11 @@ int main(int argc, char** argv) {
       std::fprintf(stderr, "echo_engine: no se pudo guardar en %s\n", flow.save_path().c_str());
 
     ew::game::FrameData v;
-    const bool overlay_open = dialogue.open() || menu.open() || end_screen.open();
+    const bool overlay_open = dialogue.open() || menu.open() || end_screen.open() || map_open;
     const int preview_hero = menu.in_hero_select() ? menu.hero_cursor() : -1;
     ew::game::build_world_frame(v, flow.scene(), flow.sim(), float(now), demo, overlay_open, false, preview_hero);
     const auto hev = ew::game::populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud,
-                                                         EW_VERSION);
+                                                         EW_VERSION, map_open);
     if (hev.new_item) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
     if (hev.new_double_jump) std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");

@@ -165,12 +165,14 @@ int main(int argc, char** argv) {
     }
   }
 
-  // --- 4) world.ewmap (opcional argv[4]): cristales intactos cuentan como bloqueo en blocked_doors_mask ---
+  // --- 4) world.ewmap (opcional argv[4]): cristales, Tres Sellos, zonas y Mapa Expandido ---
   if (argc >= 5) {
     Scene scw;
     CHECK(scw.load(argv[4], err));
     const MinimapState mw0 = game::compute_minimap(scw);
     CHECK(mw0.map_w == 8 && mw0.map_h == 5);
+    CHECK(mw0.seals_total == 3 && mw0.seals_mask == 0u);
+    CHECK(game::zone_name_for(scw) == "EL POZO");
     // Sala (2,3) sólo tiene 'cr_archivo' como bloqueo: debe encender el bit (2,3) hasta romperlo.
     CHECK((mw0.blocked_doors_mask & bit_at(2, 3, 8)) != 0);
     const int cry_idx = find_entity_index(scw, "cr_archivo");
@@ -178,6 +180,34 @@ int main(int argc, char** argv) {
     scw.set_active(std::size_t(cry_idx), true);
     const MinimapState mw1 = game::compute_minimap(scw);
     CHECK((mw1.blocked_doors_mask & bit_at(2, 3, 8)) == 0);
+
+    // Abrir cada sello elemental enciende su bit correspondiente en seals_mask.
+    const int sp = find_entity_index(scw, "door_seal_pozo");
+    const int sc_cat = find_entity_index(scw, "door_seal_cat");
+    const int sa = find_entity_index(scw, "door_seal_archivo");
+    CHECK(sp >= 0 && sc_cat >= 0 && sa >= 0);
+    scw.set_active(std::size_t(sp), true);
+    CHECK(game::compute_minimap(scw).seals_mask == 1u);
+    scw.set_active(std::size_t(sc_cat), true);
+    CHECK(game::compute_minimap(scw).seals_mask == 3u);
+    scw.set_active(std::size_t(sa), true);
+    CHECK(game::compute_minimap(scw).seals_mask == 7u);
+
+    // Zonas de world.ewmap y overlay de Mapa Expandido.
+    scw.follow(160.f, 4.f * 184.f + 92.f);  // (0,4) Campanario Hundido
+    CHECK(game::zone_name_for(scw) == "CAMPANARIO HUNDIDO");
+    Sim simw(scw);
+    PauseMenu menu;
+    EndScreen end_screen;
+    DialogueBox dialogue;
+    HudTracker hud;
+    FrameData vw;
+    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", true);
+    CHECK(vw.map_open == 1 && vw.seals_total == 3 && vw.seals_mask == 7);
+    const auto mwf = game::compute_minimap(scw);
+    CHECK(vw.ctl_txt == game::pack_text(game::world_map_text("CAMPANARIO HUNDIDO", mwf.explored_pct,
+                                                             vw.items, vw.items_total, mwf.seals_mask,
+                                                             mwf.seals_total)));
   }
 
   std::puts("minimap_test OK");

@@ -37,7 +37,7 @@ struct HudEvents {
 
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
                                            const EndScreen& end_screen, const DialogueBox& dialogue,
-                                           HudTracker& tracker, std::string_view version_str) {
+                                           HudTracker& tracker, std::string_view version_str, bool map_open = false) {
   v.pause = menu.open() ? 1 : 0;
   v.pause_sel = menu.cursor();
   v.pause_vol = menu.volume_setting();
@@ -151,6 +151,13 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.missing_eggs_lo = uint32_t(mm.missing_eggs_mask & 0xFFFFFFFFu);
   v.missing_eggs_hi = uint32_t((mm.missing_eggs_mask >> 32) & 0xFFFFFFFFu);
   v.explored_pct = mm.explored_pct;
+  v.seals_mask = int(mm.seals_mask);
+  v.seals_total = mm.seals_total;
+  v.map_open = (!menu.open() && !end_screen.open() && !dialogue.open() && map_open) ? 1 : 0;
+  if (v.map_open) {
+    v.ctl_txt = pack_text(world_map_text(zone_name_for(scene), mm.explored_pct, v.items, v.items_total,
+                                         mm.seals_mask, mm.seals_total));
+  }
   return ev;
 }
 
