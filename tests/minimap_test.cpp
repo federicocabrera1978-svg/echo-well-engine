@@ -143,6 +143,41 @@ int main(int argc, char** argv) {
     CHECK(v.missing_eggs_lo == uint32_t(mm.missing_eggs_mask & 0xFFFFFFFFu));
     CHECK(v.missing_eggs_hi == uint32_t((mm.missing_eggs_mask >> 32) & 0xFFFFFFFFu));
     CHECK(v.explored_pct == mm.explored_pct);
+    CHECK(v.boss_hp == 0 && v.boss_max_hp == 0);
+
+    // Acercarse al Wyrm activa el HUD de vida de Boss (4 segmentos, kind=2) y registra cada impacto.
+    CHECK(sim.boss_count() == 1);
+    {
+      const auto& b0 = sim.boss(0);
+      auto& p = sim.world().points()[sim.player_index()];
+      p.pos = p.prev = {b0.x - 40.f, b0.y};
+      auto ev0 = game::populate_hud_and_overlays(v, sc3, sim, menu, end_screen, dialogue, hud, "0.1.0");
+      CHECK(v.boss_max_hp == 4 && v.boss_hp == 4 && v.boss_kind == 2);
+      CHECK(v.boss_hurt_flash == 0.f && !ev0.boss_hit);
+
+      // Golpear al Wyrm por encima reduce boss_hp a 3, activa boss_hurt_flash > 0 y dispara ev.boss_hit.
+      p.pos = {b0.x, b0.y - b0.height() - Sim::kPlayerRadius + 1.5f};
+      p.prev = {b0.x, p.pos.y - 2.f};
+      sim.step({});
+      auto ev1 = game::populate_hud_and_overlays(v, sc3, sim, menu, end_screen, dialogue, hud, "0.1.0");
+      CHECK(v.boss_max_hp == 4 && v.boss_hp == 3 && v.boss_kind == 2);
+      CHECK(v.boss_hurt_flash > 0.f && ev1.boss_hit);
+    }
+  }
+
+  // --- 4) world.ewmap (opcional argv[4]): cristales intactos cuentan como bloqueo en blocked_doors_mask ---
+  if (argc >= 5) {
+    Scene scw;
+    CHECK(scw.load(argv[4], err));
+    const MinimapState mw0 = game::compute_minimap(scw);
+    CHECK(mw0.map_w == 8 && mw0.map_h == 5);
+    // Sala (2,3) sólo tiene 'cr_archivo' como bloqueo: debe encender el bit (2,3) hasta romperlo.
+    CHECK((mw0.blocked_doors_mask & bit_at(2, 3, 8)) != 0);
+    const int cry_idx = find_entity_index(scw, "cr_archivo");
+    CHECK(cry_idx >= 0);
+    scw.set_active(std::size_t(cry_idx), true);
+    const MinimapState mw1 = game::compute_minimap(scw);
+    CHECK((mw1.blocked_doors_mask & bit_at(2, 3, 8)) == 0);
   }
 
   std::puts("minimap_test OK");
