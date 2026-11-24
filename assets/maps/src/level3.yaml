@@ -133,10 +133,10 @@ backdrops:
   - {cx: 2, cy: 1, theme: engranajes}
 
 dialogs:
-  - {entity: npc_centinela, trigger: interact, speaker: "CENTINELA DEL FAROL", text: "MAS ALLA AGUARDA EL WYRM,/GUARDIAN DEL ULTIMO SELLO.|USA TU EMBESTIDA EN LOS MUROS/Y SALTA SOBRE SUS LLAMAS."}
+  - {entity: npc_centinela, trigger: interact, speaker: "CENTINELA DEL FAROL", text: "EL PORTICO DE LOS TRES SELLOS/CUSTODIA LA GUARIDA DEL WYRM.|PIEDRA, SOMBRA Y AGUA DEBEN/CEDER ANTES DEL DUELO FINAL."}
   - {entity: lore_wyrm,     trigger: interact, speaker: "CRONICA DEL WYRM", text: "CUATRO PISOTONES EN SU CORONA/QUEBRARAN SU CORAZA.|ATRAVIESA SUS BRASAS CON DASH/SI EL CIELO SE TORNA FUEGO."}
-  - {entity: egg_wyrm_1,    trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO", text: "SU LATIDO RESPONDE AL POZO:/EL FAROL RECONOCE A LA CRIA."}
-  - {entity: egg_wyrm_2,    trigger: pickup,   speaker: "ECO: ULTIMO HUEVO", text: "DOS ESCAMAS, UNA PROMESA:/LA NIDADA VUELVE TRAS EL WYRM"}
+  - {entity: egg_wyrm_1,    trigger: pickup,   speaker: "ECO: HUEVO DEL ABISMO", text: "EL HUEVO DEL ABISMO TIEMBLA:/OIE EL RUGIDO DE SU PADRE.|EL WYRM NO ES SU VERDUGO:/ES SU ULTIMO PROTECTOR."}
+  - {entity: egg_wyrm_2,    trigger: pickup,   speaker: "ECO: HUEVO DEL SANTUARIO", text: "BAJO EL ALTAR DE LA GUARIDA/PERDURA EL FUEGO PRIMORDIAL.|EL NIDO AGUARDA MAS ALLA/DE LAS CADENAS DEL WYRM."}
 
 guide:
   - {kind: shaft, x: 568, up_x: 568, split_y: 184, y_top: 148, y_bot: 320}

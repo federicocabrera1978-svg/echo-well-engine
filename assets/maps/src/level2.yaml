@@ -184,12 +184,12 @@ backdrops:
   - {cx: 3, cy: 1, theme: santuario}
 
 dialogs:
-  - {entity: npc_cronista,    trigger: interact, speaker: "CRONISTA DE LAS CATACUMBAS", text: "AQUI SELLARON A LA SIERPE/Y ESCONDIERON SUS NIDADAS.|DESCIENDE AL FOSO POR LAS ALAS/ANTES DE SUBIR AL GUARDIAN."}
-  - {entity: rel_double_jump, trigger: pickup,   speaker: "RELIQUIA: ALAS DE DRAGON", text: "ALAS DE DRAGON, AUN DE CRIA,/ABRAZAN TU CAPA EN EL AIRE.|PULSA SALTO EN PLENO VUELO/Y ALCANZA LAS REPISAS ALTAS."}
-  - {entity: lore_santuario,  trigger: interact, speaker: "ESTELA DEL SANTUARIO", text: "CUANDO EL FUEGO SE APAGUE,/LOS HUEVOS DE DRAGON VOLVERAN.|CADA ESCAMA GUARDA EL PACTO/DE LOS ANTIGUOS GUARDIANES."}
-  - {entity: egg_catacomb_2,  trigger: pickup,   speaker: "ECO: HUEVO DE BRASA", text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA PIEDRA.|FUE OCULTADO EN EL SANTUARIO/LEJOS DEL OJO DE LA BESTIA."}
-  - {entity: rel_dash,        trigger: pickup,   speaker: "RELIQUIA: GARRA DE BRASA", text: "EL IMPETU DEL WYRM ARDE/EN TU EMBESTIDA!|PULSA E, X O K PARA EMBESTIR/Y ROMPER MUROS AGRIETADOS."}
-  - {entity: egg_catacomb_1,  trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO", text: "LA NIDADA NO ERA UN TESORO:/ERA EL FUTURO DEL REINO.|LLEVA SU CALOR HACIA ARRIBA/PARA QUE DESPIERTE EL DRAGON."}
+  - {entity: npc_cronista,    trigger: interact, speaker: "CRONISTA DE LAS CATACUMBAS", text: "AQUI SE ALZA EL SEGUNDO SELLO:/LA SOMBRA DE LAS CATACUMBAS.|TOMA LAS ALAS Y LA GARRA/ANTES DE RETAR AL COLOSO."}
+  - {entity: rel_double_jump, trigger: pickup,   speaker: "RELIQUIA: ALAS DE DRAGON", text: "ALAS DE CRIA DRACONICA/SE PLIEGAN A TU ESPALDA.|PULSA SALTO EN PLENO VUELO/PARA ASCENDER EL ABISMO."}
+  - {entity: lore_santuario,  trigger: interact, speaker: "ESTELA DEL SANTUARIO", text: "LA ORDEN TEMIO EL FUEGO VIVO/Y SEPARO LOS HUEVOS DEL WYRM.|REUNE LA NIDADA EN EL NIDO/PARA QUE RENAZCA EL DRAGON."}
+  - {entity: egg_catacomb_2,  trigger: pickup,   speaker: "ECO: HUEVO DE BRASA", text: "SU CASCARA ARDE SIN QUEMAR:/LATEN ALAS BAJO LA CRIPTA.|LOS VIGIAS LO ESCONDIERON/PARA APAGAR EL LINAJE."}
+  - {entity: rel_dash,        trigger: pickup,   speaker: "RELIQUIA: GARRA DE BRASA", text: "EL IMPETU DEL WYRM ARDE/EN TU EMBESTIDA!|PULSA E, X O K PARA EMBESTIR/Y ROMPER MUROS Y CRISTALES."}
+  - {entity: egg_catacomb_1,  trigger: pickup,   speaker: "ECO: HUEVO DEL NIDO", text: "EL HUEVO DEL NIDO DESPIERTA/CON EL CALOR DE TU LLAMA.|CADA CRIA REUNIDA DEVUELVE/FUERZA AL FUEGO ANTIGUO."}
 
 guide:
   - {kind: shaft, x: 448, up_x: 472, split_y: 184, y_top: 148, y_bot: 280}

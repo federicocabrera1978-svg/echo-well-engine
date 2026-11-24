@@ -64,9 +64,8 @@ int main(int argc, char** argv) {
           contains_any(d.text, {"DRAGON", "WYRM", "NIDADA", "HUEVO", "SIERPE"})) {
         has_dragon_lore = true;
       }
-      if (std::string_view(m.name) == "world") {
-        CHECK(!contains_any(d.text, {"LOS TRES GUARDIANES", "ULTIMO HUEVO", "ULTIMO SELLO", "CUATRO/GUARDIANES"}));
-      }
+      CHECK(!contains_any(d.speaker, {"ULTIMO HUEVO", "ULTIMO SELLO"}));
+      CHECK(!contains_any(d.text, {"LOS TRES GUARDIANES", "ULTIMO HUEVO", "ULTIMO SELLO", "CUATRO/GUARDIANES", "OJO DE LA BESTIA"}));
     }
     CHECK(has_dragon_lore);
     if (std::string_view(m.name) == "world") {

@@ -94,10 +94,10 @@ int main(int argc, char** argv) {
     Sim sim2(s2);
     CHECK(sim2.boss_count() == 1 && sim2.boss(0).guardian2 && !sim2.boss(0).dragon);
     CHECK(sim2.boss(0).speed() > Sim::kBossSpeed);
-    CHECK(s2.dialogs()[0].text.find("SIERPE") != std::string::npos);
-    CHECK(s2.dialogs()[0].text.find("NIDADAS") != std::string::npos);
-    CHECK(s2.dialogs()[2].text.find("HUEVOS DE DRAGON") != std::string::npos);
-    CHECK(s2.dialogs()[2].text.find("GUARDIANES") != std::string::npos);
+    CHECK(s2.dialogs()[0].text.find("SEGUNDO SELLO") != std::string::npos);
+    CHECK(s2.dialogs()[0].text.find("CATACUMBAS") != std::string::npos);
+    CHECK(s2.dialogs()[2].text.find("HUEVOS DEL WYRM") != std::string::npos);
+    CHECK(s2.dialogs()[2].text.find("NIDADA") != std::string::npos);
     sim2.set_abilities(kAbilityDoubleJump | kAbilityDash);
     const int wall_i = find_ent(s2, "wall_guardian");
     const int egg1_i = find_ent(s2, "egg_catacomb_1");
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     CHECK(s3.load(level3_path, err));
     Sim sim3(s3);
     CHECK(s3.dialogs()[0].text.find("WYRM") != std::string::npos);
-    CHECK(s3.dialogs()[0].text.find("GUARDIAN DEL ULTIMO SELLO") != std::string::npos);
+    CHECK(s3.dialogs()[0].text.find("TRES SELLOS") != std::string::npos);
     sim3.set_abilities(carried_abilities);
     CHECK(sim3.has_ability(kAbilityDoubleJump));
     CHECK(sim3.has_ability(kAbilityDash));
@@ -178,6 +178,21 @@ int main(int argc, char** argv) {
     CHECK(sim3.bosses_defeated());
     CHECK(sim3.boss_burst() > 0);
     CHECK((sim3.take_sfx() & ew::audio::kSfxBossCrt) != 0u);
+
+    // Tocar goal en level3 también arma el epílogo de 3 páginas en el Nido Primordial.
+    const int goal_i = find_ent(s3, "goal");
+    CHECK(goal_i >= 0);
+    for (std::size_t ei = 0; ei < s3.entities().size(); ++ei)
+      if (s3.entities()[ei].type == "collectible") s3.set_active(ei, true);
+    CHECK(sim3.all_eggs_collected());
+    move_to(sim3, s3.entities()[std::size_t(goal_i)].x, s3.entities()[std::size_t(goal_i)].y);
+    sim3.step({});
+    CHECK(sim3.finished());
+    BossVictoryDialog epilogue;
+    CHECK(sim3.take_epilogue_dialog(epilogue));
+    CHECK(epilogue.speaker == kEpilogueSpeaker);
+    CHECK(epilogue.text == kEpilogueTrueText);
+    CHECK(!sim3.take_epilogue_dialog(epilogue));
 
     EndScreen es;
     EndStats st;
