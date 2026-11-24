@@ -83,6 +83,9 @@ struct FrameData {
   float ability_flash = 0;
   int hp = 1, max_hp = 1;                    // vida actual / máxima (2 con 2+ huevos, 3 con 6+ huevos)
   int dash_upgraded = 0;                     // 1 = Dash II desbloqueado (4+ huevos)
+  int dash_charges = 0, dash_charges_max = 0; // cargas aéreas disponibles / máximas de Dash
+  float damage_flash = 0.f;                  // 0..1 viñeta carmesí al recibir daño
+  float milestone_flash = 0.f;               // 0..1 destello dorado al desbloquear +1HP / Dash II
   int boss_hp = 0, boss_max_hp = 0;          // vida actual / máxima del boss activo en arena (0 = oculto)
   int boss_kind = 0;                         // 0=Watcher, 1=Guardian2, 2=Wyrm, 3=Sentinel
   float boss_hurt_flash = 0.f;               // 0..1 destello al golpear al boss

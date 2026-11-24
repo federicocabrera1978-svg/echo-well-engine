@@ -40,6 +40,7 @@ uniform float u_ability_flash; // 0..1 destello al desbloquear
 uniform int u_hp;              // vida actual
 uniform int u_max_hp;          // vida máxima (1..3)
 uniform int u_dash_up;         // 1 = Dash II desbloqueado
+uniform vec4 u_hud_fx;         // (damage_flash, dash_charges, dash_charges_max, milestone_flash)
 uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
 uniform int u_map_vis;         // bitmask de chunks visitados (bits 0..31)
 uniform int u_map_vis_hi;      // bitmask de chunks visitados (bits 32..63)
@@ -413,9 +414,10 @@ vec3 hud_hearts(vec3 c, vec2 px) {
                 || (p.y == 5 && p.x == 3);
       if (heart) {
         if (i < u_hp) {
-          c = (p.x == 1 && p.y == 1) ? vec3(1.0, 0.78, 0.84) : vec3(0.98, 0.28, 0.42);
+          vec3 hc = (p.x == 1 && p.y == 1) ? vec3(1.0, 0.78, 0.84) : vec3(0.98, 0.28, 0.42);
+          c = mix(hc, vec3(1.0, 0.94, 0.55), clamp(u_hud_fx.w, 0.0, 1.0) * 0.75);
         } else {
-          c = vec3(0.24, 0.14, 0.18);
+          c = mix(vec3(0.24, 0.14, 0.18), vec3(0.88, 0.22, 0.30), clamp(u_hud_fx.x, 0.0, 1.0) * 0.75);
         }
       }
     }
@@ -453,7 +455,20 @@ vec3 hud_abilities(vec3 c, vec2 px) {
         vec3 dc = (u_dash_up > 0)
                     ? mix(vec3(1.0, 0.85, 0.25), vec3(0.45, 0.98, 1.0), float(p.x >= 5))
                     : vec3(1.0, 0.55, 0.22);
-        c = mix(dc, vec3(1.0), flash * 0.65);
+        c = mix(dc, vec3(1.0), max(flash * 0.65, clamp(u_hud_fx.w, 0.0, 1.0) * 0.65));
+      }
+    }
+    int dmax = clamp(int(u_hud_fx.z + 0.5), 0, 2);
+    int dcur = clamp(int(u_hud_fx.y + 0.5), 0, dmax);
+    if (dmax > 0) {
+      ivec2 dp = ivec2(floor(px - vec2(ax, top + 9.0)));
+      if (dp.y >= 0 && dp.y <= 1) {
+        if (dmax == 1 && dp.x >= 2 && dp.x <= 5) {
+          c = (dcur >= 1) ? vec3(1.0, 0.72, 0.28) : vec3(0.24, 0.20, 0.26);
+        } else if (dmax == 2) {
+          if (dp.x >= 1 && dp.x <= 3) c = (dcur >= 1) ? vec3(1.0, 0.88, 0.34) : vec3(0.24, 0.20, 0.26);
+          if (dp.x >= 5 && dp.x <= 7) c = (dcur >= 2) ? vec3(0.45, 0.98, 1.0) : vec3(0.24, 0.20, 0.26);
+        }
       }
     }
     ax += 12.0;
@@ -833,6 +848,12 @@ void main() {
       g = max(g, glyph5(GR, (px - orr) / sr));
       c = mix(c, vec3(1.0, 0.9, 0.45), g * a);
     }
+  }
+
+  if (u_hud_fx.x > 0.01 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) {
+    vec2 mid = (px - vec2(160.0, 90.0)) / vec2(160.0, 90.0);
+    float edge = smoothstep(0.55, 1.32, length(mid));
+    c = mix(c, vec3(0.92, 0.14, 0.22), clamp(edge * u_hud_fx.x * 0.65, 0.0, 0.65));
   }
 
   if (u_items_total > 0 && u_hero_sel == 0) c = hud_items(c, px);

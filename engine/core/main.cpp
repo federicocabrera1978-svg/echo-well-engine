@@ -455,6 +455,8 @@ int main(int argc, char** argv) {
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");
     if (hev.new_wall_climb) std::printf("echo_engine: ¡habilidad desbloqueada! trepar paredes\n");
     if (hev.new_reveal) std::printf("echo_engine: ¡habilidad desbloqueada! llama reveladora\n");
+    if (hev.new_extra_hp) std::printf("echo_engine: ¡corazon extra! vida maxima: %d\n", v.max_hp);
+    if (hev.new_dash_upgrade) std::printf("echo_engine: ¡Dash II desbloqueado! 2 cargas aereas\n");
 
     int fw = 0, fh = 0;
     glfwGetFramebufferSize(win, &fw, &fh);
