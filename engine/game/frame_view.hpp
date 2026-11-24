@@ -103,6 +103,9 @@ struct FrameData {
   float toast_alpha = 0.f;                   // 0..1 banner breve inferior (cambio de zona / hito / sello)
   int toast_kind = 0;                        // 0=zona, 1=hito, 2=sello roto
   int show_timer = 0, timer_secs = 0;        // cronómetro speedrun opcional (T / --timer)
+  float prompt_x = 0.f, prompt_y = 0.f;      // posición en px de vista del aviso contextual [E]
+  int prompt_kind = 0;                       // 0=oculto, 1=npc/lore, 2=palanca, 3=ascensor
+  int hero_kind = 0;                         // 0=Lantern, 1=Opossum, 2=Beaver (emblema en HUD)
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;
@@ -586,6 +589,56 @@ inline void build_world_frame(FrameData& v, Scene& scene, const Sim& sim, float 
       v.water_surface[std::size_t(b * kMaxWaterCols + i)] = w.surface_col(i);
   }
   collect_room_lights(v, scene, sim, time_s);
+  v.prompt_kind = 0;
+  if (!overlay_open && !demo && !sim.finished()) {
+    const auto& ents = scene.entities();
+    float best_d2 = 1e30f;
+    for (std::size_t ei = 0; ei < ents.size(); ++ei) {
+      const auto& e = ents[ei];
+      int kind = 0;
+      float reach = 0.f;
+      float oy = -16.f;
+      if (e.type == "npc" || e.type == "lore") {
+        kind = 1;
+        reach = Sim::kDialogReach;
+        oy = -17.f;
+      } else if (e.type == "switch" || e.type == "flood_switch" || e.type == "timed_switch") {
+        kind = 2;
+        reach = 14.f;
+        oy = -19.f;
+      } else {
+        continue;
+      }
+      const float dx = e.x - px, dy = e.y - py;
+      const float d2 = dx * dx + dy * dy;
+      if (d2 <= reach * reach && d2 < best_d2) {
+        best_d2 = d2;
+        v.prompt_kind = kind;
+        v.prompt_x = std::round(e.x - v.cam_x);
+        v.prompt_y = std::round(e.y + oy - v.cam_y);
+      }
+    }
+    if (v.prompt_kind == 0) {
+      for (int i = 0; i < sim.mover_count(); ++i) {
+        const auto& mv = sim.mover(i);
+        if (!mv.is_elevator || mv.ent >= ents.size() || !ents[mv.ent].active) continue;
+        const float cx0 = mv.wp0_x + mv.w * 0.5f, cy0 = mv.wp0_y;
+        const float cx1 = mv.wp1_x + mv.w * 0.5f, cy1 = mv.wp1_y;
+        if (std::fabs(px - cx0) <= 28.f && std::fabs(py - cy0) <= 32.f) {
+          v.prompt_kind = 3;
+          v.prompt_x = std::round(cx0 - v.cam_x);
+          v.prompt_y = std::round(cy0 - 16.f - v.cam_y);
+          break;
+        }
+        if (std::fabs(px - cx1) <= 28.f && std::fabs(py - cy1) <= 32.f) {
+          v.prompt_kind = 3;
+          v.prompt_x = std::round(cx1 - v.cam_x);
+          v.prompt_y = std::round(cy1 - 16.f - v.cam_y);
+          break;
+        }
+      }
+    }
+  }
   v.fade = sim.finish_t();
   v.foliage_enabled = sim.wind_enabled() ? 1 : 0;
   v.wind_gust = sim.wind().current_gust(uint32_t(v.bg_seed[4]));

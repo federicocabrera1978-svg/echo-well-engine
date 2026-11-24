@@ -55,6 +55,8 @@ uniform int u_map_open;        // 1 = overlay de Mapa Expandido abierto (M / Tab
 uniform vec2 u_map_target;     // (cx, cy) destino seleccionado para Viaje Rápido (-1 = ninguno)
 uniform vec2 u_toast;          // (alpha 0..1, kind: 0=zona, 1=hito, 2=sello roto) banner inferior
 uniform vec2 u_timer;          // (show 0/1, secs) cronómetro speedrun MM:SS en esquina inferior derecha
+uniform vec4 u_prompt;         // (x_vista, y_vista, kind: 0=nada, 1=npc/lore, 2=palanca, 3=ascensor, 0)
+uniform int u_hero_kind;       // 0=Lantern, 1=Opossum, 2=Beaver
 uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
@@ -404,8 +406,14 @@ vec3 hud_items(vec3 c, vec2 px) {
 vec3 hud_hearts(vec3 c, vec2 px) {
   int mhp = clamp(u_max_hp, 1, 3);
   float x0 = (u_items_total > 0) ? 36.0 : 3.0;
-  if (px.x >= x0 && px.x <= x0 + float(mhp) * 9.0 + 4.0 && px.y >= 3.0 && px.y <= 14.0)
+  if (px.x >= x0 && px.x <= x0 + float(mhp) * 9.0 + 4.0 && px.y >= 3.0 && px.y <= 14.0) {
     c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
+    if (px.x >= x0 && px.x < x0 + 2.0 && px.y >= 5.0 && px.y <= 12.0) {
+      c = (u_hero_kind == 1) ? vec3(0.78, 0.52, 0.98)
+        : (u_hero_kind == 2) ? vec3(0.32, 0.90, 0.96)
+                             : vec3(1.0, 0.80, 0.30);
+    }
+  }
   for (int i = 0; i < 3; ++i) {
     if (i >= mhp) break;
     ivec2 p = ivec2(floor(px - vec2(x0 + 3.0 + float(i) * 9.0, 6.0)));
@@ -572,6 +580,25 @@ vec3 hud_seals(vec3 c, vec2 px) {
         }
       }
     }
+  }
+  return c;
+}
+
+// Aviso contextual flotante [E] sobre NPCs, estelas, palancas y ascensores cercanos.
+vec3 hud_prompt(vec3 c, vec2 px) {
+  int kind = clamp(int(u_prompt.z + 0.5), 0, 3);
+  if (kind <= 0) return c;
+  float bob = floor(sin(u_time * 6.0) * 1.2);
+  vec2 org = floor(u_prompt.xy) + vec2(-4.0, -4.0 + bob);
+  ivec2 p = ivec2(floor(px - org));
+  if (p.x >= 0 && p.x <= 8 && p.y >= 0 && p.y <= 8) {
+    bool bdr = (p.x == 0 || p.x == 8 || p.y == 0 || p.y == 8);
+    vec3 bcol = (kind == 1) ? vec3(1.0, 0.86, 0.38)
+              : (kind == 2) ? vec3(0.45, 0.98, 0.55)
+                            : vec3(0.38, 0.92, 1.0);
+    c = bdr ? bcol : vec3(0.06, 0.07, 0.12);
+    const int GE = 32554047;
+    if (glyph5(GE, px - (org + vec2(2.0, 2.0))) > 0.5) c = vec3(1.0, 0.98, 0.92);
   }
   return c;
 }
@@ -918,6 +945,8 @@ void main() {
     c = hud_toast(c, px);
   if (u_timer.x > 0.5 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0 && u_map_open == 0)
     c = hud_timer(c, px);
+  if (u_prompt.z > 0.5 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0 && u_map_open == 0)
+    c = hud_prompt(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 
   if (u_map_open > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {

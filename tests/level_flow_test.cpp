@@ -82,6 +82,20 @@ int main(int argc, char** argv) {
     CHECK(std::fabs(v.light_y - (flow.sim().player().pos.y - 8.f * flow.sim().down())) < 1e-3f);
     CHECK(v.foliage_enabled == 1);
 
+    // Aviso contextual [E]: lejos = 0, junto a switch_start = 2.
+    CHECK(v.prompt_kind == 0);
+    for (const auto& e : flow.scene().entities()) {
+      if (e.type == "switch") {
+        auto& pl = flow.sim().world().points()[flow.sim().player_index()];
+        pl.pos = pl.prev = {e.x, e.y};
+        FrameData vp;
+        build_world_frame(vp, flow.scene(), flow.sim(), 1.25f, false, false);
+        CHECK(vp.prompt_kind == 2);
+        pl.pos = pl.prev = {120.f, 80.f};
+        break;
+      }
+    }
+
     // Culling fuera de vista y tope kMaxMarkers / kMaxSprites
     const int base_m = v.marker_count;
     push_marker(v, v.cam_x - 200.f, v.cam_y, 2.f, 0, 1.f, 1.f, 1.f);
