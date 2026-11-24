@@ -48,6 +48,7 @@ uniform int u_map_doors_hi;    // bitmask de puertas/muros cerrados (bits 32..63
 uniform int u_map_eggs;        // bitmask de huevos pendientes (bits 0..31)
 uniform int u_map_eggs_hi;     // bitmask de huevos pendientes (bits 32..63)
 uniform int u_map_pct;         // porcentaje explorado 0..100
+uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
 // Glifo 5×5, bit 0 = izquierda, fila 0 = arriba. bits = filas empaquetadas de a 5.
@@ -478,6 +479,50 @@ vec3 hud_abilities(vec3 c, vec2 px) {
   return c;
 }
 
+// Barra de vida de Boss en combate (franja superior central y=3..14, fuera de top_half y=16..89).
+vec3 hud_boss_bar(vec3 c, vec2 px) {
+  int mhp = clamp(int(u_boss_hud.y + 0.5), 0, 4);
+  if (mhp <= 0) return c;
+  int bhp = clamp(int(u_boss_hud.x + 0.5), 0, mhp);
+  int kind = clamp(int(u_boss_hud.z + 0.5), 0, 3);
+  float flash = clamp(u_boss_hud.w, 0.0, 1.0);
+  float pip_w = 9.0, gap = 2.0;
+  float total_w = 13.0 + float(mhp) * pip_w + float(mhp - 1) * gap;
+  float x0 = floor(160.0 - total_w * 0.5);
+  if (px.x >= x0 - 3.0 && px.x <= x0 + total_w + 3.0 && px.y >= 3.0 && px.y <= 14.0) {
+    c = mix(c, vec3(0.03, 0.03, 0.05), 0.64);
+    vec3 kcol = (kind == 2) ? vec3(1.0, 0.44, 0.22)
+              : (kind == 3) ? vec3(0.28, 0.94, 0.80)
+              : (kind == 1) ? vec3(0.76, 0.42, 0.98)
+                            : vec3(0.96, 0.72, 0.26);
+    ivec2 ic = ivec2(floor(px - vec2(x0, 5.0)));
+    if (ic.x >= 0 && ic.x <= 8 && ic.y >= 0 && ic.y <= 6) {
+      bool crown = (ic.y == 6 && ic.x >= 1 && ic.x <= 7) ||
+                   (ic.y >= 3 && ic.y <= 5 && ic.x >= 1 && ic.x <= 7 && !(ic.y == 4 && (ic.x == 3 || ic.x == 5))) ||
+                   (ic.y == 2 && (ic.x == 1 || ic.x == 4 || ic.x == 7)) ||
+                   (ic.y == 1 && (ic.x == 1 || ic.x == 4 || ic.x == 7));
+      if (crown) c = mix(kcol, vec3(1.0), flash * 0.7);
+    }
+    float sx = x0 + 12.0;
+    for (int i = 0; i < 4; ++i) {
+      if (i >= mhp) break;
+      float px0 = sx + float(i) * (pip_w + gap);
+      ivec2 sp = ivec2(floor(px - vec2(px0, 6.0)));
+      if (sp.x >= 0 && sp.x < int(pip_w) && sp.y >= 0 && sp.y <= 4) {
+        bool border = (sp.x == 0 || sp.x == int(pip_w) - 1 || sp.y == 0 || sp.y == 4);
+        if (i < bhp) {
+          vec3 fill = (sp.y == 1) ? mix(kcol, vec3(1.0), 0.42) : kcol;
+          if (border) fill *= 0.75;
+          c = mix(fill, vec3(1.0), flash * 0.75);
+        } else {
+          c = border ? vec3(0.28, 0.22, 0.26) : vec3(0.12, 0.10, 0.14);
+        }
+      }
+    }
+  }
+  return c;
+}
+
 // Mini-mapa exploratorio Metroidvania en esquina superior derecha:
 // oculta salas no visitadas, marca puertas cerradas / huevos pendientes y muestra % explorado.
 vec3 hud_minimap(vec3 c, vec2 px) {
@@ -701,6 +746,7 @@ void main() {
   if (u_items_total > 0 && u_hero_sel == 0) c = hud_items(c, px);
   if (u_max_hp > 0 && u_hero_sel == 0) c = hud_hearts(c, px);
   if (u_abilities != 0 && u_hero_sel == 0) c = hud_abilities(c, px);
+  if (u_boss_hud.y > 0.5 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_boss_bar(c, px);
   if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_minimap(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 

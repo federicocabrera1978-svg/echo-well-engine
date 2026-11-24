@@ -21,6 +21,7 @@ struct HudTracker {
   uint32_t last_abilities = 0;
   int last_max_hp = 1;
   bool last_dash_up = false;
+  int last_boss_hp = 0;
 };
 
 struct HudEvents {
@@ -31,6 +32,7 @@ struct HudEvents {
   bool new_reveal = false;
   bool new_extra_hp = false;
   bool new_dash_upgrade = false;
+  bool boss_hit = false;
 };
 
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
@@ -105,6 +107,37 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   if (dash_up != tracker.last_dash_up) {
     if (dash_up && !tracker.last_dash_up) ev.new_dash_upgrade = true;
     tracker.last_dash_up = dash_up;
+  }
+  v.boss_hp = 0;
+  v.boss_max_hp = 0;
+  v.boss_kind = 0;
+  v.boss_hurt_flash = 0.f;
+  const auto& ppos = sim.player().pos;
+  float best_d2 = 1e30f;
+  int best_bi = -1;
+  for (int bi = 0; bi < sim.boss_count(); ++bi) {
+    const auto& b = sim.boss(bi);
+    if (b.defeated) continue;
+    const float dx = std::fabs(b.x - ppos.x);
+    const float dy = std::fabs(b.y - ppos.y);
+    if (dx <= 220.f && dy <= 120.f) {
+      const float d2 = dx * dx + dy * dy;
+      if (d2 < best_d2) {
+        best_d2 = d2;
+        best_bi = bi;
+      }
+    }
+  }
+  if (best_bi >= 0) {
+    const auto& b = sim.boss(best_bi);
+    v.boss_max_hp = b.max_hits();
+    v.boss_hp = std::max(0, b.max_hits() - b.hits);
+    v.boss_kind = b.dragon ? 2 : (b.sentinel ? 3 : (b.guardian2 ? 1 : 0));
+    v.boss_hurt_flash = std::clamp(b.hurt / Sim::kBossHurtSec, 0.f, 1.f);
+    if (tracker.last_boss_hp > 0 && v.boss_hp < tracker.last_boss_hp) ev.boss_hit = true;
+    tracker.last_boss_hp = v.boss_hp;
+  } else {
+    tracker.last_boss_hp = 0;
   }
   const MinimapState mm = compute_minimap(scene);
   v.map_w = mm.map_w;

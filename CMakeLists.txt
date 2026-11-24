@@ -375,7 +375,7 @@ add_test(NAME minimap_imps_victory COMMAND stage9_test ${EW_SLICE_MAP} ${EW_LEVE
 add_executable(minimap_test tests/minimap_test.cpp)
 target_link_libraries(minimap_test PRIVATE echo_game)
 add_dependencies(minimap_test ew_maps)
-add_test(NAME minimap_hud COMMAND minimap_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP})
+add_test(NAME minimap_hud COMMAND minimap_test ${EW_SLICE_MAP} ${EW_LEVEL2_MAP} ${EW_LEVEL3_MAP} ${EW_WORLD_MAP})
 add_executable(metroidvania_test tests/metroidvania_test.cpp)
 target_link_libraries(metroidvania_test PRIVATE echo_game)
 add_dependencies(metroidvania_test ew_maps)

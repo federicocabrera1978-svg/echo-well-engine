@@ -81,8 +81,11 @@ struct FrameData {
   // HUD de habilidades (light pass): bitmask kAbility* + destello 0..1 al desbloquear.
   int abilities = 0;
   float ability_flash = 0;
-  int hp = 1, max_hp = 1;                    // vida actual / máxima (2 con 2+ huevos)
+  int hp = 1, max_hp = 1;                    // vida actual / máxima (2 con 2+ huevos, 3 con 6+ huevos)
   int dash_upgraded = 0;                     // 1 = Dash II desbloqueado (4+ huevos)
+  int boss_hp = 0, boss_max_hp = 0;          // vida actual / máxima del boss activo en arena (0 = oculto)
+  int boss_kind = 0;                         // 0=Watcher, 1=Guardian2, 2=Wyrm, 3=Sentinel
+  float boss_hurt_flash = 0.f;               // 0..1 destello al golpear al boss
   // Mini-mapa exploratorio (light pass): grilla de chunks, chunk activo, bitmasks de
   // visitados, puertas/muros cerrados, huevos pendientes y porcentaje explorado.
   int map_w = 0, map_h = 0, cur_cx = 0, cur_cy = 0;

@@ -40,7 +40,7 @@ inline MinimapState compute_minimap(const Scene& scene) {
   for (const auto& e : scene.entities()) {
     if (e.active) continue;
     const bool is_blocker =
-        (e.type == "door" || e.type == "one_way_door" || e.type == "break_wall");
+        (e.type == "door" || e.type == "one_way_door" || e.type == "break_wall" || e.type == "crystal");
     const bool is_egg = (e.type == "collectible");
     if (!is_blocker && !is_egg) continue;
 
