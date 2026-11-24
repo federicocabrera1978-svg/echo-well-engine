@@ -95,8 +95,9 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
     };
     if (s.abilities & kAbilityDoubleJump) add(compact ? "DJ" : "DOBLE SALTO");
     if ((s.abilities & kAbilityDash) || s.dash_upgraded) add(s.dash_upgraded ? "DASH II" : "DASH");
-    if (s.abilities & kAbilityWallClimb) add("ESCALADA");
-    if (s.max_hp > 1) add("+1HP");
+    if (s.abilities & kAbilityWallClimb) add(compact ? "ESC" : "ESCALADA");
+    if (s.abilities & kAbilityReveal) add("FAROL");
+    if (s.max_hp > 1) add("+" + std::to_string(s.max_hp - 1) + "HP");
     return out;
   };
   const std::string abs_full = build_abs(false);
@@ -117,7 +118,9 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   auto row = [&](int idx, const std::string& label) {
     return std::string(e.cursor() == idx ? "> " : "  ") + label;
   };
-  const std::string next_lbl = s.next_label.empty() ? std::string("SIGUIENTE NIVEL") : s.next_label;
+  const std::string next_lbl = s.has_next
+                                   ? (s.next_label.empty() ? std::string("SIGUIENTE NIVEL") : s.next_label)
+                                   : std::string("FIN DE LA AVENTURA");
   t[6] = row(EndScreen::kNext, next_lbl);
   t[7] = row(EndScreen::kRestart, "REINICIAR NIVEL");
   t[8] = row(EndScreen::kMenu, "MENU DE PAUSA");

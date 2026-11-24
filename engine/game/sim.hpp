@@ -317,6 +317,7 @@ class Sim {
   BossVictorySeq& victory_seq() { return victory_; }
   void set_victory_config(const BossVictoryConfig& cfg) { victory_.set_config(cfg); }
   bool take_victory_dialog(BossVictoryDialog& out) { return victory_.poll_dialog(out); }
+  bool take_epilogue_dialog(BossVictoryDialog& out);
   // Brisa global y ráfagas locales (vegetación / cuerdas).
   const WindField& wind() const { return wind_; }
   WindField& wind() { return wind_; }
@@ -435,6 +436,7 @@ class Sim {
   int air_ticks_ = 0;
   int step_cd_ = 2;
   int pending_dialog_ = -1;
+  bool pending_epilogue_ = false;
   float elapsed_sec_ = 0.f;
   std::vector<Boss> bosses_;
   std::vector<Fireball> fireballs_;
