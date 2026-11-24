@@ -49,7 +49,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
                                            const EndScreen& end_screen, const DialogueBox& dialogue,
                                            HudTracker& tracker, std::string_view version_str,
                                            bool map_open = false, int map_travel_cursor = -1,
-                                           bool show_timer = false) {
+                                           bool show_timer = false, bool journal_open = false) {
   v.pause = menu.open() ? 1 : 0;
   v.pause_sel = menu.cursor();
   v.pause_vol = menu.volume_setting();
@@ -180,10 +180,23 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.explored_pct = mm.explored_pct;
   v.seals_mask = int(mm.seals_mask);
   v.seals_total = mm.seals_total;
-  v.map_open = (!menu.open() && !end_screen.open() && !dialogue.open() && map_open) ? 1 : 0;
+  const bool modal_free = !menu.open() && !end_screen.open() && !dialogue.open();
+  v.map_open = (modal_free && journal_open) ? 2 : ((modal_free && map_open) ? 1 : 0);
   v.map_target_cx = -1;
   v.map_target_cy = -1;
-  if (v.map_open) {
+  if (v.map_open == 2) {
+    const auto zones = compute_zone_eggs(scene);
+    std::array<std::string, 5> zlines{};
+    for (std::size_t i = 0; i < zones.size() && i < 5u; ++i) {
+      std::string s = "  " + std::string(zones[i].zone);
+      if (s.size() < 22u) s.resize(22u, ' ');
+      s += std::to_string(zones[i].found) + "/" + std::to_string(zones[i].total);
+      zlines[i] = std::move(s);
+    }
+    v.ctl_txt = pack_text(journal_text(sim.hero(), zlines, mm.seals_mask, mm.seals_total, sim.abilities(),
+                                       sim.dash_upgraded(), mm.explored_pct, sim.deaths(),
+                                       std::max(0, int(sim.elapsed_sec()))));
+  } else if (v.map_open == 1) {
     std::string_view tlabel;
     bool tunlocked = false;
     if (map_travel_cursor >= 0) {

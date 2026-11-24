@@ -709,6 +709,29 @@ vec3 world_map_page(vec3 c, vec2 px) {
   return c;
 }
 
+// Overlay del Diario de la Vigía (tecla J, u_map_open == 2): huevos por zona, sellos y reliquias.
+vec3 journal_page(vec3 c, vec2 px) {
+  c = mix(c, vec3(0.03, 0.04, 0.06), 0.86);
+  vec2 ip = floor(px);
+  if (ip.x >= 20.0 && ip.x <= 299.0 && ip.y >= 8.0 && ip.y <= 171.0) {
+    bool outer = (ip.x == 20.0 || ip.x == 299.0 || ip.y == 8.0 || ip.y == 171.0);
+    bool inner = (ip.x == 22.0 || ip.x == 297.0 || ip.y == 10.0 || ip.y == 169.0);
+    c = vec3(0.06, 0.07, 0.11);
+    if (inner) c = vec3(0.24, 0.30, 0.42);
+    if (outer) c = vec3(0.84, 0.68, 0.32);
+  }
+  c = mix(c, vec3(1.0, 0.88, 0.42), txt_glyph(0,  px - vec2(28.0, 16.0), 1.0));
+  c = mix(c, vec3(0.68, 0.88, 0.98), txt_glyph(1,  px - vec2(28.0, 28.0), 1.0));
+  c = mix(c, vec3(0.96, 0.84, 0.46), txt_glyph(2,  px - vec2(28.0, 42.0), 1.0));
+  for (int r = 3; r <= 7; ++r)
+    c = mix(c, vec3(0.90, 0.92, 0.96), txt_glyph(r, px - vec2(28.0, 52.0 + float(r - 3) * 11.0), 1.0));
+  c = mix(c, vec3(0.96, 0.82, 0.42), txt_glyph(8,  px - vec2(28.0, 112.0), 1.0));
+  c = mix(c, vec3(0.45, 0.96, 0.84), txt_glyph(9,  px - vec2(28.0, 125.0), 1.0));
+  c = mix(c, vec3(0.82, 0.88, 0.95), txt_glyph(10, px - vec2(28.0, 138.0), 1.0));
+  c = mix(c, vec3(0.58, 0.62, 0.72), txt_glyph(11, px - vec2(28.0, 156.0), 1.0));
+  return c;
+}
+
 // Mini-mapa exploratorio Metroidvania en esquina superior derecha:
 // oculta salas no visitadas, marca puertas cerradas / huevos pendientes y muestra % explorado.
 vec3 hud_minimap(vec3 c, vec2 px) {
@@ -949,7 +972,9 @@ void main() {
     c = hud_prompt(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 
-  if (u_map_open > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {
+  if (u_map_open == 2 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {
+    c = journal_page(c, px);
+  } else if (u_map_open == 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {
     c = world_map_page(c, px);
   } else if (u_hero_sel > 0) {
     c = hero_select_page(c, px);
