@@ -408,6 +408,10 @@ int main(int argc, char** argv) {
         ew::game::BossVictoryDialog vdlg;
         if (flow.sim().take_victory_dialog(vdlg)) dialogue.open(vdlg.speaker, vdlg.text);
       }
+      if (!demo && !max_frames && flow.sim().finished()) {
+        ew::game::BossVictoryDialog edlg;
+        if (flow.sim().take_epilogue_dialog(edlg)) dialogue.open(edlg.speaker, edlg.text);
+      }
       in.jump = in.interact = in.grab = in.dash = in.restart = in.restart_full = false;
       latched_in = {};
       ++sim_steps;
@@ -441,6 +445,7 @@ int main(int argc, char** argv) {
     if (hev.new_double_jump) std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");
     if (hev.new_wall_climb) std::printf("echo_engine: ¡habilidad desbloqueada! trepar paredes\n");
+    if (hev.new_reveal) std::printf("echo_engine: ¡habilidad desbloqueada! llama reveladora\n");
 
     int fw = 0, fh = 0;
     glfwGetFramebufferSize(win, &fw, &fh);

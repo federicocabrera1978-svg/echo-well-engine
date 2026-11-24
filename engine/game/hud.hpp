@@ -28,6 +28,7 @@ struct HudEvents {
   bool new_double_jump = false;
   bool new_dash = false;
   bool new_wall_climb = false;
+  bool new_reveal = false;
   bool new_extra_hp = false;
   bool new_dash_upgrade = false;
 };
@@ -88,6 +89,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     if ((ab & kAbilityDoubleJump) && !(tracker.last_abilities & kAbilityDoubleJump)) ev.new_double_jump = true;
     if ((ab & kAbilityDash) && !(tracker.last_abilities & kAbilityDash)) ev.new_dash = true;
     if ((ab & kAbilityWallClimb) && !(tracker.last_abilities & kAbilityWallClimb)) ev.new_wall_climb = true;
+    if ((ab & kAbilityReveal) && !(tracker.last_abilities & kAbilityReveal)) ev.new_reveal = true;
     tracker.last_abilities = ab;
   }
   v.abilities = int(ab);

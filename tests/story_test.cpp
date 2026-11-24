@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
       {"slice", argv[1], 2},
       {"level2", argv[2], 6},
       {"level3", argv[3], 4},
-      {"world", argv[4], 22},
+      {"world", argv[4], 26},
   };
 
   for (const auto& m : maps) {
@@ -60,12 +60,25 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "Texto invalido en %s (%s): %s (%s)\n", m.name, d.speaker.c_str(), d.text.c_str(), why.c_str());
         return 1;
       }
-      if (contains_any(d.speaker, {"DRAGON", "WYRM", "HUEVO"}) ||
+      if (contains_any(d.speaker, {"DRAGON", "WYRM", "HUEVO", "NIDADA"}) ||
           contains_any(d.text, {"DRAGON", "WYRM", "NIDADA", "HUEVO", "SIERPE"})) {
         has_dragon_lore = true;
       }
+      if (std::string_view(m.name) == "world") {
+        CHECK(!contains_any(d.text, {"LOS TRES GUARDIANES", "ULTIMO HUEVO", "ULTIMO SELLO", "CUATRO/GUARDIANES"}));
+      }
     }
     CHECK(has_dragon_lore);
+    if (std::string_view(m.name) == "world") {
+      int egg_pickups = 0;
+      for (const auto& d : sc.dialogs()) {
+        if (d.trigger == ew::map::DialogTrigger::Pickup && d.entity < sc.entities().size() &&
+            sc.entities()[d.entity].type == "collectible") {
+          ++egg_pickups;
+        }
+      }
+      CHECK(egg_pickups == 8);
+    }
   }
 
   // Diálogos de victoria de los bosses
@@ -85,6 +98,11 @@ int main(int argc, char** argv) {
     CHECK(story_speaker_valid(dlg.speaker, &why));
     CHECK(story_text_valid(dlg.text, &why));
   }
+
+  // Epílogo en el Nido Primordial (estándar y verdadero)
+  CHECK(story_speaker_valid(kEpilogueSpeaker));
+  CHECK(story_text_valid(kEpilogueStandardText));
+  CHECK(story_text_valid(kEpilogueTrueText));
 
   // Títulos y pantalla final (Opción A)
   for (std::string_view sv : {kEndTitleVictory, kEndTitleTrue, kEndSubtitleTrue, kWorldTitle}) {

@@ -1,8 +1,7 @@
 #pragma once
-// Fuente única del tono narrativo "calabozos y dragones" (sin GL/GLFW).
-// Un calabozo de tres niveles (El Pozo, Las Catacumbas, La Guarida del Wyrm); los huevos son nidadas de
-// dragón y el Wyrm, último de su estirpe, es su carcelero. Frases cortas, imágenes concretas, segunda persona.
-// Aquí viven los textos compartidos por código (final, título del mundo, diálogos de victoria de boss)
+// Fuente única del tono narrativo: la Orden de la Vigía encerró al Wyrm bajo Tres Sellos Elementales
+// (Piedra, Sombra y Agua) y dispersó las 8 nidadas de dragón. Frases cortas, segunda persona.
+// Aquí viven los textos compartidos por código (final, título del mundo, diálogos de victoria y epílogo)
 // y el linter `story_text_valid` que usa `tests/story_test.cpp` para vigilar todos los diálogos.
 #include "game/menu_text.hpp"
 
@@ -19,18 +18,25 @@ inline constexpr std::string_view kEndSubtitleTrue = "NIDADA A SALVO: TODOS LOS 
 inline constexpr std::string_view kWorldTitle = "EL CALABOZO DEL WYRM";
 
 // Diálogos de victoria sobre cada boss (boss_victory.hpp): formato `pág|pág`, líneas separadas por `/`.
-inline constexpr std::string_view kVictoryWatcherSpeaker = "SELLO DEL POZO";
+inline constexpr std::string_view kVictoryWatcherSpeaker = "PRIMER SELLO: PIEDRA";
 inline constexpr std::string_view kVictoryWatcherText =
-    "EL COLOSO DEL POZO SE DESHACE./SU SELLO DE PIEDRA CEDE.|MAS ABAJO, LAS CATACUMBAS/GUARDAN A LA SIERPE SELLADA.";
-inline constexpr std::string_view kVictoryGuardian2Speaker = "SELLO DE LAS CATACUMBAS";
+    "CAE EL COLOSO DE LA ORDEN/Y CEDE EL SELLO DE PIEDRA.|UN ARCO DEL PORTICO SE ABRE./BAJA AHORA A LAS CATACUMBAS.";
+inline constexpr std::string_view kVictoryGuardian2Speaker = "SEGUNDO SELLO: SOMBRA";
 inline constexpr std::string_view kVictoryGuardian2Text =
-    "EL GUARDIAN DE LA CRIPTA CAYO./SU SELLO SE QUIEBRA.|MAS ALLA DESPIERTA EL WYRM,/GUARDIAN DE LA ULTIMA NIDADA.";
+    "CAE EL GUARDIAN DE LA CRIPTA/Y SE QUIEBRA EL SELLO SOMBRIO.|DOS ARCOS DEL PORTICO CEDEN:/AUN RESTA EL SELLO DEL AGUA.";
 inline constexpr std::string_view kVictoryWyrmSpeaker = "CORONA DEL WYRM";
 inline constexpr std::string_view kVictoryWyrmText =
-    "EL WYRM CAYO Y SU LARGA/GUARDIA HA TERMINADO.|LA NIDADA YA NO ESTA SOLA:/TU FAROL LA DESPERTO.";
-inline constexpr std::string_view kVictorySentinelSpeaker = "SELLO DEL ARCHIVO";
+    "LA FURIA DEL WYRM SE APAGA:/ROTAS QUEDAN SUS CADENAS.|AVANZA AL NIDO PRIMORDIAL/Y ENTREGA TU LLAMA VIVA!";
+inline constexpr std::string_view kVictorySentinelSpeaker = "TERCER SELLO: AGUA";
 inline constexpr std::string_view kVictorySentinelText =
-    "EL CENTINELA SUMERGIDO CAE./SU SELLO DE AGUA SE QUIEBRA.|LOS SECRETOS DEL ARCHIVO/QUEDAN EXPUESTOS A TU FAROL.";
+    "EL CENTINELA SUMERGIDO CAE/Y SE ROMPE EL SELLO DEL AGUA.|LOS TRES SELLOS HAN CEDIDO:/LA GUARIDA DEL WYRM SE ABRE!";
+
+// Epílogo narrativo al consagrar el Nido Primordial (meta final de campaña).
+inline constexpr std::string_view kEpilogueSpeaker = "NIDO PRIMORDIAL";
+inline constexpr std::string_view kEpilogueStandardText =
+    "LOS TRES SELLOS Y LAS CADENAS/DEL WYRM CAEN HECHOS CENIZA.|TU LLAMA ENCIENDE EL NIDO/Y EL CALOR REGRESA AL POZO.|PERO EN LA PIEDRA PROFUNDA/AUN DUERMEN HUEVOS SIN LUZ.";
+inline constexpr std::string_view kEpilogueTrueText =
+    "LAS OCHO NIDADAS REUNIDAS/LATEN JUNTO A TU LLAMA VIVA.|CASCARAS DE ORO SE QUIEBRAN:/ALAS JOVENES CRUZAN EL POZO.|EL INVIERNO DE LA VIGIA CEDE/Y EL FUEGO VUELVE AL MUNDO!";
 
 // Límites de un diálogo (la caja ocupa 32 columnas con 1 de margen por lado).
 inline constexpr std::size_t kStoryLineMax = 30, kStoryLinesPerPage = 2, kStoryPagesMax = 3, kStorySpeakerMax = 32;

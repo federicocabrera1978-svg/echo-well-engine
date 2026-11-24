@@ -6,7 +6,9 @@
 // y persistencia en save.ewsv.
 #include "audio/sfx.hpp"
 #include "game/campaign.hpp"
+#include "game/dialogue.hpp"
 #include "game/end_screen.hpp"
+#include "game/level_flow.hpp"
 #include "game/save.hpp"
 #include "game/sim.hpp"
 #include "game/story.hpp"
@@ -135,6 +137,7 @@ int main(int argc, char** argv) {
   CHECK(find_name(scene, "sw_elev_archivo") && find_name(scene, "sw_elev_torre"));
   CHECK(find_name(scene, "boss_sentinel") && find_name(scene, "door_sentinel"));
   CHECK(find_name(scene, "lore_wyrm_seal") && find_name(scene, "lore_sentinel"));
+  CHECK(find_name(scene, "lore_sello_agua") && find_name(scene, "lore_altar_oeste"));
   CHECK(find_name(scene, "door_seal_pozo") && find_name(scene, "door_seal_cat") && find_name(scene, "door_seal_archivo"));
   CHECK(find_name(scene, "owd_archivo_oeste_l") && find_name(scene, "rb_west_a") && find_name(scene, "rb_west_b") && find_name(scene, "rb_presa"));
 
@@ -755,6 +758,53 @@ int main(int argc, char** argv) {
   CHECK(sim.finished());
   CHECK(sim.deaths() == 0);
 
+  // Epílogo en el Nido Primordial (8/8 huevos -> kEpilogueTrueText) + flujo DialogueBox -> EndScreen.
+  {
+    game::BossVictoryDialog edlg;
+    CHECK(sim.take_epilogue_dialog(edlg));
+    CHECK(edlg.speaker == game::kEpilogueSpeaker);
+    CHECK(edlg.text == game::kEpilogueTrueText);
+    CHECK(!sim.take_epilogue_dialog(edlg));
+
+    game::DialogueBox dlg;
+    dlg.open(edlg.speaker, edlg.text);
+    CHECK(dlg.open() && dlg.page_count() == 3);
+    while (dlg.open()) dlg.advance();
+    CHECK(!dlg.open());
+
+    game::LevelFlow flow;
+    game::LevelFlowConfig cfg;
+    cfg.map_path = argv[1];
+    CHECK(flow.init(cfg, err));
+    for (const char* egg_name : {"egg_well", "egg_cat_1", "egg_cat_2", "egg_wyrm_1", "egg_wyrm_2", "egg_pozo_secreto", "egg_archivo"}) {
+      const auto* eg = find_name(flow.scene(), egg_name);
+      CHECK(eg);
+      place(flow.sim(), eg->x, eg->y);
+      flow.sim().step({});
+    }
+    flow.sim().grant_ability(game::kAbilityAll);
+    for (int bi = 0; bi < flow.sim().boss_count(); ++bi) defeat_boss_at(flow.sim(), bi, 300.f, 336.f);
+    const auto* fg = find_name(flow.scene(), "goal");
+    CHECK(fg);
+    place(flow.sim(), fg->x, fg->y);
+    flow.sim().step({});
+    CHECK(flow.sim().finished());
+    game::BossVictoryDialog edlg_std;
+    CHECK(flow.sim().take_epilogue_dialog(edlg_std));
+    CHECK(edlg_std.text == game::kEpilogueStandardText);
+
+    game::PauseMenu pm;
+    game::EndScreen es_flow;
+    game::DialogueBox dlg_flow;
+    dlg_flow.open(edlg_std.speaker, edlg_std.text);
+    const auto p_wait = flow.post_step(pm, es_flow, dlg_flow, false);
+    CHECK(!p_wait.opened_end && !es_flow.open());
+    while (dlg_flow.open()) dlg_flow.advance();
+    const auto p_done = flow.post_step(pm, es_flow, dlg_flow, false);
+    CHECK(p_done.opened_end && es_flow.open());
+    CHECK(game::end_screen_text(es_flow)[6] == "  FIN DE LA AVENTURA");
+  }
+
   // Campaña y EndScreen para "world".
   CHECK(game::find_campaign_level("world") != nullptr);
   CHECK(game::next_campaign_map("world").empty());
@@ -778,9 +828,11 @@ int main(int argc, char** argv) {
     CHECK(txt[0] == game::kEndTitleTrue);
     CHECK(txt[1] == game::kEndSubtitleTrue);
     CHECK(txt[2] == "HUEVOS:  8/8");
+    CHECK(txt[4].find("FAROL") != std::string::npos);
     CHECK(txt[4].find("DASH II") != std::string::npos);
     CHECK(txt[4].find("+1HP") != std::string::npos);
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
+    CHECK(txt[6] == "  FIN DE LA AVENTURA");
   }
 
   // Persistencia save.ewsv sobre world.ewmap (incluyendo atajos, ascensor y kAbilityWallClimb).

@@ -93,6 +93,21 @@ int main(int argc, char** argv) {
     CHECK(txt[9] == "  SALIR");
     const auto packed = pack_text(txt);
     CHECK((packed[0] & 63) == glyph_index('N'));
+
+    // Fin de campaña (!has_next), habilidad FAROL y formato compacto con 4 habilidades + DASH II + +1HP.
+    EndScreen es_rev;
+    es_rev.open({"FIN", 0, 1, 0, kAbilityReveal, false, ""});
+    const auto t_rev = end_screen_text(es_rev);
+    CHECK(t_rev[4] == "HABILIDADES: FAROL");
+    CHECK(t_rev[6] == "  FIN DE LA AVENTURA");
+
+    EndScreen es_all;
+    EndStats st_all{"EL CALABOZO DEL WYRM", 8, 8, 0, kAbilityAll, false, "", 120.f, true, true, 2, true};
+    es_all.open(st_all);
+    const auto t_all = end_screen_text(es_all);
+    CHECK(t_all[4] == "HAB: DJ/DASH II/ESC/FAROL/+1HP");
+    CHECK(t_all[4].size() <= std::size_t(kTxtCols));
+    CHECK(t_all[6] == "  FIN DE LA AVENTURA");
   }
 
   // --- 3) Campaña y resolución segura de archivos de mapa ---

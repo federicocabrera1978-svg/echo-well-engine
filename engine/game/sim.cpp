@@ -31,6 +31,7 @@ void Sim::build() {
   deaths_ = 0;
   hp_ = max_hp();
   invuln_ = 0;
+  pending_epilogue_ = false;
   pickup_flash_ = 0;
   sfx_ = 0;
   was_in_water_ = false;
@@ -77,6 +78,7 @@ void Sim::build() {
   air_ticks_ = 0;
   step_cd_ = 2;
   pending_dialog_ = -1;
+  pending_epilogue_ = false;
   const Entity* spawn = scene_.find_type("player_spawn");
   const Vec2 p = spawn ? Vec2{spawn->x, spawn->y} : Vec2{16, 16};
   player_ = world_.add_point(p, kPlayerRadius, 1);
@@ -467,6 +469,7 @@ void Sim::load_state(int checkpoint, bool flipped, const std::vector<uint8_t>& a
     boss_burst_ = 0;
   }
   invuln_ = 0;
+  pending_epilogue_ = false;
   // Pileta inundada: el nivel queda directo en su destino (sin la subida animada).
   for (int i = 0; i < 4096; ++i) {
     bool moved = false;
@@ -1334,14 +1337,28 @@ void Sim::check_dialogs_proximity() {
 void Sim::check_goal() {
   if (finished_ || !bosses_defeated()) return;  // con un boss vivo la meta está cerrada
   const auto& p = player();
+  auto finish = [&]() {
+    finished_ = true;
+    sfx_ |= 8u;
+    const auto mname = scene_.map().string_at(1);
+    if (mname == "world" || mname == "level3") pending_epilogue_ = true;
+  };
   for (const auto& e : scene_.entities()) {
     if (e.type != "goal") continue;
     const float dx = e.x - p.pos.x, dy = e.y - p.pos.y;
-    if (dx * dx + dy * dy <= kGoalReach * kGoalReach) { finished_ = true; sfx_ |= 8u; return; }
+    if (dx * dx + dy * dy <= kGoalReach * kGoalReach) { finish(); return; }
   }
   const int tx = int(std::floor(p.pos.x / float(ew::map::kTileSize)));
   const int ty = int(std::floor(p.pos.y / float(ew::map::kTileSize)));
-  if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) { finished_ = true; sfx_ |= 8u; }
+  if (scene_.tile(tx, ty, ew::map::Layer::META) == kMetaGoal) finish();
+}
+
+bool Sim::take_epilogue_dialog(BossVictoryDialog& out) {
+  if (!pending_epilogue_) return false;
+  pending_epilogue_ = false;
+  out.speaker = std::string(kEpilogueSpeaker);
+  out.text = std::string(all_eggs_collected() ? kEpilogueTrueText : kEpilogueStandardText);
+  return true;
 }
 
 void Sim::check_checkpoints() {
