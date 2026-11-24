@@ -12,8 +12,9 @@
 //   (0xFFFF / 0xFF = sin asignar; tiene que pasar Bindings::valid()).
 // Payload v3 = v2 + habilidades: u32 abilities (bitmask kAbility*; bits desconocidos = BadField).
 // Payload v4 = v3 + héroe: u8 hero (0..kHeroCount-1).
-//   v1, v2 y v3 se siguen leyendo (v1: controles por defecto, abilities = 0; v2: abilities = 0;
-//   v3: hero = HeroKind::Lantern); siempre se escribe v4.
+// Payload v5 = v4 + progreso de exploración y reloj: u64 visited_chunks + f32 elapsed_sec (≥ 0, finito).
+//   v1..v4 se siguen leyendo (v1: controles por defecto, abilities = 0; v2: abilities = 0;
+//   v3: hero = HeroKind::Lantern; v4: visited_chunks = 0, elapsed_sec = 0); siempre se escribe v5.
 #include "game/bindings.hpp"
 #include "game/hero.hpp"
 
@@ -26,7 +27,7 @@ namespace ew::game {
 
 class Sim;
 
-inline constexpr uint16_t kSaveVersion = 4;  // escribe v4, lee v1, v2, v3 y v4
+inline constexpr uint16_t kSaveVersion = 5;  // escribe v5, lee v1..v5
 inline constexpr std::size_t kSaveMaxMapName = 64;
 inline constexpr std::size_t kSaveMaxEntities = 4096;
 inline constexpr std::size_t kSaveMaxBytes = 4096;  // un save válido nunca pasa de esto
@@ -44,6 +45,8 @@ struct SaveData {
   Bindings bind = Bindings::defaults();  // controles (v2+)
   uint32_t abilities = 0;          // bitmask kAbility* (v3+)
   HeroKind hero = HeroKind::Lantern;  // héroe elegido (v4+)
+  uint64_t visited_chunks = 0;     // bitmask de salas visitadas (v5+)
+  float elapsed_sec = 0.f;         // tiempo acumulado de partida en segundos (v5+)
 };
 
 std::vector<uint8_t> encode_save(const SaveData& d);

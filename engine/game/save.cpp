@@ -80,6 +80,12 @@ std::vector<uint8_t> encode_save(const SaveData& d) {
   }
   put_u32(pl, d.abilities & kAbilityAll);
   put_u8(pl, uint8_t(sanitize_hero(uint8_t(d.hero))));
+  put_u32(pl, uint32_t(d.visited_chunks & 0xFFFFFFFFu));
+  put_u32(pl, uint32_t((d.visited_chunks >> 32) & 0xFFFFFFFFu));
+  const float el = (std::isfinite(d.elapsed_sec) && !std::signbit(d.elapsed_sec)) ? d.elapsed_sec : 0.f;
+  uint32_t eb;
+  std::memcpy(&eb, &el, 4);
+  put_u32(pl, eb);
 
   std::vector<uint8_t> out = {'E', 'W', 'S', 'V'};
   put_u16(out, kSaveVersion);
@@ -158,6 +164,15 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
     if (hv >= uint8_t(kHeroCount)) return SaveError::BadField;
     d.hero = HeroKind(hv);
   }
+  if (ver >= 5) {
+    const uint32_t vlo = r.u32();
+    const uint32_t vhi = r.u32();
+    const uint32_t eb = r.u32();
+    if (!r.ok) return SaveError::BadSize;
+    d.visited_chunks = uint64_t(vlo) | (uint64_t(vhi) << 32);
+    std::memcpy(&d.elapsed_sec, &eb, 4);
+    if (!std::isfinite(d.elapsed_sec) || std::signbit(d.elapsed_sec)) return SaveError::BadField;
+  }
   if (r.i != psz) return SaveError::BadSize;  // sin bytes de más
   out = std::move(d);
   return SaveError::None;
@@ -171,6 +186,8 @@ SaveData capture_save(const Sim& sim) {
   d.flipped = sim.checkpoint_flipped();
   d.abilities = sim.abilities();
   d.hero = sim.hero();
+  d.visited_chunks = sc.visited_chunks();
+  d.elapsed_sec = sim.elapsed_sec();
   d.active.reserve(sc.entities().size());
   for (const auto& e : sc.entities()) d.active.push_back(e.active ? 1 : 0);
   return d;
@@ -181,10 +198,13 @@ SaveError apply_save(Sim& sim, const SaveData& d) {
   const auto& ents = sc.entities();
   if (d.abilities & ~kAbilityAll) return SaveError::BadField;
   if (uint8_t(d.hero) >= uint8_t(kHeroCount)) return SaveError::BadField;
+  if (!std::isfinite(d.elapsed_sec) || std::signbit(d.elapsed_sec)) return SaveError::BadField;
   if (d.map != sc.map().string_at(1) || d.active.size() != ents.size()) return SaveError::Mismatch;
   if (d.checkpoint >= 0 && ents[std::size_t(d.checkpoint)].type != "checkpoint") return SaveError::Mismatch;
   sim.load_state(d.checkpoint, d.flipped, d.active, d.abilities);
   sim.set_hero(d.hero);
+  if (d.visited_chunks != 0) sc.set_visited_chunks(d.visited_chunks | sc.visited_chunks());
+  sim.set_elapsed_sec(d.elapsed_sec);
   return SaveError::None;
 }
 

@@ -108,6 +108,7 @@ class Scene {
   const std::array<ew::map::BackdropCell, 9>& active_backdrops() const { return nb_backdrops_; }
   // Mini-mapa exploratorio: bit i = chunk (cy * map_w + cx) visitado en la partida actual.
   uint64_t visited_chunks() const { return visited_; }
+  void set_visited_chunks(uint64_t mask) { visited_ = mask; }
   bool chunk_visited(int cx, int cy) const;
   // Fondo de un chunk cualquiera (sin registro: cueva).
   ew::map::BackdropCell backdrop(int cx, int cy) const { return ew::map::backdrop_at(map_.backdrops(), cx, cy); }

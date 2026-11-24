@@ -291,6 +291,7 @@ class Sim {
   int crustacean_count() const { return int(crustaceans_.size()); }
   const Crustacean& crustacean(int i) const { return crustaceans_[std::size_t(i)]; }
   float elapsed_sec() const { return elapsed_sec_; }
+  void set_elapsed_sec(float s) { elapsed_sec_ = (std::isfinite(s) && s >= 0.f) ? s : 0.f; }
   bool bosses_defeated() const;  // true si no hay boss vivo
   // Índice de la plataforma que está cargando al player, o -1.
   int ridden() const { return ridden_; }

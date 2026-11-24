@@ -16,6 +16,7 @@ LevelFlow::SaveKey LevelFlow::current_save_key(const PauseMenu& menu) const {
       sim_->boss_count() > 0 && sim_->bosses_defeated(),
       menu.muted(),
       menu.volume_setting(),
+      scene_->visited_chunks(),
   };
 }
 

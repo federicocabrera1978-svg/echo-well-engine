@@ -186,11 +186,13 @@ int main(int argc, char** argv) {
       b = bytes; b[off_bits + nb - 1] |= 0x80; reseal(b);
       CHECK(dec(b, o) == SaveError::BadField);
     }
-    // --- controles (v2) + habilidades (v3) + héroe (v4) ---
+    // --- controles (v2) + habilidades (v3) + héroe (v4) + exploración y reloj (v5) ---
     const std::size_t off_bind = off_bits + nb;
     const std::size_t off_ab = off_bind + 1 + game::kBindCount * 6;
     const std::size_t off_hero = off_ab + 4;
-    CHECK(bytes[off_bind] == game::kBindCount && bytes.size() == off_hero + 1 + 4);
+    const std::size_t off_v5 = off_hero + 1;
+    const std::size_t off_v5_end = off_v5 + 12;
+    CHECK(bytes[off_bind] == game::kBindCount && bytes.size() == off_v5_end + 4);
     b = bytes; b[off_bind] = 3; reseal(b);
     CHECK(dec(b, o) == SaveError::BadField);
     b = bytes; b[off_bind + 1 + 6] = b[off_bind + 1]; b[off_bind + 1 + 7] = b[off_bind + 2]; reseal(b);  // tecla repetida
@@ -203,16 +205,24 @@ int main(int argc, char** argv) {
     CHECK(dec(b, o) == SaveError::BadField);
     b = bytes; b[off_hero] = uint8_t(game::kHeroCount); reseal(b);  // héroe fuera de rango
     CHECK(dec(b, o) == SaveError::BadField);
-    // Remapeo + habilidades + héroe → round-trip y apply_save (reset preserva héroe).
+    const float neg_el = -5.f;
+    b = bytes; std::memcpy(&b[off_v5 + 8], &neg_el, 4); reseal(b);  // elapsed_sec negativo
+    CHECK(dec(b, o) == SaveError::BadField);
+    b = bytes; std::memcpy(&b[off_v5 + 8], &nan, 4); reseal(b);  // elapsed_sec NaN
+    CHECK(dec(b, o) == SaveError::BadField);
+    // Remapeo + habilidades + héroe + visited_chunks + elapsed_sec → round-trip y apply_save.
     SaveData cb = r;
     CHECK(cb.bind.bind_key(game::kBindJump, 'K') && cb.bind.bind_pad(game::kBindGrab, game::pad::kA));
     CHECK(cb.bind.valid());
     cb.abilities = game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb;
     cb.hero = game::HeroKind::Beaver;
+    cb.visited_chunks = uint64_t(0x55ull);
+    cb.elapsed_sec = 123.5f;
     CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind &&
           !(o.bind == game::Bindings::defaults()) &&
           o.abilities == (game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb) &&
-          o.hero == game::HeroKind::Beaver);
+          o.hero == game::HeroKind::Beaver && o.visited_chunks == uint64_t(0x55ull) &&
+          std::fabs(o.elapsed_sec - 123.5f) < 1e-4f);
     {
       game::Scene s4;
       CHECK(s4.load(argv[1], err));
@@ -222,6 +232,8 @@ int main(int argc, char** argv) {
       CHECK(ab_sim.has_ability(game::kAbilityDash) && ab_sim.dash_ready());
       CHECK(ab_sim.has_ability(game::kAbilityWallClimb));
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
+      CHECK((s4.visited_chunks() & uint64_t(0x55ull)) == uint64_t(0x55ull));
+      CHECK(std::fabs(ab_sim.elapsed_sec() - 123.5f) < 1e-4f);
       game::Input full; full.restart_full = true;
       ab_sim.step(full);
       CHECK(!ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 0);
@@ -229,9 +241,18 @@ int main(int argc, char** argv) {
       CHECK(!ab_sim.has_ability(game::kAbilityWallClimb));
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
     }
-    // v3 (sin héroe) se sigue leyendo: preserva controles y habilidades, hero = Lantern.
+    // v4 (sin visited_chunks ni elapsed_sec) se sigue leyendo: preserva héroe, visited_chunks = 0, elapsed_sec = 0.
     b = game::encode_save(cb);
-    b.erase(b.begin() + std::ptrdiff_t(off_hero), b.begin() + std::ptrdiff_t(off_hero + 1));
+    b.erase(b.begin() + std::ptrdiff_t(off_v5), b.begin() + std::ptrdiff_t(off_v5_end));
+    b[4] = 4;
+    const uint32_t psz4 = uint32_t(b.size() - 16);
+    for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz4 >> (8 * i));
+    reseal(b);
+    CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind &&
+          o.hero == game::HeroKind::Beaver && o.visited_chunks == 0u && o.elapsed_sec == 0.f);
+    // v3 (sin héroe ni v5) se sigue leyendo: preserva controles y habilidades, hero = Lantern.
+    b = game::encode_save(cb);
+    b.erase(b.begin() + std::ptrdiff_t(off_hero), b.begin() + std::ptrdiff_t(off_v5_end));
     b[4] = 3;
     const uint32_t psz3 = uint32_t(b.size() - 16);
     for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz3 >> (8 * i));
@@ -239,25 +260,25 @@ int main(int argc, char** argv) {
     CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind &&
           o.abilities == (game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb) &&
           o.hero == game::HeroKind::Lantern && o.active == r.active);
-    // v2 (sin habilidades ni héroe) se sigue leyendo: preserva controles, abilities = 0, hero = Lantern.
+    // v2 (sin habilidades, héroe ni v5) se sigue leyendo: preserva controles, abilities = 0, hero = Lantern.
     b = game::encode_save(cb);
-    b.erase(b.begin() + std::ptrdiff_t(off_ab), b.begin() + std::ptrdiff_t(off_hero + 1));
+    b.erase(b.begin() + std::ptrdiff_t(off_ab), b.begin() + std::ptrdiff_t(off_v5_end));
     b[4] = 2;
     const uint32_t psz2 = uint32_t(b.size() - 16);
     for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz2 >> (8 * i));
     reseal(b);
     CHECK(dec(b, o) == SaveError::None && o.bind == cb.bind && o.abilities == 0 &&
           o.hero == game::HeroKind::Lantern && o.active == r.active);
-    // v1 (sin controles, habilidades ni héroe) se sigue leyendo: controles por defecto, abilities = 0, hero = Lantern.
+    // v1 (sin controles, habilidades, héroe ni v5) se sigue leyendo: controles por defecto, abilities = 0, hero = Lantern.
     b = game::encode_save(cb);
-    b.erase(b.begin() + std::ptrdiff_t(off_bind), b.begin() + std::ptrdiff_t(off_hero + 1));
+    b.erase(b.begin() + std::ptrdiff_t(off_bind), b.begin() + std::ptrdiff_t(off_v5_end));
     b[4] = 1;
     const uint32_t psz1 = uint32_t(b.size() - 16);
     for (int i = 0; i < 4; ++i) b[8 + std::size_t(i)] = uint8_t(psz1 >> (8 * i));
     reseal(b);
     CHECK(dec(b, o) == SaveError::None && o.bind == game::Bindings::defaults() && o.abilities == 0 &&
           o.hero == game::HeroKind::Lantern && o.active == r.active);
-    b[4] = 5; reseal(b);
+    b[4] = 6; reseal(b);
     CHECK(dec(b, o) == SaveError::BadVersion);
     CHECK(std::string(game::save_error_str(SaveError::BadCrc)).size() > 0);
   }
