@@ -73,6 +73,7 @@ class LevelFlow {
     bool boss = false;
     bool muted = false;
     float vol = 0.f;
+    uint64_t visited = 0;
     bool operator==(const SaveKey&) const = default;
   };
 
