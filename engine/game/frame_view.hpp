@@ -94,6 +94,8 @@ struct FrameData {
   uint32_t blocked_doors_lo = 0, blocked_doors_hi = 0;
   uint32_t missing_eggs_lo = 0, missing_eggs_hi = 0;
   int explored_pct = 0;
+  int seals_mask = 0, seals_total = 0;       // bitmask y total de Sellos Elementales (3 en world)
+  int map_open = 0;                          // 1 = overlay de Mapa Expandido abierto (M / Tab)
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;
