@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     CHECK(std::fabs(v_right.light_x - (sim.player().pos.x + 4.f)) < 1e-3f);
     CHECK(std::fabs(v_right.light_y - (sim.player().pos.y - 8.f * sim.down())) < 1e-3f);
     CHECK(std::fabs(v_right.ambient_darkness - biome_darkness(BT::Pozo)) < 1e-4f);
-    CHECK(v_right.lantern_radius == 125.f);
+    CHECK(v_right.lantern_radius == Sim::kLanternLightRadius);
     CHECK(v_right.point_light_count > 0 && v_right.point_light_count <= kMaxPointLights);
     CHECK(has_light_kind(v_right, PointLightKind::Torch));
     CHECK(check_lights_in_air_and_culled(v_right, scene));
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
     FrameData v;
     build_world_frame(v, scene, sim, 0.5f, false, false);
     CHECK(v.point_light_count > 0 && v.point_light_count <= kMaxPointLights);
-    CHECK(v.lantern_radius == 125.f);
+    CHECK(v.lantern_radius == Sim::kLanternLightRadius);
     CHECK(check_lights_in_air_and_culled(v, scene));
   }
 

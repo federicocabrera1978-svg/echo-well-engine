@@ -90,6 +90,7 @@ int main(int argc, char** argv) {
 
   static_assert(Sim::kEggsForExtraHp == 2);
   static_assert(Sim::kEggsForDashUpgrade == 4);
+  static_assert(Sim::kEggsForThirdHp == 6);
   static_assert(Sim::kDashUpgradedFrames == 14);
   static_assert(Sim::kDashUpgradedCooldown == 10);
   static_assert(Sim::kDashUpgradedCharges == 2);
@@ -235,8 +236,69 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 60 && !sim.player().grounded; ++i) sim.step({});
   CHECK(sim.player().grounded && sim.dash_charges() == 2);
 
-  // --- 4) EndStats::true_ending y LevelFlow::post_step (6/6 vs 5/6) ---
-  // 4a) 6/6 en world -> true_ending = true ("FINAL VERDADERO")
+  // --- 3b) 6/8 huevos: +2 HP (max_hp == 3, 3 corazones) + evento HUD new_extra_hp ---
+  collect_egg(sim, scene, "egg_wyrm_2");
+  CHECK(sim.collected() == 5 && sim.max_hp() == 2 && sim.hp() == 2);
+  (void)sim.take_sfx();
+  collect_egg(sim, scene, "egg_pozo_secreto");
+  CHECK(sim.collected() == 6 && sim.max_hp() == 3 && sim.hp() == 3);
+  CHECK((sim.take_sfx() & ew::audio::kSfxAbility) != 0u);
+  {
+    const HudEvents hev = game::populate_hud_and_overlays(fv, scene, sim, menu, end_screen, dialogue, hud, "0.1.0");
+    CHECK(hev.new_extra_hp && !hev.new_dash_upgrade);
+    CHECK(fv.hp == 3 && fv.max_hp == 3 && fv.dash_upgraded == 1);
+  }
+  // Con 3 corazones sobrevive dos golpes seguidos y muere al tercero.
+  wait_invuln(sim, 600.f, 56.f);
+  place(sim, 80.f * 8.f + 4.f, 19.f * 8.f + 4.f);
+  sim.step({});
+  CHECK(sim.hp() == 2 && sim.max_hp() == 3 && sim.deaths() == 2);
+  wait_invuln(sim, 600.f, 56.f);
+  place(sim, 80.f * 8.f + 4.f, 19.f * 8.f + 4.f);
+  sim.step({});
+  CHECK(sim.hp() == 1 && sim.max_hp() == 3 && sim.deaths() == 2);
+  wait_invuln(sim, 600.f, 56.f);
+  place(sim, 80.f * 8.f + 4.f, 19.f * 8.f + 4.f);
+  sim.step({});
+  CHECK(sim.deaths() == 3 && sim.hp() == 3 && sim.max_hp() == 3);
+
+  // --- 3c) Ventajas pasivas reales de los 3 héroes (Lantern, Opossum, Beaver) ---
+  {
+    // 1. Sr. del Farol: mayor radio de iluminación (150 vs 125) y mayor alcance del Farol Revelador (128 vs 96).
+    sim.set_hero(game::HeroKind::Lantern);
+    CHECK(sim.hero_lantern_radius() == Sim::kLanternLightRadius);
+    CHECK(sim.hero_reveal_reach() == Sim::kLanternRevealReach);
+    CHECK(sim.hero_walk_speed() == Sim::kWalkSpeed);
+    CHECK(sim.hero_coyote_frames() == Sim::kCoyoteFrames);
+    CHECK(sim.hero_water_jump_factor() == Sim::kBaseWaterJumpFactor);
+    CHECK(sim.hero_wall_slide_speed() == Sim::kWallSlideSpeed);
+    FrameData fv_l;
+    game::build_world_frame(fv_l, scene, sim, 0.f, false, false);
+    CHECK(fv_l.lantern_radius == Sim::kLanternLightRadius);
+
+    // 2. La Zarigüeya: paso más veloz (98 vs 90) y coyote time extendido (8 vs 6).
+    sim.set_hero(game::HeroKind::Opossum);
+    CHECK(sim.hero_walk_speed() == Sim::kOpossumWalkSpeed);
+    CHECK(sim.hero_coyote_frames() == Sim::kOpossumCoyoteFrames);
+    CHECK(sim.hero_lantern_radius() == Sim::kBaseLightRadius);
+    CHECK(sim.hero_reveal_reach() == Sim::kRevealReach);
+    FrameData fv_o;
+    game::build_world_frame(fv_o, scene, sim, 0.f, false, false);
+    CHECK(fv_o.lantern_radius == Sim::kBaseLightRadius);
+    place(sim, 536.f, 56.f);
+    for (int i = 0; i < 10; ++i) sim.step({});
+    CHECK(sim.player().grounded && sim.coyote_ticks() == Sim::kOpossumCoyoteFrames);
+
+    // 3. El Castor: impulso de salto acuático más potente (0.94 vs 0.80) y agarre más firme en pared (26 vs 36).
+    sim.set_hero(game::HeroKind::Beaver);
+    CHECK(sim.hero_water_jump_factor() == Sim::kBeaverWaterJumpFactor);
+    CHECK(sim.hero_wall_slide_speed() == Sim::kBeaverWallSlideSpeed);
+    CHECK(sim.hero_walk_speed() == Sim::kWalkSpeed);
+    sim.set_hero(game::HeroKind::Lantern);
+  }
+
+  // --- 4) EndStats::true_ending y LevelFlow::post_step (8/8 vs 7/8) ---
+  // 4a) 8/8 en world -> true_ending = true ("FINAL VERDADERO", max_hp == 3, "+2HP")
   {
     LevelFlow flow;
     LevelFlowConfig cfg;
@@ -261,13 +323,13 @@ int main(int argc, char** argv) {
     const auto post = flow.post_step(m, es, dlg, false);
     CHECK(post.opened_end && es.open());
     CHECK(es.stats().campaign_done && es.stats().true_ending);
-    CHECK(es.stats().max_hp == 2 && es.stats().dash_upgraded);
+    CHECK(es.stats().max_hp == 3 && es.stats().dash_upgraded);
     const auto txt = game::end_screen_text(es);
     CHECK(txt[0] == game::kEndTitleTrue);
     CHECK(txt[1] == game::kEndSubtitleTrue);
     CHECK(txt[4].size() <= std::size_t(game::kTxtCols));
     CHECK(txt[4].find("DASH II") != std::string::npos);
-    CHECK(txt[4].find("+1HP") != std::string::npos);
+    CHECK(txt[4].find("+2HP") != std::string::npos);
     FrameData fv_end;
     (void)game::populate_hud_and_overlays(fv_end, flow.scene(), flow.sim(), m, es, dlg, ht, "0.1.0");
     CHECK(fv_end.end_true == 1);

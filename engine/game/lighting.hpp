@@ -104,7 +104,7 @@ inline void collect_room_lights(FrameData& v, const Scene& scene, const Sim& sim
   const auto cur_bd = scene.backdrop(scene.chunk_x(), scene.chunk_y());
   const auto cur_theme = static_cast<ew::map::BackdropTheme>(ew::map::backdrop_sanitize(cur_bd.theme));
   v.ambient_darkness = biome_darkness(cur_theme);
-  v.lantern_radius = 125.f;
+  v.lantern_radius = sim.hero_lantern_radius();
   v.point_light_count = 0;
 
   const float cam_x = scene.cam_x();

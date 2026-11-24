@@ -681,7 +681,7 @@ int main(int argc, char** argv) {
     CHECK(eg->active);
   }
   CHECK(sim.collected() == 8);
-  CHECK(sim.max_hp() == 2 && sim.hp() == 2 && sim.dash_upgraded() && sim.all_eggs_collected());
+  CHECK(sim.max_hp() == 3 && sim.hp() == 3 && sim.dash_upgraded() && sim.all_eggs_collected());
 
   const auto* seal_pozo = find_name(scene, "door_seal_pozo");
   const auto* seal_cat = find_name(scene, "door_seal_cat");
@@ -830,7 +830,7 @@ int main(int argc, char** argv) {
     CHECK(txt[2] == "HUEVOS:  8/8");
     CHECK(txt[4].find("FAROL") != std::string::npos);
     CHECK(txt[4].find("DASH II") != std::string::npos);
-    CHECK(txt[4].find("+1HP") != std::string::npos);
+    CHECK(txt[4].find("+2HP") != std::string::npos);
     CHECK(txt[5].find("RANGO: S") != std::string::npos);
     CHECK(txt[6] == "  FIN DE LA AVENTURA");
   }

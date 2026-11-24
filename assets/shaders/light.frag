@@ -38,7 +38,7 @@ uniform float u_items_flash; // 0..1 destello al agarrar
 uniform int u_abilities;       // bitmask de habilidades desbloqueadas
 uniform float u_ability_flash; // 0..1 destello al desbloquear
 uniform int u_hp;              // vida actual
-uniform int u_max_hp;          // vida máxima (1..2)
+uniform int u_max_hp;          // vida máxima (1..3)
 uniform int u_dash_up;         // 1 = Dash II desbloqueado
 uniform vec4 u_map_grid;       // (w, h, cur_cx, cur_cy)
 uniform int u_map_vis;         // bitmask de chunks visitados (bits 0..31)
@@ -392,13 +392,13 @@ vec3 hud_items(vec3 c, vec2 px) {
   return mix(c, mix(tc, vec3(1.0), flash * 0.5), g);
 }
 
-// Corazones de vida junto al HUD de huevos (1..2 corazones 7×6).
+// Corazones de vida junto al HUD de huevos (1..3 corazones 7×6).
 vec3 hud_hearts(vec3 c, vec2 px) {
-  int mhp = clamp(u_max_hp, 1, 2);
+  int mhp = clamp(u_max_hp, 1, 3);
   float x0 = (u_items_total > 0) ? 36.0 : 3.0;
   if (px.x >= x0 && px.x <= x0 + float(mhp) * 9.0 + 4.0 && px.y >= 3.0 && px.y <= 14.0)
     c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 3; ++i) {
     if (i >= mhp) break;
     ivec2 p = ivec2(floor(px - vec2(x0 + 3.0 + float(i) * 9.0, 6.0)));
     if (p.x >= 0 && p.x <= 6 && p.y >= 0 && p.y <= 5) {
