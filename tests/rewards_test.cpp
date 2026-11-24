@@ -140,6 +140,7 @@ int main(int argc, char** argv) {
     const HudEvents hev = game::populate_hud_and_overlays(fv, scene, sim, menu, end_screen, dialogue, hud, "0.1.0");
     CHECK(hev.new_extra_hp && !hev.new_dash_upgrade);
     CHECK(fv.hp == 2 && fv.max_hp == 2 && fv.dash_upgraded == 0);
+    CHECK(fv.milestone_flash >= 0.99f && fv.dash_charges_max == 0);
   }
 
   // Primer golpe en pinchos: sobrevive con hp == 1, invuln == 60, deaths sigue en 1 y hay knockback.
@@ -150,6 +151,12 @@ int main(int argc, char** argv) {
   CHECK(sim.invuln() == Sim::kHitInvulnFrames);
   CHECK((sim.take_sfx() & ew::audio::kSfxHit) != 0u);
   CHECK(sim.player().velocity().y < 0.f);
+  {
+    const HudEvents hev_hit = game::populate_hud_and_overlays(fv, scene, sim, menu, end_screen, dialogue, hud, "0.1.0");
+    CHECK(hev_hit.took_damage && fv.damage_flash >= 0.99f);
+    const HudEvents hev_decay = game::populate_hud_and_overlays(fv, scene, sim, menu, end_screen, dialogue, hud, "0.1.0");
+    CHECK(!hev_decay.took_damage && fv.damage_flash < 0.99f && fv.damage_flash > 0.f);
+  }
 
   // Tocar checkpoint actual ya activado cura silenciosamente a hp == 2 (sin re-emitir kSfxCheckpoint).
   const auto* ck_ledge = find_name(scene, "ck_ledge");
@@ -200,6 +207,7 @@ int main(int argc, char** argv) {
     const HudEvents hev = game::populate_hud_and_overlays(fv, scene, sim, menu, end_screen, dialogue, hud, "0.1.0");
     CHECK(!hev.new_extra_hp && hev.new_dash_upgrade);
     CHECK(fv.dash_upgraded == 1 && fv.hp == 1 && fv.max_hp == 2);
+    CHECK(fv.dash_charges == 2 && fv.dash_charges_max == 2 && fv.milestone_flash >= 0.99f);
   }
   sim.respawn();
   CHECK(sim.hp() == 2 && sim.max_hp() == 2 && sim.dash_charges() == 2);

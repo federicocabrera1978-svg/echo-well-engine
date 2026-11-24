@@ -22,6 +22,10 @@ struct HudTracker {
   int last_max_hp = 1;
   bool last_dash_up = false;
   int last_boss_hp = 0;
+  int last_hp = 1;
+  int last_deaths = 0;
+  float damage_flash = 0.f;
+  float milestone_flash = 0.f;
 };
 
 struct HudEvents {
@@ -33,6 +37,7 @@ struct HudEvents {
   bool new_extra_hp = false;
   bool new_dash_upgrade = false;
   bool boss_hit = false;
+  bool took_damage = false;
 };
 
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
@@ -99,6 +104,8 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.hp = sim.hp();
   v.max_hp = sim.max_hp();
   v.dash_upgraded = sim.dash_upgraded() ? 1 : 0;
+  v.dash_charges = sim.dash_charges();
+  v.dash_charges_max = sim.max_dash_charges();
   if (v.max_hp != tracker.last_max_hp) {
     if (v.max_hp > tracker.last_max_hp) ev.new_extra_hp = true;
     tracker.last_max_hp = v.max_hp;
@@ -108,6 +115,19 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     if (dash_up && !tracker.last_dash_up) ev.new_dash_upgrade = true;
     tracker.last_dash_up = dash_up;
   }
+  if (v.hp < tracker.last_hp || sim.deaths() > tracker.last_deaths) {
+    ev.took_damage = true;
+    tracker.damage_flash = 1.f;
+  }
+  tracker.last_hp = v.hp;
+  tracker.last_deaths = sim.deaths();
+  if (ev.new_extra_hp || ev.new_dash_upgrade) {
+    tracker.milestone_flash = 1.f;
+  }
+  v.damage_flash = tracker.damage_flash;
+  v.milestone_flash = tracker.milestone_flash;
+  tracker.damage_flash = std::max(0.f, tracker.damage_flash - 1.f / 22.f);
+  tracker.milestone_flash = std::max(0.f, tracker.milestone_flash - 1.f / 45.f);
   v.boss_hp = 0;
   v.boss_max_hp = 0;
   v.boss_kind = 0;

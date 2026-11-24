@@ -216,6 +216,8 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_hp"), v.hp);
   Uniform1i(GetUniformLocation(light_prog_, "u_max_hp"), v.max_hp);
   Uniform1i(GetUniformLocation(light_prog_, "u_dash_up"), v.dash_upgraded);
+  Uniform4f(GetUniformLocation(light_prog_, "u_hud_fx"),
+            v.damage_flash, float(v.dash_charges), float(v.dash_charges_max), v.milestone_flash);
   Uniform4f(GetUniformLocation(light_prog_, "u_map_grid"),
             float(v.map_w), float(v.map_h), float(v.cur_cx), float(v.cur_cy));
   Uniform1i(GetUniformLocation(light_prog_, "u_map_vis"), int(v.visited_mask));
