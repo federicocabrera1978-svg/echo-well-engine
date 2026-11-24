@@ -42,7 +42,8 @@ struct HudEvents {
 
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
                                            const EndScreen& end_screen, const DialogueBox& dialogue,
-                                           HudTracker& tracker, std::string_view version_str, bool map_open = false) {
+                                           HudTracker& tracker, std::string_view version_str,
+                                           bool map_open = false, int map_travel_cursor = -1) {
   v.pause = menu.open() ? 1 : 0;
   v.pause_sel = menu.cursor();
   v.pause_vol = menu.volume_setting();
@@ -174,9 +175,25 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.seals_mask = int(mm.seals_mask);
   v.seals_total = mm.seals_total;
   v.map_open = (!menu.open() && !end_screen.open() && !dialogue.open() && map_open) ? 1 : 0;
+  v.map_target_cx = -1;
+  v.map_target_cy = -1;
   if (v.map_open) {
+    std::string_view tlabel;
+    bool tunlocked = false;
+    if (map_travel_cursor >= 0) {
+      const auto nodes = list_fast_travel_nodes(scene);
+      if (!nodes.empty()) {
+        const auto& nd = nodes[std::size_t(map_travel_cursor) % nodes.size()];
+        tlabel = nd.label;
+        tunlocked = nd.unlocked;
+        if (nd.unlocked) {
+          v.map_target_cx = nd.cx;
+          v.map_target_cy = nd.cy;
+        }
+      }
+    }
     v.ctl_txt = pack_text(world_map_text(zone_name_for(scene), mm.explored_pct, v.items, v.items_total,
-                                         mm.seals_mask, mm.seals_total));
+                                         mm.seals_mask, mm.seals_total, tlabel, tunlocked));
   }
   return ev;
 }

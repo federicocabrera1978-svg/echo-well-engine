@@ -52,6 +52,7 @@ uniform int u_map_pct;         // porcentaje explorado 0..100
 uniform int u_seals_mask;      // bitmask de Sellos Elementales rotos (0=Piedra, 1=Sombra, 2=Agua)
 uniform int u_seals_total;     // total de sellos en el mapa (3 en world, 0 en otros)
 uniform int u_map_open;        // 1 = overlay de Mapa Expandido abierto (M / Tab)
+uniform vec2 u_map_target;     // (cx, cy) destino seleccionado para Viaje Rápido (-1 = ninguno)
 uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
@@ -589,10 +590,11 @@ vec3 world_map_page(vec3 c, vec2 px) {
 
   int w = clamp(int(u_map_grid.x + 0.5), 1, 8), h = clamp(int(u_map_grid.y + 0.5), 1, 6);
   int cur_x = int(floor(u_map_grid.z + 0.5)), cur_y = int(floor(u_map_grid.w + 0.5));
-  float cw = 18.0, ch = 13.0, pad = 2.0;
+  int tgt_x = int(floor(u_map_target.x + 0.5)), tgt_y = int(floor(u_map_target.y + 0.5));
+  float cw = 18.0, ch = 12.0, pad = 2.0;
   float gw = float(w) * (cw + pad) - pad;
   float gh = float(h) * (ch + pad) - pad;
-  vec2 org = vec2(floor(160.0 - gw * 0.5), floor(82.0 - gh * 0.5));
+  vec2 org = vec2(floor(160.0 - gw * 0.5), floor(76.0 - gh * 0.5));
   vec2 rel = px - org;
   if (rel.x >= 0.0 && rel.y >= 0.0 && rel.x < gw && rel.y < gh) {
     int gx = int(floor(rel.x / (cw + pad)));
@@ -602,6 +604,7 @@ vec3 world_map_page(vec3 c, vec2 px) {
       int bit = gy * w + gx;
       bool vis = mask_bit(u_map_vis, u_map_vis_hi, bit);
       bool cur = (gx == cur_x && gy == cur_y);
+      bool tgt = (u_map_target.x >= -0.5 && gx == tgt_x && gy == tgt_y);
       bool bdr = (cell.x < 1.0 || cell.x >= cw - 1.0 || cell.y < 1.0 || cell.y >= ch - 1.0);
       if (vis || cur) {
         if (cur) {
@@ -609,6 +612,10 @@ vec3 world_map_page(vec3 c, vec2 px) {
           c = bdr ? vec3(1.0, 0.96, 0.65) : vec3(0.95, 0.78, 0.28) * p;
         } else {
           c = bdr ? vec3(0.46, 0.64, 0.82) : vec3(0.22, 0.34, 0.48);
+        }
+        if (tgt && bdr) {
+          float tp = 0.75 + 0.25 * sin(u_time * 7.0);
+          c = vec3(0.32, 0.98, 0.82) * tp;
         }
         if (mask_bit(u_map_doors, u_map_doors_hi, bit) &&
             cell.x >= cw - 5.0 && cell.x <= cw - 2.0 && cell.y >= 2.0 && cell.y <= 5.0) {
@@ -624,8 +631,9 @@ vec3 world_map_page(vec3 c, vec2 px) {
     }
   }
 
-  c = mix(c, vec3(0.86, 0.90, 0.96), txt_glyph(9,  px - vec2(28.0, 134.0), 1.0));
-  c = mix(c, vec3(0.96, 0.82, 0.42), txt_glyph(10, px - vec2(28.0, 145.0), 1.0));
+  c = mix(c, vec3(0.38, 0.96, 0.80), txt_glyph(8,  px - vec2(28.0, 121.0), 1.0));
+  c = mix(c, vec3(0.86, 0.90, 0.96), txt_glyph(9,  px - vec2(28.0, 133.0), 1.0));
+  c = mix(c, vec3(0.96, 0.82, 0.42), txt_glyph(10, px - vec2(28.0, 144.0), 1.0));
   c = mix(c, vec3(0.58, 0.62, 0.72), txt_glyph(11, px - vec2(28.0, 158.0), 1.0));
   return c;
 }

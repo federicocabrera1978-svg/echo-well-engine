@@ -548,6 +548,56 @@ void Sim::respawn() {
   scene_.follow(p.x, p.y, 0.f);
 }
 
+bool Sim::teleport_to_sanctuary(float x, float y, int ckpt_ent_idx) {
+  if (finished_ || victory_.active()) return false;
+  if (held_) release();
+  reset_timed_switches();
+  auto& pl = world_.points()[player_];
+  pl.pos = pl.prev = {x, y};
+  pl.force = {};
+  pl.grounded = false;
+  invuln_ = 30;
+  grab_flash_ = 0;
+  double_jump_flash_ = 0;
+  dash_ticks_ = 0;
+  dash_cd_ = 0;
+  dash_flash_ = 0;
+  wall_break_flash_ = 0;
+  wall_coyote_ = 0;
+  wall_lock_ticks_ = 0;
+  wall_sliding_ = false;
+  wall_dir_ = 0;
+  coyote_ticks_ = 0;
+  jump_buf_ = 0;
+  ridden_ = -1;
+  squash_x_ = 1.f;
+  squash_y_ = 1.f;
+  dust_.clear();
+  clear_impact_fx();
+  anim_ = PlayerAnim::Idle;
+  anim_frame_ = 0;
+  anim_ticks_ = 0;
+  air_ticks_ = 0;
+  last_pos_ = {x, y};
+  pending_dialog_ = -1;
+  air_jumps_ = has_ability(kAbilityDoubleJump) ? 1 : 0;
+  dash_charges_ = max_dash_charges();
+  hp_ = max_hp();
+  set_gravity_flipped(false);
+  for (std::size_t k = 0; k < scene_.entities().size(); ++k)
+    if (scene_.entities()[k].type == "gravity_flip") scene_.set_active(k, false);
+  rearm_flips();
+  if (ckpt_ent_idx >= 0 && std::size_t(ckpt_ent_idx) < scene_.entities().size() &&
+      scene_.entities()[std::size_t(ckpt_ent_idx)].type == "checkpoint") {
+    ckpt_ = ckpt_ent_idx;
+    ckpt_flip_ = false;
+    scene_.set_active(std::size_t(ckpt_ent_idx), true);
+  }
+  scene_.follow(x, y, 0.f);
+  sfx_ |= ew::audio::kSfxCheckpoint;
+  return true;
+}
+
 void Sim::take_hit(float src_x, float src_y, bool allow_survive) {
   (void)src_y;
   if (invuln_ > 0 || finished_) return;

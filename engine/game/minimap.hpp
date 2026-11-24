@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 namespace ew::game {
 
@@ -116,6 +117,56 @@ inline MinimapState compute_minimap(const Scene& scene) {
                         ? std::clamp((st.visited_count * 100) / st.total_chunks, 0, 100)
                         : 0;
   return st;
+}
+
+// Nodo de Viaje Rápido (Santuario principal por zona) desbloqueado al visitar su chunk.
+struct FastTravelNode {
+  std::string_view label;
+  std::string_view entity_name;
+  int cx = 0, cy = 0;
+  float x = 0.f, y = 0.f;
+  int ent_idx = -1;
+  bool unlocked = false;
+};
+
+inline std::vector<FastTravelNode> list_fast_travel_nodes(const Scene& scene) {
+  std::vector<FastTravelNode> out;
+  const auto& hdr = scene.map().header();
+  const int mw = int(hdr.map_w_chunks);
+  const int mh = int(hdr.map_h_chunks);
+  if (mw <= 0 || mh <= 0) return out;
+  constexpr float kChunkPxW = float(ew::map::kChunkW * ew::map::kTileSize);
+  constexpr float kChunkPxH = float(ew::map::kChunkH * ew::map::kTileSize);
+  const uint64_t vis = scene.visited_chunks();
+
+  struct Spec {
+    std::string_view label;
+    std::string_view entity_name;
+    bool by_type;
+  };
+  static constexpr Spec kSpecs[] = {
+      {"EL POZO", "player_spawn", true},
+      {"LAS CATACUMBAS", "ck_hub2", false},
+      {"GUARIDA DEL WYRM", "ck_santuario3", false},
+      {"ARCHIVO SUMERGIDO", "aq_ck_entrada", false},
+      {"CAMPANARIO HUNDIDO", "tw_ck", false},
+  };
+  const auto& ents = scene.entities();
+  for (const auto& sp : kSpecs) {
+    for (std::size_t i = 0; i < ents.size(); ++i) {
+      const auto& e = ents[i];
+      const bool match = sp.by_type ? (e.type == sp.entity_name) : (e.name == sp.entity_name);
+      if (!match) continue;
+      const int cx = std::clamp(int(std::floor(e.x / kChunkPxW)), 0, mw - 1);
+      const int cy = std::clamp(int(std::floor(e.y / kChunkPxH)), 0, mh - 1);
+      const int bit = cy * mw + cx;
+      const bool unlocked = (bit >= 0 && bit < 64) && (((vis >> unsigned(bit)) & 1ull) != 0ull);
+      out.push_back(FastTravelNode{sp.label, e.name, cx, cy, e.x, e.y, int(i), unlocked});
+      break;
+    }
+  }
+  if (out.size() <= 1) out.clear();  // solo ofrecer viaje rápido si hay 2+ santuarios en el mapa
+  return out;
 }
 
 }  // namespace ew::game

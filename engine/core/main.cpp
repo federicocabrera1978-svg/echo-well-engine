@@ -226,6 +226,7 @@ int main(int argc, char** argv) {
   bool dash_was_down = false, r_was_down = false, r_full_sent = false;
   bool esc_was = false, start_was = false, m_up_was = false, m_dn_was = false, m_lt_was = false, m_rt_was = false,
        m_ok_was = false, m_b_was = false, map_open = false, map_key_was = false;
+  int map_travel_cursor = 0;
   double acc = 0, last = glfwGetTime(), r_down_since = -1;
   uint32_t pad_prev = 0;
   ew::game::Input latched_in;
@@ -324,10 +325,28 @@ int main(int argc, char** argv) {
         if (nav_toggle) ei.toggle = true;
         else if (flow.sim().finish_t() >= 0.35f) { ei.up = nav_up; ei.down = nav_dn; ei.confirm = nav_ok; }
       } else if (map_open) {
+        const auto nodes = ew::game::list_fast_travel_nodes(flow.scene());
+        if (!nodes.empty()) {
+          const int n = int(nodes.size());
+          map_travel_cursor = ((map_travel_cursor % n) + n) % n;
+          if (nav_lt || nav_up) map_travel_cursor = (map_travel_cursor + n - 1) % n;
+          if (nav_rt || nav_dn) map_travel_cursor = (map_travel_cursor + 1) % n;
+          if (nav_ok) {
+            const auto& nd = nodes[std::size_t(map_travel_cursor)];
+            if (nd.unlocked && flow.sim().teleport_to_sanctuary(nd.x, nd.y, nd.ent_idx)) {
+              std::printf("echo_engine: viaje rapido -> %.*s\n", int(nd.label.size()), nd.label.data());
+              map_open = false;
+            }
+          }
+        }
         if (nav_toggle || map_toggle || (pad_b && !m_b_was)) map_open = false;
       } else {
-        if (map_toggle) map_open = true;
-        else mi.toggle = nav_toggle;
+        if (map_toggle) {
+          map_open = true;
+          map_travel_cursor = 0;
+        } else {
+          mi.toggle = nav_toggle;
+        }
       }
     }
     g_last_key = -1;
@@ -449,7 +468,7 @@ int main(int argc, char** argv) {
     const int preview_hero = menu.in_hero_select() ? menu.hero_cursor() : -1;
     ew::game::build_world_frame(v, flow.scene(), flow.sim(), float(now), demo, overlay_open, false, preview_hero);
     const auto hev = ew::game::populate_hud_and_overlays(v, flow.scene(), flow.sim(), menu, end_screen, dialogue, hud,
-                                                         EW_VERSION, map_open);
+                                                         EW_VERSION, map_open, map_travel_cursor);
     if (hev.new_item) std::printf("echo_engine: ¡huevo! %d/%d\n", v.items, v.items_total);
     if (hev.new_double_jump) std::printf("echo_engine: ¡habilidad desbloqueada! doble salto\n");
     if (hev.new_dash) std::printf("echo_engine: ¡habilidad desbloqueada! embestida (dash)\n");
