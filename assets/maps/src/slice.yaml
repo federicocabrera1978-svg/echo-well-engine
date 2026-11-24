@@ -187,8 +187,8 @@ water:
   - {x: 808, y: 136, w: 320, h: 24, stiffness: 0.02, damping: 0.04}
 
 dialogs:
-  - {entity: npc_vigia, trigger: interact, speaker: "VIGIA DEL FAROL", text: "BAJO EL POZO DUERMEN HUEVOS/QUE LOS HOMBRES CREEN PIEDRA.|SU CASCARA LATE TIBIA:/SON NIDADAS DE DRAGON.|TU FAROL LES DA CALOR./RECOGELAS Y SIGUE BAJANDO."}
-  - {entity: egg_well,  trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE", text: "EL HUEVO DEL POZO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE LA LUZ DE TU FAROL./NO SON JOYAS: SON DRAGONES."}
+  - {entity: npc_vigia, trigger: interact, speaker: "VIGIA DEL FAROL", text: "LA ORDEN ENCADENO AL WYRM/TRAS TRES SELLOS ANTIGUOS.|PIEDRA, SOMBRA Y AGUA OCULTAN/EL NIDO Y SUS OCHO HUEVOS.|ROMPE EL SELLO DEL POZO/Y DESPIERTA LA NIDADA."}
+  - {entity: egg_well,  trigger: pickup,   speaker: "ECO: HUEVO DE BRONCE", text: "EL PRIMER HUEVO RESPIRA./UNA BRASA ANTIGUA DESPIERTA|Y RECONOCE LA LUZ DE TU FAROL./NO SON PIEDRAS: SON DRAGONES."}
 
 guide:
   - {target: switch_start, gate: door_start, forward_x: 216}
