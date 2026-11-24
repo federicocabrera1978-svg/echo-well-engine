@@ -102,10 +102,10 @@ int main(int argc, char** argv) {
     CHECK(t_rev[6] == "  FIN DE LA AVENTURA");
 
     EndScreen es_all;
-    EndStats st_all{"EL CALABOZO DEL WYRM", 8, 8, 0, kAbilityAll, false, "", 120.f, true, true, 2, true};
+    EndStats st_all{"EL CALABOZO DEL WYRM", 8, 8, 0, kAbilityAll, false, "", 120.f, true, true, 3, true};
     es_all.open(st_all);
     const auto t_all = end_screen_text(es_all);
-    CHECK(t_all[4] == "HAB: DJ/DASH II/ESC/FAROL/+1HP");
+    CHECK(t_all[4] == "HAB: DJ/DASH II/ESC/FAROL/+2HP");
     CHECK(t_all[4].size() <= std::size_t(kTxtCols));
     CHECK(t_all[6] == "  FIN DE LA AVENTURA");
   }

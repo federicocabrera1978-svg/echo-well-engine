@@ -786,7 +786,7 @@ void Sim::step(const Input& in) {
     } else {
       // Control normal: caminar, salto apoyado, coyote time, jump buffer, wall-jump o doble salto.
       Vec2 v = pl.velocity();
-      const float target = std::clamp(in.move_x, -1.f, 1.f) * kWalkSpeed * kDt;
+      const float target = std::clamp(in.move_x, -1.f, 1.f) * hero_walk_speed() * kDt;
       float air_blend = 0.15f;
       if (wall_lock_ticks_ > 0) {
         --wall_lock_ticks_;
@@ -800,7 +800,7 @@ void Sim::step(const Input& in) {
         wall_lock_ticks_ = 0;
       }
       if (pl.grounded) {
-        coyote_ticks_ = kCoyoteFrames;
+        coyote_ticks_ = hero_coyote_frames();
       } else if (swim) {
         coyote_ticks_ = 0;
       } else if (coyote_ticks_ > 0) {
@@ -827,7 +827,7 @@ void Sim::step(const Input& in) {
           if (wall_coyote_ == 0) wall_dir_ = 0;
         }
         if (active_wall != 0 && v.y * down() > 0.f) {
-          const float max_fall = kWallSlideSpeed * kDt;
+          const float max_fall = hero_wall_slide_speed() * kDt;
           if (v.y * down() >= max_fall - 1e-4f) {
             v.y = down() * max_fall;
             pl.force.y -= down() * world_.gravity.y;
@@ -843,7 +843,7 @@ void Sim::step(const Input& in) {
       bool set_jump_buf = false;
       if (want_jump) {
         if (pl.grounded || swim || coyote_ticks_ > 0) {
-          v.y = -down() * kJumpSpeed * (swim ? 0.8f : 1.f) * kDt;
+          v.y = -down() * kJumpSpeed * (swim ? hero_water_jump_factor() : 1.f) * kDt;
           coyote_ticks_ = 0;
           jump_buf_ = 0;
           squash_x_ = 0.82f;
@@ -967,7 +967,7 @@ void Sim::step(const Input& in) {
   } else if (wall_sliding_) {
     auto& p = world_.points()[player_];
     Vec2 pv = p.velocity();
-    const float max_fall = kWallSlideSpeed * kDt;
+    const float max_fall = hero_wall_slide_speed() * kDt;
     if (pv.y * down() > max_fall) {
       pv.y = down() * max_fall;
       p.set_velocity(pv);
@@ -1211,7 +1211,8 @@ void Sim::check_abilities() {
 void Sim::reveal_blocks() {
   if (!has_ability(kAbilityReveal)) return;
   const auto& p = player().pos;
-  const float r2 = kRevealReach * kRevealReach;
+  const float reach = hero_reveal_reach();
+  const float r2 = reach * reach;
   auto& ents = scene_.entities_mut();
   for (auto& e : ents) {
     if (e.type != "reveal_block" || e.active) continue;

@@ -82,14 +82,14 @@ inline std::array<std::string, kTxtRows> pause_text(const PauseMenu& m, std::str
   return t;
 }
 
-// Selector de héroe: título, 3 personajes con descripción debajo y ayuda al pie.
+// Selector de héroe: título, 3 personajes con ventaja pasiva debajo y ayuda al pie.
 inline std::array<std::string, kTxtRows> hero_select_text(const PauseMenu& m) {
   std::array<std::string, kTxtRows> t{};
   t[0] = "ELIGE TU HEROE";
   static constexpr const char* kDesc[kHeroCount] = {
-      "  GUARDIAN DEL FAROL",
-      "  EXPLORADORA AGIL",
-      "  CONSTRUCTOR TENAZ",
+      "  LUZ AMPLIA Y FAROL LEJANO",
+      "  PASO VELOZ Y SALTO AGIL",
+      "  NADO FUERTE Y AGARRE FIRME",
   };
   const int sel = std::clamp(m.hero_cursor(), 0, kHeroCount - 1);
   for (int h = 0; h < kHeroCount; ++h) {

@@ -81,13 +81,23 @@ class Sim {
   static constexpr int kDashFrames = 10;            // ~0.17 s de embestida sin gravedad
   static constexpr int kDashCooldownFrames = 18;    // ~0.30 s de enfriamiento mínimo
   static constexpr int kDashFlashFrames = 14;       // frames de estela visual
-  // Recompensas por hitos de huevos (collectibles) y daño no letal con +1 HP.
+  // Recompensas por hitos de huevos (collectibles) y daño no letal con +1/+2 HP.
   static constexpr int kEggsForExtraHp = 2;
   static constexpr int kEggsForDashUpgrade = 4;
+  static constexpr int kEggsForThirdHp = 6;
   static constexpr int kDashUpgradedFrames = 14;
   static constexpr int kDashUpgradedCooldown = 10;
   static constexpr int kDashUpgradedCharges = 2;
   static constexpr int kHitInvulnFrames = 60;
+  // Ventajas jugables pasivas de cada héroe (Lantern / Opossum / Beaver).
+  static constexpr float kLanternLightRadius = 150.f;
+  static constexpr float kBaseLightRadius = 125.f;
+  static constexpr float kLanternRevealReach = 128.f;
+  static constexpr float kOpossumWalkSpeed = 98.f;
+  static constexpr int kOpossumCoyoteFrames = 8;
+  static constexpr float kBeaverWaterJumpFactor = 0.94f;
+  static constexpr float kBaseWaterJumpFactor = 0.80f;
+  static constexpr float kBeaverWallSlideSpeed = 26.f;
   static constexpr int kWallBreakFlashFrames = 18;  // frames de escombros al romper break_wall
   static constexpr float kWallSlideSpeed = 36.f;    // px/s caída máxima al deslizar en pared
   static constexpr float kWallJumpVx = 138.f;       // px/s impulso horizontal al saltar de pared
@@ -199,8 +209,14 @@ class Sim {
   int collectible_total() const;
   bool all_eggs_collected() const { const int t = collectible_total(); return t > 0 && collected() >= t; }
   int hp() const { return hp_; }
-  int max_hp() const { return collected() >= kEggsForExtraHp ? 2 : 1; }
+  int max_hp() const { return collected() >= kEggsForThirdHp ? 3 : (collected() >= kEggsForExtraHp ? 2 : 1); }
   bool dash_upgraded() const { return collected() >= kEggsForDashUpgrade; }
+  float hero_walk_speed() const { return hero_ == HeroKind::Opossum ? kOpossumWalkSpeed : kWalkSpeed; }
+  int hero_coyote_frames() const { return hero_ == HeroKind::Opossum ? kOpossumCoyoteFrames : kCoyoteFrames; }
+  float hero_reveal_reach() const { return hero_ == HeroKind::Lantern ? kLanternRevealReach : kRevealReach; }
+  float hero_lantern_radius() const { return hero_ == HeroKind::Lantern ? kLanternLightRadius : kBaseLightRadius; }
+  float hero_water_jump_factor() const { return hero_ == HeroKind::Beaver ? kBeaverWaterJumpFactor : kBaseWaterJumpFactor; }
+  float hero_wall_slide_speed() const { return hero_ == HeroKind::Beaver ? kBeaverWallSlideSpeed : kWallSlideSpeed; }
   int dash_charges() const { return dash_charges_; }
   int max_dash_charges() const { return has_ability(kAbilityDash) ? (dash_upgraded() ? kDashUpgradedCharges : 1) : 0; }
   int pickup_flash() const { return pickup_flash_; }

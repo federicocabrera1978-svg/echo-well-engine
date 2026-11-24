@@ -193,7 +193,10 @@ int main() {
     CHECK(hm.hero_cursor() == 2);
     const auto htxt = hero_select_text(hm);
     CHECK(htxt[0] == "ELIGE TU HEROE");
+    CHECK(htxt[2] == "  LUZ AMPLIA Y FAROL LEJANO");
+    CHECK(htxt[4] == "  PASO VELOZ Y SALTO AGIL");
     CHECK(htxt[5] == "> EL CASTOR");
+    CHECK(htxt[6] == "  NADO FUERTE Y AGARRE FIRME");
     CHECK(htxt[11] == "ARRIBA/ABAJO  ENTER JUEGA");
     in = {}; in.confirm = true;
     CHECK(hm.handle(in) == MenuAction::Resume);
