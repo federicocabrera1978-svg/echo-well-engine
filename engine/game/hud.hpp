@@ -48,7 +48,8 @@ struct HudEvents {
 inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, const Sim& sim, const PauseMenu& menu,
                                            const EndScreen& end_screen, const DialogueBox& dialogue,
                                            HudTracker& tracker, std::string_view version_str,
-                                           bool map_open = false, int map_travel_cursor = -1) {
+                                           bool map_open = false, int map_travel_cursor = -1,
+                                           bool show_timer = false) {
   v.pause = menu.open() ? 1 : 0;
   v.pause_sel = menu.cursor();
   v.pause_vol = menu.volume_setting();
@@ -237,6 +238,8 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     v.ctl_txt = pack_text(rows);
     --tracker.toast_ticks;
   }
+  v.show_timer = show_timer ? 1 : 0;
+  v.timer_secs = std::max(0, int(sim.elapsed_sec()));
   return ev;
 }
 

@@ -102,6 +102,7 @@ struct FrameData {
   int map_target_cx = -1, map_target_cy = -1; // chunk destino resaltado para Viaje Rápido (-1 = ninguno)
   float toast_alpha = 0.f;                   // 0..1 banner breve inferior (cambio de zona / hito / sello)
   int toast_kind = 0;                        // 0=zona, 1=hito, 2=sello roto
+  int show_timer = 0, timer_secs = 0;        // cronómetro speedrun opcional (T / --timer)
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;

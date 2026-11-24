@@ -231,11 +231,19 @@ int main(int argc, char** argv) {
     CHECK(simw.hp() == simw.max_hp());
 
     // Al cerrar el mapa tras cambiar de zona (Campanario -> Las Catacumbas), dispara banner de zona (toast_kind=0).
-    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false);
+    simw.set_elapsed_sec(125.4f);
+    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false, -1, true);
     CHECK(vw.toast_alpha > 0.9f && vw.toast_kind == 0);
+    CHECK(vw.show_timer == 1 && vw.timer_secs == 125);
     for (int f = 0; f < 130; ++f)
-      game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false);
-    CHECK(vw.toast_alpha == 0.f);
+      game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false, -1, false);
+    CHECK(vw.toast_alpha == 0.f && vw.show_timer == 0);
+
+    // EndScreen muestra porcentaje de mapa explorado junto a los huevos cuando explored_pct > 0.
+    game::EndStats est;
+    est.items = 8; est.items_total = 8; est.explored_pct = 100;
+    end_screen.open(est);
+    CHECK(game::end_screen_text(end_screen)[2] == "HUEVOS: 8/8   MAPA: 100");
   }
 
   std::puts("minimap_test OK");

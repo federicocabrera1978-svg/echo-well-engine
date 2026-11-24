@@ -64,6 +64,7 @@ o cargada, meta.
 | Reiniciar todo al inicio | R mantenido ~0,8 s | — |
 | Menú de pausa | Esc | Start (B vuelve atrás) |
 | Mapa Expandido y Viaje Rápido | M, Tab (`←/→` elige santuario, `Enter` viaja, `M`/`Tab`/`Esc` cierra) | — |
+| Cronómetro Speedrun en HUD | T (o `--timer` al iniciar) | — |
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
@@ -98,6 +99,7 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - En `world.ewmap`, junto a los corazones aparecen los **3 emblemas de los Sellos Elementales** (Piedra, Sombra, Agua) que se encienden al derrotar a cada guardián, y la grilla del mini-mapa muestra las **5 filas completas (`8×5`)**.
   - Al recibir daño aparece una **viñeta carmesí** breve en los bordes de pantalla; bajo el ícono de **Dash / Dash II** se ven `1` o `2` pips de cargas aéreas disponibles; y al alcanzar `2`, `4` o `6` huevos destellan los corazones / Dash II en dorado.
   - Al pulsar **`M`** o **`Tab`** se abre el **Mapa Expandido** (congela la simulación) mostrando la grilla grande, el nombre de la zona actual, el estado de los Tres Sellos y el selector de **Viaje Rápido** (`←`/`→` + `Enter`) hacia cualquiera de los 5 Santuarios principales ya visitados (`EL POZO`, `LAS CATACUMBAS`, `GUARIDA DEL WYRM`, `ARCHIVO SUMERGIDO`, `CAMPANARIO HUNDIDO`).
+  - Al cambiar de zona o desbloquear un hito/sello aparece un **banner inferior no intrusivo** con fade-out suave; pulsar **`T`** (o `--timer`) alterna el **cronómetro speedrun `MM:SS`** en la esquina inferior derecha; y al guardar y recargar (`save.ewsv` **v5**) se conservan las salas exploradas, los Santuarios descubiertos y el tiempo acumulado (que también se refleja con `MAPA: %` en la pantalla final).
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
   arriba a la izquierda dice `0/1`. El switch abre la puerta y hay que nadar la pileta (el
   agua frena la caída y se nada hacia arriba). Una cuerda sube una pared que no se salta (la

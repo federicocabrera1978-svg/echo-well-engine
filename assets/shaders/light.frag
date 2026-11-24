@@ -54,6 +54,7 @@ uniform int u_seals_total;     // total de sellos en el mapa (3 en world, 0 en o
 uniform int u_map_open;        // 1 = overlay de Mapa Expandido abierto (M / Tab)
 uniform vec2 u_map_target;     // (cx, cy) destino seleccionado para Viaje Rápido (-1 = ninguno)
 uniform vec2 u_toast;          // (alpha 0..1, kind: 0=zona, 1=hito, 2=sello roto) banner inferior
+uniform vec2 u_timer;          // (show 0/1, secs) cronómetro speedrun MM:SS en esquina inferior derecha
 uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
@@ -575,6 +576,27 @@ vec3 hud_seals(vec3 c, vec2 px) {
   return c;
 }
 
+// Cronómetro speedrun opcional MM:SS en esquina inferior derecha (x=278..317, y=166..177).
+vec3 hud_timer(vec3 c, vec2 px) {
+  if (u_timer.x < 0.5) return c;
+  if (px.x >= 278.0 && px.x <= 317.0 && px.y >= 166.0 && px.y <= 177.0) {
+    c = mix(c, vec3(0.03, 0.03, 0.05), 0.62);
+    int secs = clamp(int(u_timer.y + 0.5), 0, 5999);
+    int mm = secs / 60;
+    int ss = secs % 60;
+    float g = 0.0;
+    vec2 o = vec2(282.0, 169.0);
+    g = max(g, glyph5(DIG[mm / 10], px - o));
+    g = max(g, glyph5(DIG[mm % 10], px - o - vec2(6.0, 0.0)));
+    ivec2 cp = ivec2(floor(px - (o + vec2(13.0, 0.0))));
+    if (cp.x == 0 && (cp.y == 1 || cp.y == 3)) g = 1.0;
+    g = max(g, glyph5(DIG[ss / 10], px - o - vec2(16.0, 0.0)));
+    g = max(g, glyph5(DIG[ss % 10], px - o - vec2(22.0, 0.0)));
+    c = mix(c, vec3(0.86, 0.94, 1.0), g);
+  }
+  return c;
+}
+
 // Banner inferior no intrusivo (y=160..174, fuera de top_half y=16..89): zona, hito o sello roto.
 vec3 hud_toast(vec3 c, vec2 px) {
   float a = clamp(u_toast.x, 0.0, 1.0);
@@ -894,6 +916,8 @@ void main() {
   if (u_map_grid.x * u_map_grid.y > 1 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = hud_minimap(c, px);
   if (u_toast.x > 0.01 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0 && u_map_open == 0)
     c = hud_toast(c, px);
+  if (u_timer.x > 0.5 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0 && u_map_open == 0)
+    c = hud_timer(c, px);
   if (u_dlg > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0) c = dialogue_box(c, px);
 
   if (u_map_open > 0 && u_pause == 0 && u_end == 0 && u_hero_sel == 0 && u_dlg == 0) {

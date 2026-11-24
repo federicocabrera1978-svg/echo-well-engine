@@ -26,6 +26,7 @@ struct EndStats {
   bool true_ending = false;
   int max_hp = 1;
   bool dash_upgraded = false;
+  int explored_pct = 0;
 };
 
 inline char end_rank(const EndStats& s) {
@@ -84,7 +85,11 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   const auto& s = e.stats();
   t[0] = s.true_ending ? std::string(kEndTitleTrue) : (s.campaign_done ? std::string(kEndTitleVictory) : std::string("NIVEL COMPLETADO"));
   t[1] = s.true_ending ? std::string(kEndSubtitleTrue) : (s.title.empty() ? "CAMINO SUPERADO" : s.title);
-  t[2] = "HUEVOS:  " + (s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-"));
+  const std::string egg_str =
+      s.items_total > 0 ? std::to_string(s.items) + "/" + std::to_string(s.items_total) : std::string("-");
+  t[2] = (s.explored_pct > 0)
+             ? ("HUEVOS: " + egg_str + "   MAPA: " + std::to_string(s.explored_pct))
+             : ("HUEVOS:  " + egg_str);
   t[3] = "MUERTES: " + std::to_string(s.deaths);
   auto build_abs = [&](bool compact) {
     const std::string sep = compact ? "/" : " + ";
