@@ -240,6 +240,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   }
   v.show_timer = show_timer ? 1 : 0;
   v.timer_secs = std::max(0, int(sim.elapsed_sec()));
+  v.hero_kind = int(sim.hero());
   return ev;
 }
 
