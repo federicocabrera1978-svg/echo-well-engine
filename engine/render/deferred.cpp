@@ -230,6 +230,7 @@ void DeferredRenderer::render(float t, int fb_w, int fb_h, const FrameView& v) {
   Uniform1i(GetUniformLocation(light_prog_, "u_seals_mask"), v.seals_mask);
   Uniform1i(GetUniformLocation(light_prog_, "u_seals_total"), v.seals_total);
   Uniform1i(GetUniformLocation(light_prog_, "u_map_open"), v.map_open);
+  Uniform2f(GetUniformLocation(light_prog_, "u_map_target"), float(v.map_target_cx), float(v.map_target_cy));
   Uniform4f(GetUniformLocation(light_prog_, "u_boss_hud"),
             float(v.boss_hp), float(v.boss_max_hp), float(v.boss_kind), v.boss_hurt_flash);
   Uniform4f(GetUniformLocation(light_prog_, "u_boss_burst"), v.boss_burst_x, v.boss_burst_y, v.boss_burst_t, v.boss_flash);

@@ -63,6 +63,7 @@ o cargada, meta.
 | Volver al último checkpoint | R corto (al soltar) | — (menú → REINICIO) |
 | Reiniciar todo al inicio | R mantenido ~0,8 s | — |
 | Menú de pausa | Esc | Start (B vuelve atrás) |
+| Mapa Expandido y Viaje Rápido | M, Tab (`←/→` elige santuario, `Enter` viaja, `M`/`Tab`/`Esc` cierra) | — |
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),
@@ -94,6 +95,9 @@ pasan a verde al accionarlas; ambos quedan **despejados de pasto** alrededor (`n
   - En las salas ya visitadas con puertas cerradas (`door` / `one_way_door`), muros agrietados intactos (`break_wall`) o barreras de cristal sin romper (`crystal`) aparece un **marcador carmesí**, que desaparece al abrir la puerta o destruir la barrera.
   - En las salas ya visitadas con huevos sin recoger (`collectible`) aparece un **marcador dorado**, que desaparece al agarrar el huevo.
   - Al entrar a la arena de un Boss activo (`dx <= 220 px, dy <= 120 px`), aparece en el centro superior del HUD (`y = 3..14`) la **barra de vida del Boss** con su emblema de corona y `3` o `4` segmentos coloreados según el jefe, que destellan y se apagan con cada golpe hasta vencerlo.
+  - En `world.ewmap`, junto a los corazones aparecen los **3 emblemas de los Sellos Elementales** (Piedra, Sombra, Agua) que se encienden al derrotar a cada guardián, y la grilla del mini-mapa muestra las **5 filas completas (`8×5`)**.
+  - Al recibir daño aparece una **viñeta carmesí** breve en los bordes de pantalla; bajo el ícono de **Dash / Dash II** se ven `1` o `2` pips de cargas aéreas disponibles; y al alcanzar `2`, `4` o `6` huevos destellan los corazones / Dash II en dorado.
+  - Al pulsar **`M`** o **`Tab`** se abre el **Mapa Expandido** (congela la simulación) mostrando la grilla grande, el nombre de la zona actual, el estado de los Tres Sellos y el selector de **Viaje Rápido** (`←`/`→` + `Enter`) hacia cualquiera de los 5 Santuarios principales ya visitados (`EL POZO`, `LAS CATACUMBAS`, `GUARIDA DEL WYRM`, `ARCHIVO SUMERGIDO`, `CAMPANARIO HUNDIDO`).
 - [ ] **Sala 1 (inicio, pinchos y checkpoints).** Aparecés abajo a la izquierda; el HUD
   arriba a la izquierda dice `0/1`. El switch abre la puerta y hay que nadar la pileta (el
   agua frena la caída y se nada hacia arriba). Una cuerda sube una pared que no se salta (la

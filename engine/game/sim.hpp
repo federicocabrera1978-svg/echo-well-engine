@@ -176,6 +176,8 @@ class Sim {
   // Teleporta al último checkpoint (o al spawn); no toca puertas/switches ni collectibles.
   // Las plataformas sí vuelven a su estado inicial (el puzzle queda armado otra vez).
   void respawn();
+  // Viaje rápido a un Santuario descubierto (limpia estado transitorio, cura vida y centra cámara).
+  bool teleport_to_sanctuary(float x, float y, int ckpt_ent_idx = -1);
 
   Scene& scene() { return scene_; }
   ew::physics::World& world() { return world_; }

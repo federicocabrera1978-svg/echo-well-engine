@@ -102,12 +102,17 @@ inline std::array<std::string, kTxtRows> hero_select_text(const PauseMenu& m) {
   return t;
 }
 
-// Texto del overlay de Mapa Expandido (M / Tab): zona actual, % explorado, huevos y Tres Sellos.
+// Texto del overlay de Mapa Expandido (M / Tab): zona actual, viaje rápido, % explorado, huevos y Tres Sellos.
 inline std::array<std::string, kTxtRows> world_map_text(std::string_view zone_name, int explored_pct, int items,
-                                                        int items_total, uint32_t seals_mask, int seals_total) {
+                                                        int items_total, uint32_t seals_mask, int seals_total,
+                                                        std::string_view travel_label = {},
+                                                        bool travel_unlocked = false) {
   std::array<std::string, kTxtRows> t{};
   t[0] = "MAPA DEL MUNDO";
   t[1] = "ZONA: " + std::string(zone_name);
+  if (!travel_label.empty()) {
+    t[8] = "VIAJE: < " + std::string(travel_label) + (travel_unlocked ? " >" : " ? >");
+  }
   t[9] = "EXPLORADO: " + std::to_string(std::clamp(explored_pct, 0, 100)) + "   HUEVOS: " +
          (items_total > 0 ? (std::to_string(items) + "/" + std::to_string(items_total)) : std::string("-"));
   if (seals_total > 0) {
@@ -118,7 +123,7 @@ inline std::array<std::string, kTxtRows> world_map_text(std::string_view zone_na
     t[10] = "SELLOS " + std::to_string(broken) + "/" + std::to_string(seals_total) + "  " +
             (s0 ? "PIEDRA " : "--- ") + (s1 ? "SOMBRA " : "--- ") + (s2 ? "AGUA" : "---");
   }
-  t[kTxtRows - 1] = "M / TAB / ESC CIERRA";
+  t[kTxtRows - 1] = travel_label.empty() ? "M / TAB / ESC CIERRA" : "</> SANTUARIO  ENTER IR  M/ESC";
   for (auto& s : t)
     if (s.size() > std::size_t(kTxtCols)) s.resize(std::size_t(kTxtCols));
   return t;

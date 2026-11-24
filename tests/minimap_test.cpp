@@ -193,21 +193,42 @@ int main(int argc, char** argv) {
     scw.set_active(std::size_t(sa), true);
     CHECK(game::compute_minimap(scw).seals_mask == 7u);
 
-    // Zonas de world.ewmap y overlay de Mapa Expandido.
+    // Zonas de world.ewmap, overlay de Mapa Expandido y Viaje Rápido entre Santuarios descubiertos.
+    const auto ft0 = game::list_fast_travel_nodes(scw);
+    CHECK(ft0.size() == 5u);
+    CHECK(ft0[0].label == "EL POZO" && ft0[0].unlocked);
+    CHECK(ft0[1].label == "LAS CATACUMBAS" && !ft0[1].unlocked);
+    CHECK(ft0[2].label == "GUARIDA DEL WYRM" && !ft0[2].unlocked);
+    CHECK(ft0[3].label == "ARCHIVO SUMERGIDO" && !ft0[3].unlocked);
+    CHECK(ft0[4].label == "CAMPANARIO HUNDIDO" && !ft0[4].unlocked);
+
+    scw.follow(ft0[1].x, ft0[1].y);  // visita (6,1) Las Catacumbas
     scw.follow(160.f, 4.f * 184.f + 92.f);  // (0,4) Campanario Hundido
     CHECK(game::zone_name_for(scw) == "CAMPANARIO HUNDIDO");
+    const auto ft1 = game::list_fast_travel_nodes(scw);
+    CHECK(ft1[0].unlocked && ft1[1].unlocked && !ft1[4].unlocked);
+
     Sim simw(scw);
     PauseMenu menu;
     EndScreen end_screen;
     DialogueBox dialogue;
     HudTracker hud;
     FrameData vw;
-    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", true);
+    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", true, 1);
     CHECK(vw.map_open == 1 && vw.seals_total == 3 && vw.seals_mask == 7);
+    CHECK(vw.map_target_cx == ft1[1].cx && vw.map_target_cy == ft1[1].cy);
     const auto mwf = game::compute_minimap(scw);
     CHECK(vw.ctl_txt == game::pack_text(game::world_map_text("CAMPANARIO HUNDIDO", mwf.explored_pct,
                                                              vw.items, vw.items_total, mwf.seals_mask,
-                                                             mwf.seals_total)));
+                                                             mwf.seals_total, ft1[1].label, true)));
+
+    // Teletransporte al Santuario de Las Catacumbas: mueve jugador, normaliza gravedad y actualiza cámara/checkpoint.
+    simw.set_gravity_flipped(true);
+    CHECK(simw.teleport_to_sanctuary(ft1[1].x, ft1[1].y, ft1[1].ent_idx));
+    CHECK(!simw.gravity_flipped());
+    CHECK(scw.chunk_x() == ft1[1].cx && scw.chunk_y() == ft1[1].cy);
+    CHECK(simw.checkpoint_index() == ft1[1].ent_idx);
+    CHECK(simw.hp() == simw.max_hp());
   }
 
   std::puts("minimap_test OK");
