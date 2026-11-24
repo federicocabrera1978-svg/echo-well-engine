@@ -52,6 +52,7 @@ inline GuideArrow compute_guide_arrow(const Scene& s, const Sim& sim, float time
         if (e.type == "ability_double_jump" && sim.has_ability(kAbilityDoubleJump)) continue;
         if (e.type == "ability_dash" && sim.has_ability(kAbilityDash)) continue;
         if (e.type == "ability_wall_climb" && sim.has_ability(kAbilityWallClimb)) continue;
+        if (e.type == "ability_reveal" && sim.has_ability(kAbilityReveal)) continue;
         if (rec.gate_entity != ~0u && rec.gate_entity < ents.size() && ents[rec.gate_entity].active) continue;
         if (has_fwd && px > float(rec.x)) continue;
         if (has_below && py < float(rec.y_bot)) continue;
