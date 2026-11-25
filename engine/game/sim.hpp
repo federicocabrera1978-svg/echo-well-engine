@@ -211,7 +211,9 @@ class Sim {
   int collectible_total() const;
   bool all_eggs_collected() const { const int t = collectible_total(); return t > 0 && collected() >= t; }
   int hp() const { return hp_; }
-  int max_hp() const { return collected() >= kEggsForThirdHp ? 3 : (collected() >= kEggsForExtraHp ? 2 : 1); }
+  int max_hp() const { return hard_mode_ ? 1 : (collected() >= kEggsForThirdHp ? 3 : (collected() >= kEggsForExtraHp ? 2 : 1)); }
+  void set_hard_mode(bool on) { hard_mode_ = on; if (hp_ > max_hp()) hp_ = max_hp(); }
+  bool hard_mode() const { return hard_mode_; }
   bool dash_upgraded() const { return collected() >= kEggsForDashUpgrade; }
   float hero_walk_speed() const { return hero_ == HeroKind::Opossum ? kOpossumWalkSpeed : kWalkSpeed; }
   int hero_coyote_frames() const { return hero_ == HeroKind::Opossum ? kOpossumCoyoteFrames : kCoyoteFrames; }
@@ -446,6 +448,7 @@ class Sim {
   BossVictorySeq victory_;
   WindField wind_;
   HeroKind hero_ = HeroKind::Lantern;
+  bool hard_mode_ = false;
   bool was_grounded_ = false;
   ew::physics::Vec2 last_pos_{};
   int facing_ = 1;

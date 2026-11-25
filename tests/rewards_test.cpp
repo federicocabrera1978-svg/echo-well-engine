@@ -256,6 +256,12 @@ int main(int argc, char** argv) {
     CHECK(hev.new_extra_hp && !hev.new_dash_upgrade);
     CHECK(fv.hp == 3 && fv.max_hp == 3 && fv.dash_upgraded == 1);
   }
+  // Modo Desafío (--hard): fija max_hp() en 1 corazón incluso con 6+ huevos, manteniendo Dash II.
+  sim.set_hard_mode(true);
+  CHECK(sim.hard_mode() && sim.max_hp() == 1 && sim.hp() == 1 && sim.dash_upgraded());
+  sim.set_hard_mode(false);
+  sim.respawn();
+  CHECK(!sim.hard_mode() && sim.max_hp() == 3 && sim.hp() == 3);
   // Con 3 corazones sobrevive dos golpes seguidos y muere al tercero.
   wait_invuln(sim, 600.f, 56.f);
   place(sim, 80.f * 8.f + 4.f, 19.f * 8.f + 4.f);

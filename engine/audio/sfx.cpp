@@ -23,6 +23,7 @@ Spec spec(SfxId id) {
     case SfxId::StepMoss:   return {115.f,  0.048f, 0.15f, 6};
     case SfxId::StepMetal:  return {780.f,  0.055f, 0.15f, 7};
     case SfxId::StepWater:  return {340.f,  0.058f, 0.17f, 8};
+    case SfxId::Warp:       return {392.f,  0.34f,  0.34f, 9};
     default:                return {440.f,  0.10f, 0.25f, 0};
   }
 }
@@ -207,6 +208,10 @@ void Mixer::render(float* out, int frames, int rate) {
         const float flutter = 0.55f + 0.45f * std::sin(kTwoPi * 42.f * v.t);
         const float drop = std::sin(kTwoPi * v.freq * (0.85f + 0.45f * u) * v.t);
         s = flutter * (0.50f * drop + 0.50f * pseudo_noise(v.t, 317.f));
+      } else if (v.kind == 9) {  // Warp: arpegio ascendente etéreo de Viaje Rápido entre Santuarios
+        const float f = v.freq * (1.f + 0.75f * u);
+        const float p1 = kTwoPi * f * v.t;
+        s = 0.55f * std::sin(p1) + 0.30f * std::sin(1.5f * p1) + 0.15f * std::sin(2.0f * p1);
       }
       acc += v.amp * env * s;
       v.t += dt;

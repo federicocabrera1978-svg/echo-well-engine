@@ -229,6 +229,7 @@ LevelFlow::PostStepResult LevelFlow::post_step(PauseMenu& menu, EndScreen& end_s
     st.max_hp = sim_->max_hp();
     st.dash_upgraded = sim_->dash_upgraded();
     st.explored_pct = compute_minimap(*scene_).explored_pct;
+    st.hard_mode = sim_->hard_mode();
     end_screen.open(st);
     announced_goal_ = true;
     res.opened_end = true;

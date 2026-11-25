@@ -594,7 +594,7 @@ bool Sim::teleport_to_sanctuary(float x, float y, int ckpt_ent_idx) {
     scene_.set_active(std::size_t(ckpt_ent_idx), true);
   }
   scene_.follow(x, y, 0.f);
-  sfx_ |= ew::audio::kSfxCheckpoint;
+  sfx_ |= ew::audio::kSfxWarp;
   return true;
 }
 
