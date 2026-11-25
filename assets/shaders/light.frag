@@ -658,6 +658,13 @@ vec3 world_map_page(vec3 c, vec2 px) {
   }
   c = mix(c, vec3(1.0, 0.88, 0.42), txt_glyph(0, px - vec2(28.0, 15.0), 1.0));
   c = mix(c, vec3(0.68, 0.88, 0.98), txt_glyph(1, px - vec2(28.0, 25.0), 1.0));
+  // Micro-leyenda visual de colores en la esquina superior derecha del panel (actual, bloqueo, huevo, viaje).
+  if (ip.y >= 15.0 && ip.y <= 18.0) {
+    if (ip.x >= 262.0 && ip.x <= 265.0) c = vec3(0.95, 0.78, 0.28);
+    if (ip.x >= 270.0 && ip.x <= 273.0) c = vec3(0.98, 0.24, 0.34);
+    if (ip.x >= 278.0 && ip.x <= 281.0) c = vec3(1.0, 0.92, 0.42);
+    if (ip.x >= 286.0 && ip.x <= 289.0) c = vec3(0.32, 0.98, 0.82);
+  }
 
   int w = clamp(int(u_map_grid.x + 0.5), 1, 8), h = clamp(int(u_map_grid.y + 0.5), 1, 6);
   int cur_x = int(floor(u_map_grid.z + 0.5)), cur_y = int(floor(u_map_grid.w + 0.5));
