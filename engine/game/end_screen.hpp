@@ -91,7 +91,7 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
   t[2] = (s.explored_pct > 0)
              ? ("HUEVOS: " + egg_str + "   MAPA: " + std::to_string(s.explored_pct))
              : ("HUEVOS:  " + egg_str);
-  t[3] = "MUERTES: " + std::to_string(s.deaths);
+  t[3] = "MUERTES: " + std::to_string(s.deaths) + (s.hard_mode ? "   DESAFIO" : "");
   auto build_abs = [&](bool compact) {
     const std::string sep = compact ? "/" : " + ";
     std::string out;
@@ -104,7 +104,6 @@ inline std::array<std::string, kTxtRows> end_screen_text(const EndScreen& e) {
     if (s.abilities & kAbilityWallClimb) add(compact ? "ESC" : "ESCALADA");
     if (s.abilities & kAbilityReveal) add("FAROL");
     if (s.max_hp > 1) add("+" + std::to_string(s.max_hp - 1) + "HP");
-    if (s.hard_mode) add("DESAFIO");
     return out;
   };
   const std::string abs_full = build_abs(false);
