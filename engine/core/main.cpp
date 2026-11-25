@@ -310,10 +310,12 @@ int main(int argc, char** argv) {
       const bool nav_up = up && !m_up_was, nav_dn = dn && !m_dn_was;
       const bool nav_lt = lt && !m_lt_was, nav_rt = rt && !m_rt_was, nav_ok = ok && !m_ok_was;
       m_up_was = up; m_dn_was = dn; m_lt_was = lt; m_rt_was = rt; m_ok_was = ok;
-      const bool map_down = key(GLFW_KEY_M) || key(GLFW_KEY_TAB);
+      const bool pad_back = ((pad_buttons >> unsigned(GLFW_GAMEPAD_BUTTON_BACK)) & 1u) != 0u;
+      const bool pad_y_btn = ((pad_buttons >> unsigned(GLFW_GAMEPAD_BUTTON_Y)) & 1u) != 0u;
+      const bool map_down = key(GLFW_KEY_M) || key(GLFW_KEY_TAB) || pad_back;
       const bool map_toggle = map_down && !map_key_was;
       map_key_was = map_down;
-      const bool journal_down = key(GLFW_KEY_J);
+      const bool journal_down = key(GLFW_KEY_J) || ((map_open || journal_open) && pad_y_btn);
       const bool journal_toggle = journal_down && !journal_key_was;
       journal_key_was = journal_down;
       const bool timer_down = key(GLFW_KEY_T);
