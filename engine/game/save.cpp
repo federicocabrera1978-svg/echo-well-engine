@@ -61,7 +61,7 @@ std::vector<uint8_t> encode_save(const SaveData& d) {
   put_u8(pl, uint8_t(ml));
   pl.insert(pl.end(), d.map.begin(), d.map.begin() + std::ptrdiff_t(ml));
   put_u16(pl, uint16_t(int16_t(d.checkpoint)));
-  put_u8(pl, uint8_t((d.flipped ? 1 : 0) | (d.muted ? 2 : 0)));
+  put_u8(pl, uint8_t((d.flipped ? 1 : 0) | (d.muted ? 2 : 0) | (d.hard_mode ? 4 : 0)));
   float vol = std::isfinite(d.volume) ? std::fmin(1.f, std::fmax(0.f, d.volume)) : 0.8f;
   uint32_t vb;
   std::memcpy(&vb, &vol, 4);
@@ -128,9 +128,11 @@ SaveError decode_save(const uint8_t* data, std::size_t size, SaveData& out) {
   const uint32_t vb = r.u32();
   const uint16_t ne = r.u16();
   if (!r.ok) return SaveError::BadSize;
-  if (flags & ~3u) return SaveError::BadField;
-  d.flipped = flags & 1;
-  d.muted = flags & 2;
+  const uint32_t valid_flags = (ver >= 5) ? 7u : 3u;
+  if (flags & ~valid_flags) return SaveError::BadField;
+  d.flipped = (flags & 1u) != 0u;
+  d.muted = (flags & 2u) != 0u;
+  d.hard_mode = (ver >= 5) && ((flags & 4u) != 0u);
   std::memcpy(&d.volume, &vb, 4);
   if (!std::isfinite(d.volume) || std::signbit(d.volume) || d.volume > 1.f) return SaveError::BadField;
   if (ne > kSaveMaxEntities) return SaveError::BadField;
@@ -188,6 +190,7 @@ SaveData capture_save(const Sim& sim) {
   d.hero = sim.hero();
   d.visited_chunks = sc.visited_chunks();
   d.elapsed_sec = sim.elapsed_sec();
+  d.hard_mode = sim.hard_mode();
   d.active.reserve(sc.entities().size());
   for (const auto& e : sc.entities()) d.active.push_back(e.active ? 1 : 0);
   return d;
@@ -205,6 +208,7 @@ SaveError apply_save(Sim& sim, const SaveData& d) {
   sim.set_hero(d.hero);
   if (d.visited_chunks != 0) sc.set_visited_chunks(d.visited_chunks | sc.visited_chunks());
   sim.set_elapsed_sec(d.elapsed_sec);
+  sim.set_hard_mode(d.hard_mode);
   return SaveError::None;
 }
 

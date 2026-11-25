@@ -218,11 +218,12 @@ int main(int argc, char** argv) {
     cb.hero = game::HeroKind::Beaver;
     cb.visited_chunks = uint64_t(0x55ull);
     cb.elapsed_sec = 123.5f;
+    cb.hard_mode = true;
     CHECK(dec(game::encode_save(cb), o) == SaveError::None && o.bind == cb.bind &&
           !(o.bind == game::Bindings::defaults()) &&
           o.abilities == (game::kAbilityDoubleJump | game::kAbilityDash | game::kAbilityWallClimb) &&
           o.hero == game::HeroKind::Beaver && o.visited_chunks == uint64_t(0x55ull) &&
-          std::fabs(o.elapsed_sec - 123.5f) < 1e-4f);
+          std::fabs(o.elapsed_sec - 123.5f) < 1e-4f && o.hard_mode);
     {
       game::Scene s4;
       CHECK(s4.load(argv[1], err));
@@ -234,6 +235,7 @@ int main(int argc, char** argv) {
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
       CHECK((s4.visited_chunks() & uint64_t(0x55ull)) == uint64_t(0x55ull));
       CHECK(std::fabs(ab_sim.elapsed_sec() - 123.5f) < 1e-4f);
+      CHECK(ab_sim.hard_mode() && ab_sim.max_hp() == 1);
       game::Input full; full.restart_full = true;
       ab_sim.step(full);
       CHECK(!ab_sim.has_ability(game::kAbilityDoubleJump) && ab_sim.air_jumps() == 0);
@@ -241,7 +243,8 @@ int main(int argc, char** argv) {
       CHECK(!ab_sim.has_ability(game::kAbilityWallClimb));
       CHECK(ab_sim.hero() == game::HeroKind::Beaver);
     }
-    // v4 (sin visited_chunks ni elapsed_sec) se sigue leyendo: preserva héroe, visited_chunks = 0, elapsed_sec = 0.
+    // v4 (sin visited_chunks, elapsed_sec ni hard_mode) se sigue leyendo: preserva héroe, visited_chunks = 0, elapsed_sec = 0.
+    cb.hard_mode = false;
     b = game::encode_save(cb);
     b.erase(b.begin() + std::ptrdiff_t(off_v5), b.begin() + std::ptrdiff_t(off_v5_end));
     b[4] = 4;
