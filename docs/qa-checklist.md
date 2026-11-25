@@ -64,7 +64,8 @@ o cargada, meta.
 | Reiniciar todo al inicio | R mantenido ~0,8 s | — |
 | Menú de pausa | Esc | Start (B vuelve atrás) |
 | Mapa Expandido y Viaje Rápido | M, Tab (`←/→` elige santuario, `Enter` viaja, `M`/`Tab`/`Esc` cierra) | — |
-| Cronómetro Speedrun en HUD | T (o `--timer` al iniciar) | — |
+| Diario de la Vigía (huevos por zona) | J (`J`/`Esc` cierra, `M`/`Tab` pasa al mapa) | — |
+| Cronómetro Speedrun en HUD | T (o `--timer` al iniciar; `--hard` activa Modo Desafío de 1 corazón) | — |
 
 El menú siempre se navega con flechas/WASD + Enter/Espacio/Z, o d-pad + A/B.
 Menú: SEGUIR, CONTINUAR (si hay partida guardada), REINICIO (vuelve al checkpoint),

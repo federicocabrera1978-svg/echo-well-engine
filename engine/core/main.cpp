@@ -47,7 +47,7 @@ void play_sfx(uint32_t bits) {
       {kSfxPickup, SfxId::Pickup},       {kSfxAbility, SfxId::Ability},     {kSfxDash, SfxId::Dash},
       {kSfxBreak, SfxId::Break},         {kSfxHit, SfxId::Hit},             {kSfxBossCrt, SfxId::BossCrt},
       {kSfxStepStone, SfxId::StepStone}, {kSfxStepMoss, SfxId::StepMoss},   {kSfxStepMetal, SfxId::StepMetal},
-      {kSfxStepWater, SfxId::StepWater},
+      {kSfxStepWater, SfxId::StepWater}, {kSfxWarp, SfxId::Warp},
   };
   for (const auto& [bit, id] : kMap)
     if (bits & bit) device_play(id);
@@ -104,7 +104,7 @@ void poll_gamepad(bool demo, bool nogamepad, bool hanging, double now_in, const 
 int main(int argc, char** argv) {
   int scale = 4, max_frames = 0;
   bool demo = false, has_start = false, has_hero = false, nosound = false, nogamepad = false, nosave = false,
-       explicit_map = false, show_timer = false;
+       explicit_map = false, show_timer = false, hard_mode = false;
   ew::game::HeroKind cli_hero = ew::game::HeroKind::Lantern;
   float start_x = 0, start_y = 0;
   std::string shader_dir = EW_SHADER_DIR, map_path = EW_DEFAULT_MAP, dump_path, atlas_path, sprites_path,
@@ -136,6 +136,7 @@ int main(int argc, char** argv) {
     else if (a == "--nogamepad") nogamepad = true;
     else if (a == "--nosave") nosave = true;
     else if (a == "--timer") show_timer = true;
+    else if (a == "--hard") hard_mode = true;
     else if (a == "--version") { std::printf("echo_engine v%s\n", EW_VERSION); return 0; }
     else if (a == "--start" && i + 2 < argc) {
       start_x = float(std::atof(argv[++i]));
@@ -220,6 +221,10 @@ int main(int argc, char** argv) {
     flow.sim().set_hero(cli_hero);
   } else if (!demo && !max_frames && !has_start && !menu.has_save()) {
     menu.open_hero_select(true);
+  }
+  if (hard_mode) {
+    flow.sim().set_hard_mode(true);
+    std::printf("echo_engine: modo DESAFIO activado (1 corazon maximo)\n");
   }
 
   int frames = 0, sim_steps = 0;

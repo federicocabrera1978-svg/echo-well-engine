@@ -24,6 +24,7 @@ enum class SfxId : uint8_t {
   StepMoss,
   StepMetal,
   StepWater,
+  Warp,
   Count
 };
 
@@ -83,5 +84,6 @@ inline constexpr uint32_t kSfxStepStone = 1u << 12;
 inline constexpr uint32_t kSfxStepMoss = 1u << 13;
 inline constexpr uint32_t kSfxStepMetal = 1u << 14;
 inline constexpr uint32_t kSfxStepWater = 1u << 15;
+inline constexpr uint32_t kSfxWarp = 1u << 16;
 
 }  // namespace ew::audio

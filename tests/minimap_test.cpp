@@ -1,5 +1,6 @@
 // Test sin GL (Etapa 8): estado derivado del mini-mapa Metroidvania (minimap.hpp)
 // y volcado de máscaras + porcentaje explorado en FrameData vía populate_hud_and_overlays.
+#include "audio/sfx.hpp"
 #include "game/hud.hpp"
 #include "game/minimap.hpp"
 #include "game/scene.hpp"
@@ -224,7 +225,9 @@ int main(int argc, char** argv) {
 
     // Teletransporte al Santuario de Las Catacumbas: mueve jugador, normaliza gravedad y actualiza cámara/checkpoint.
     simw.set_gravity_flipped(true);
+    (void)simw.take_sfx();
     CHECK(simw.teleport_to_sanctuary(ft1[1].x, ft1[1].y, ft1[1].ent_idx));
+    CHECK((simw.take_sfx() & ew::audio::kSfxWarp) != 0u);
     CHECK(!simw.gravity_flipped());
     CHECK(scw.chunk_x() == ft1[1].cx && scw.chunk_y() == ft1[1].cy);
     CHECK(simw.checkpoint_index() == ft1[1].ent_idx);
