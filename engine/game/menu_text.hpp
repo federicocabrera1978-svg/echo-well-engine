@@ -132,10 +132,10 @@ inline std::array<std::string, kTxtRows> world_map_text(std::string_view zone_na
 // Diario de la Vigía (tecla J): héroe, huevos por zona, Tres Sellos, reliquias, mapa y tiempo.
 inline std::array<std::string, kTxtRows> journal_text(
     HeroKind hero, const std::array<std::string, 5>& zone_lines, uint32_t seals_mask, int seals_total,
-    uint32_t abilities, bool dash_up, int explored_pct, int deaths, int elapsed_secs) {
+    uint32_t abilities, bool dash_up, int explored_pct, int deaths, int elapsed_secs, bool hard_mode = false) {
   std::array<std::string, kTxtRows> t{};
   t[0] = "DIARIO DE LA VIGIA";
-  t[1] = "HEROE: " + std::string(hero_label(hero));
+  t[1] = "HEROE: " + std::string(hero_label(hero)) + (hard_mode ? " - DESAFIO" : "");
   t[2] = "HUEVOS POR ZONA:";
   for (int i = 0; i < 5; ++i) t[std::size_t(3 + i)] = zone_lines[std::size_t(i)];
   if (seals_total > 0) {

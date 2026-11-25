@@ -106,6 +106,7 @@ struct FrameData {
   float prompt_x = 0.f, prompt_y = 0.f;      // posición en px de vista del aviso contextual [E]
   int prompt_kind = 0;                       // 0=oculto, 1=npc/lore, 2=palanca, 3=ascensor
   int hero_kind = 0;                         // 0=Lantern, 1=Opossum, 2=Beaver (emblema en HUD)
+  int hard_mode = 0;                         // 1 = Modo Desafío activo (borde carmesí en HUD)
   // Rayos catódicos al vencer un boss (light pass): origen en px de vista + progreso t (1=inicio -> 0=fin).
   float boss_burst_x = 0, boss_burst_y = 0, boss_burst_t = 0;
   float boss_flash = 0;

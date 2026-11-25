@@ -57,6 +57,7 @@ uniform vec2 u_toast;          // (alpha 0..1, kind: 0=zona, 1=hito, 2=sello rot
 uniform vec2 u_timer;          // (show 0/1, secs) cronómetro speedrun MM:SS en esquina inferior derecha
 uniform vec4 u_prompt;         // (x_vista, y_vista, kind: 0=nada, 1=npc/lore, 2=palanca, 3=ascensor, 0)
 uniform int u_hero_kind;       // 0=Lantern, 1=Opossum, 2=Beaver
+uniform int u_hard_mode;       // 1 = Modo Desafío activo (1 corazón máximo)
 uniform vec4 u_boss_hud;       // (hp, max_hp, kind, hurt_flash) barra de vida del boss activo
 uniform vec4 u_boss_burst;     // (x_vista, y_vista, t: 1=inicio -> 0=fin, flash: 0..1) rayos catódicos al vencer boss
 
@@ -408,6 +409,7 @@ vec3 hud_hearts(vec3 c, vec2 px) {
   float x0 = (u_items_total > 0) ? 36.0 : 3.0;
   if (px.x >= x0 && px.x <= x0 + float(mhp) * 9.0 + 4.0 && px.y >= 3.0 && px.y <= 14.0) {
     c = mix(c, vec3(0.03, 0.03, 0.05), 0.55);
+    if (u_hard_mode > 0 && (floor(px.y) == 3.0 || floor(px.y) == 14.0)) c = vec3(0.92, 0.22, 0.28);
     if (px.x >= x0 && px.x < x0 + 2.0 && px.y >= 5.0 && px.y <= 12.0) {
       c = (u_hero_kind == 1) ? vec3(0.78, 0.52, 0.98)
         : (u_hero_kind == 2) ? vec3(0.32, 0.90, 0.96)

@@ -47,6 +47,7 @@ struct SaveData {
   HeroKind hero = HeroKind::Lantern;  // héroe elegido (v4+)
   uint64_t visited_chunks = 0;     // bitmask de salas visitadas (v5+)
   float elapsed_sec = 0.f;         // tiempo acumulado de partida en segundos (v5+)
+  bool hard_mode = false;          // Modo Desafío 1 corazón máximo (bit2 de flags en v5+)
 };
 
 std::vector<uint8_t> encode_save(const SaveData& d);

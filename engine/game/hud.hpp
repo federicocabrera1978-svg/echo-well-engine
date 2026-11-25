@@ -195,7 +195,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
     }
     v.ctl_txt = pack_text(journal_text(sim.hero(), zlines, mm.seals_mask, mm.seals_total, sim.abilities(),
                                        sim.dash_upgraded(), mm.explored_pct, sim.deaths(),
-                                       std::max(0, int(sim.elapsed_sec()))));
+                                       std::max(0, int(sim.elapsed_sec())), sim.hard_mode()));
   } else if (v.map_open == 1) {
     std::string_view tlabel;
     bool tunlocked = false;
@@ -254,6 +254,7 @@ inline HudEvents populate_hud_and_overlays(FrameData& v, const Scene& scene, con
   v.show_timer = show_timer ? 1 : 0;
   v.timer_secs = std::max(0, int(sim.elapsed_sec()));
   v.hero_kind = int(sim.hero());
+  v.hard_mode = sim.hard_mode() ? 1 : 0;
   return ev;
 }
 
