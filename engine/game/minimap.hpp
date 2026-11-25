@@ -169,4 +169,52 @@ inline std::vector<FastTravelNode> list_fast_travel_nodes(const Scene& scene) {
   return out;
 }
 
+// Conteo de huevos coleccionables por región (para el Diario de la Vigía, tecla J).
+struct ZoneEggs {
+  std::string_view zone;
+  int found = 0;
+  int total = 0;
+};
+
+inline std::vector<ZoneEggs> compute_zone_eggs(const Scene& scene) {
+  std::vector<ZoneEggs> out;
+  const auto& hdr = scene.map().header();
+  const int mw = int(hdr.map_w_chunks);
+  const int mh = int(hdr.map_h_chunks);
+  if (mw <= 0 || mh <= 0) return out;
+  constexpr float kChunkPxW = float(ew::map::kChunkW * ew::map::kTileSize);
+  constexpr float kChunkPxH = float(ew::map::kChunkH * ew::map::kTileSize);
+  const std::string_view map_name = scene.map().string_at(1);
+  if (map_name == "world") {
+    out = {
+        {"EL POZO", 0, 0},
+        {"LAS CATACUMBAS", 0, 0},
+        {"GUARIDA DEL WYRM", 0, 0},
+        {"ARCHIVO SUMERGIDO", 0, 0},
+        {"CAMPANARIO HUNDIDO", 0, 0},
+    };
+    for (const auto& e : scene.entities()) {
+      if (e.type != "collectible") continue;
+      const int cx = std::clamp(int(std::floor(e.x / kChunkPxW)), 0, mw - 1);
+      const int cy = std::clamp(int(std::floor(e.y / kChunkPxH)), 0, mh - 1);
+      std::size_t zi = 0;
+      if (cy == 0) zi = 0;
+      else if (cy == 1 || cy == 2) zi = (cx >= 4) ? 1 : 2;
+      else if (cy == 3) zi = 3;
+      else zi = 4;
+      ++out[zi].total;
+      if (e.active) ++out[zi].found;
+    }
+    return out;
+  }
+  ZoneEggs single{zone_name_for(scene), 0, 0};
+  for (const auto& e : scene.entities()) {
+    if (e.type != "collectible") continue;
+    ++single.total;
+    if (e.active) ++single.found;
+  }
+  if (single.total > 0) out.push_back(single);
+  return out;
+}
+
 }  // namespace ew::game

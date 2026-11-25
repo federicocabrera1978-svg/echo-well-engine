@@ -129,6 +129,44 @@ inline std::array<std::string, kTxtRows> world_map_text(std::string_view zone_na
   return t;
 }
 
+// Diario de la Vigía (tecla J): héroe, huevos por zona, Tres Sellos, reliquias, mapa y tiempo.
+inline std::array<std::string, kTxtRows> journal_text(
+    HeroKind hero, const std::array<std::string, 5>& zone_lines, uint32_t seals_mask, int seals_total,
+    uint32_t abilities, bool dash_up, int explored_pct, int deaths, int elapsed_secs) {
+  std::array<std::string, kTxtRows> t{};
+  t[0] = "DIARIO DE LA VIGIA";
+  t[1] = "HEROE: " + std::string(hero_label(hero));
+  t[2] = "HUEVOS POR ZONA:";
+  for (int i = 0; i < 5; ++i) t[std::size_t(3 + i)] = zone_lines[std::size_t(i)];
+  if (seals_total > 0) {
+    const bool s0 = (seals_mask & 1u) != 0u;
+    const bool s1 = (seals_mask & 2u) != 0u;
+    const bool s2 = (seals_mask & 4u) != 0u;
+    const int broken = int(s0) + int(s1) + int(s2);
+    t[8] = "SELLOS " + std::to_string(broken) + "/" + std::to_string(seals_total) + "  " +
+           (s0 ? "PIEDRA " : "--- ") + (s1 ? "SOMBRA " : "--- ") + (s2 ? "AGUA" : "---");
+  }
+  std::string rel;
+  auto add_r = [&](std::string_view tag) {
+    if (!rel.empty()) rel += " ";
+    rel += tag;
+  };
+  if (abilities & 1u) add_r("DJ");
+  if ((abilities & 2u) || dash_up) add_r(dash_up ? "DASHII" : "DASH");
+  if (abilities & 4u) add_r("ESC");
+  if (abilities & 8u) add_r("FAROL");
+  t[9] = "RELIQUIAS: " + (rel.empty() ? std::string("NINGUNA") : rel);
+  const int secs = std::clamp(elapsed_secs, 0, 5999);
+  const int mm = secs / 60, ss = secs % 60;
+  const std::string tm = std::to_string(mm) + ":" + (ss < 10 ? "0" : "") + std::to_string(ss);
+  t[10] = "MAPA " + std::to_string(std::clamp(explored_pct, 0, 100)) + "  MUERTES " + std::to_string(deaths) +
+          "  " + tm;
+  t[11] = "J / ESC CIERRA   M MAPA";
+  for (auto& s : t)
+    if (s.size() > std::size_t(kTxtCols)) s.resize(std::size_t(kTxtCols));
+  return t;
+}
+
 inline std::array<int32_t, kTxtInts> pack_text(const std::array<std::string, kTxtRows>& t) {
   std::array<int32_t, kTxtInts> out{};
   for (int r = 0; r < kTxtRows; ++r)

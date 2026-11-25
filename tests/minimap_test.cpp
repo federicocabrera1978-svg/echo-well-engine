@@ -244,6 +244,22 @@ int main(int argc, char** argv) {
     est.items = 8; est.items_total = 8; est.explored_pct = 100;
     end_screen.open(est);
     CHECK(game::end_screen_text(end_screen)[2] == "HUEVOS: 8/8   MAPA: 100");
+    end_screen.close();
+
+    // Diario de la Vigía (tecla J): desglose de los 8 huevos en 5 zonas (2, 2, 2, 1, 1) y map_open == 2.
+    const auto z0 = game::compute_zone_eggs(scw);
+    CHECK(z0.size() == 5u);
+    CHECK(z0[0].zone == "EL POZO" && z0[0].total == 2 && z0[0].found == 0);
+    CHECK(z0[1].zone == "LAS CATACUMBAS" && z0[1].total == 2 && z0[1].found == 0);
+    CHECK(z0[2].zone == "GUARIDA DEL WYRM" && z0[2].total == 2 && z0[2].found == 0);
+    CHECK(z0[3].zone == "ARCHIVO SUMERGIDO" && z0[3].total == 1 && z0[3].found == 0);
+    CHECK(z0[4].zone == "CAMPANARIO HUNDIDO" && z0[4].total == 1 && z0[4].found == 0);
+    const int egg_arch_idx = find_entity_index(scw, "egg_archivo");
+    CHECK(egg_arch_idx >= 0);
+    scw.set_active(std::size_t(egg_arch_idx), true);
+    CHECK(game::compute_zone_eggs(scw)[3].found == 1);
+    game::populate_hud_and_overlays(vw, scw, simw, menu, end_screen, dialogue, hud, "0.1.0", false, -1, false, true);
+    CHECK(vw.map_open == 2);
   }
 
   std::puts("minimap_test OK");
